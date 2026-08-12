@@ -20,17 +20,14 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 // ---------------------------------------------------------------------------
-// Priority colors
+// Status / priority tokens
 // ---------------------------------------------------------------------------
 
-export const priorityColor: Record<string, string> = {
-  critical: "text-red-600 dark:text-red-400",
-  high: "text-orange-600 dark:text-orange-400",
-  medium: "text-yellow-600 dark:text-yellow-400",
-  low: "text-blue-600 dark:text-blue-400",
-};
-
-export const priorityColorDefault = "text-yellow-600 dark:text-yellow-400";
+// `status-colors.ts` is vendored wholesale (it is self-contained and has no
+// imports), so it stays the single source for these tokens rather than this
+// module keeping a second copy that could drift from the one the vendored
+// StatusBadge/StatusGlyph render against.
+export { priorityColor, priorityColorDefault } from "./status-colors";
 
 // ---------------------------------------------------------------------------
 // Query keys
