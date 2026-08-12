@@ -1,0 +1,1 @@
+export { PlicaPage } from "./PlicaPage";
