@@ -24,6 +24,13 @@ const manifest: PaperclipPluginManifestV1 = {
   author: "Northwind Partners Consulting",
   categories: ["ui"],
   capabilities: [
+    // Required to register the UI surfaces below. The host validates these
+    // separately from the zod schema, in plugin-capability-validator.ts:
+    // a `page` slot requires ui.page.register, and a `sidebar` launcher
+    // requires ui.sidebar.register.
+    "ui.page.register",
+    "ui.sidebar.register",
+    // Company data the HUD surfaces.
     "companies.read",
     "projects.read",
     "issues.read",

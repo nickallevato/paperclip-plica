@@ -42,4 +42,61 @@ describe("plugin manifest", () => {
   it("uses a plugin id the schema's id pattern accepts", () => {
     expect(PLUGIN_ID).toMatch(/^[a-z0-9][a-z0-9._-]*$/);
   });
+
+  /**
+   * The host enforces UI capabilities in a SECOND place, outside the zod
+   * schema: server/src/services/plugin-capability-validator.ts. A manifest can
+   * pass `pluginManifestV1Schema` and still be rejected at install with
+   * "manifest has inconsistent capabilities and features" — which is exactly
+   * what happened on the second install attempt.
+   *
+   * These mappings mirror UI_SLOT_CAPABILITIES and
+   * LAUNCHER_PLACEMENT_CAPABILITIES from that file. They are deliberately
+   * copied rather than imported: importing would bind this suite to
+   * `server/dist` build output inside the Paperclip checkout, which is the
+   * coupling this whole migration removes. Re-sync from that file if the host
+   * adds surfaces.
+   */
+  const SLOT_CAPABILITIES: Record<string, string> = {
+    page: "ui.page.register",
+    sidebar: "ui.sidebar.register",
+    sidebarPanel: "ui.sidebar.register",
+    routeSidebar: "ui.sidebar.register",
+    projectSidebarItem: "ui.sidebar.register",
+    detailTab: "ui.detailTab.register",
+    taskDetailView: "ui.detailTab.register",
+    dashboardWidget: "ui.dashboardWidget.register",
+    globalToolbarButton: "ui.action.register",
+    toolbarButton: "ui.action.register",
+    contextMenuItem: "ui.action.register",
+    commentContextMenuItem: "ui.action.register",
+    commentAnnotation: "ui.commentAnnotation.register",
+    settingsPage: "instance.settings.register",
+    companySettingsPage: "instance.settings.register",
+  };
+
+  it("declares the capability each UI slot requires", () => {
+    for (const slot of manifest.ui?.slots ?? []) {
+      const required = SLOT_CAPABILITIES[slot.type];
+      expect(required, `no known capability for slot type "${slot.type}"`).toBeTruthy();
+      expect(
+        manifest.capabilities,
+        `slot "${slot.id}" (${slot.type}) requires capability "${required}"`,
+      ).toContain(required);
+    }
+  });
+
+  it("declares the capability each launcher placement zone requires", () => {
+    for (const launcher of manifest.ui?.launchers ?? []) {
+      const required = SLOT_CAPABILITIES[launcher.placementZone];
+      expect(
+        required,
+        `no known capability for placement zone "${launcher.placementZone}"`,
+      ).toBeTruthy();
+      expect(
+        manifest.capabilities,
+        `launcher "${launcher.id}" (${launcher.placementZone}) requires capability "${required}"`,
+      ).toContain(required);
+    }
+  });
 });
