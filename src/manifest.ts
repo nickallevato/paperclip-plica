@@ -21,7 +21,9 @@ const manifest: PaperclipPluginManifestV1 = {
   version: "0.1.0",
   displayName: "Plica",
   description: "Cross-company HUD: company panes, triage, approvals, attention, and briefing.",
-  author: "Northwind Partners Consulting",
+  // The manifest schema has no homepage/repository fields — `author` is a plain
+  // string — so the links ride inline here, and also live in package.json.
+  author: "nickallevato (https://allevato.io · https://github.com/nickallevato)",
   categories: ["ui"],
   capabilities: [
     // Required to register the UI surfaces below. The host validates these
