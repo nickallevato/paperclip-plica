@@ -1,17 +1,13 @@
+import { runWorker } from "@paperclipai/plugin-sdk";
+import { plugin } from "./plugin.js";
+
 /**
- * Plica holds no worker-side logic.
+ * Worker entrypoint.
  *
- * All of its data access happens in the browser against core Paperclip HTTP
- * APIs, which plugin UI may call directly (PLUGIN_SPEC.md §24). The host still
- * requires a worker entrypoint, so this satisfies the contract and nothing
- * more. If Plica ever needs privileged server-side work, it grows here and
- * gains the matching capabilities in the manifest.
+ * `runWorker` starts the JSON-RPC-over-stdio host and keeps the process alive.
+ * Exporting a bare lifecycle object is NOT sufficient — the process would run
+ * to completion and exit immediately, and the host reports that as
+ * "Worker process exited (code=0, signal=null)" during initialize.
  */
-export default {
-  async initialize() {
-    return { ok: true };
-  },
-  async shutdown() {
-    return { ok: true };
-  },
-};
+export default plugin;
+runWorker(plugin, import.meta.url);
