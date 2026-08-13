@@ -45,19 +45,6 @@ const manifest: PaperclipPluginManifestV1 = {
     ui: "./dist/ui",
   },
   ui: {
-    launchers: [
-      {
-        // Launcher declarations carry no icon field, so the host renders its
-        // own default glyph. The customization's Telescope icon cannot be
-        // reproduced through the plugin API.
-        id: "plica-sidebar-launcher",
-        displayName: "Plica",
-        description: "Cross-company HUD",
-        placementZone: "sidebar",
-        order: 90,
-        action: { type: "navigate", target: "plica" },
-      },
-    ],
     slots: [
       {
         type: "page",
@@ -65,6 +52,16 @@ const manifest: PaperclipPluginManifestV1 = {
         displayName: "Plica",
         exportName: "PlicaPage",
         routePath: "plica",
+      },
+      {
+        // A slot, not a launcher: the host mounts only PluginSlotOutlet for the
+        // sidebarPanel zone, so launchers never render there. A component also
+        // gets to draw its own Telescope icon, which launcher declarations
+        // cannot — they have no icon field.
+        type: "sidebarPanel",
+        id: "plica-sidebar-panel",
+        displayName: "Plica",
+        exportName: "PlicaSidebarPanel",
       },
     ],
   },

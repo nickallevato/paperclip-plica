@@ -27,12 +27,12 @@ describe("plugin manifest", () => {
     expect(page).toMatchObject({ routePath: "plica", exportName: "PlicaPage" });
   });
 
-  it("declares a sidebar launcher pointing at that route", () => {
-    const launcher = manifest.ui?.launchers?.[0];
-    expect(launcher).toMatchObject({
-      placementZone: "sidebar",
-      action: { type: "navigate", target: "plica" },
-    });
+  it("declares the sidebar entry as a slot, not a launcher", () => {
+    // The host mounts only PluginSlotOutlet for the sidebarPanel zone — a
+    // launcher declared there would never render.
+    const panel = manifest.ui?.slots?.find((slot) => slot.type === "sidebarPanel");
+    expect(panel).toMatchObject({ exportName: "PlicaSidebarPanel" });
+    expect(manifest.ui?.launchers ?? []).toHaveLength(0);
   });
 
   it("declares a ui entrypoint, which the schema requires alongside ui slots", () => {
