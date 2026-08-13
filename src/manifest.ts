@@ -28,10 +28,10 @@ const manifest: PaperclipPluginManifestV1 = {
   capabilities: [
     // Required to register the UI surfaces below. The host validates these
     // separately from the zod schema, in plugin-capability-validator.ts:
-    // a `page` slot requires ui.page.register, and a `sidebar` launcher
-    // requires ui.sidebar.register.
+    // a `page` slot requires ui.page.register, and a `globalToolbarButton`
+    // slot requires ui.action.register.
     "ui.page.register",
-    "ui.sidebar.register",
+    "ui.action.register",
     // Company data the HUD surfaces.
     "companies.read",
     "projects.read",
@@ -54,14 +54,17 @@ const manifest: PaperclipPluginManifestV1 = {
         routePath: "plica",
       },
       {
-        // A slot, not a launcher: the host mounts only PluginSlotOutlet for the
-        // sidebarPanel zone, so launchers never render there. A component also
-        // gets to draw its own Telescope icon, which launcher declarations
-        // cannot — they have no icon field.
-        type: "sidebarPanel",
-        id: "plica-sidebar-panel",
+        // The BreadcrumbBar zone, which Layout renders above every page — the
+        // only outlet outside a company's sidebar, which suits a view that
+        // spans companies.
+        //
+        // A slot rather than a launcher: launcher declarations carry no icon
+        // field, so a launcher here would render a bare label. Slot components
+        // draw their own markup, which is how the Telescope icon survives.
+        type: "globalToolbarButton",
+        id: "plica-toolbar-button",
         displayName: "Plica",
-        exportName: "PlicaSidebarPanel",
+        exportName: "PlicaToolbarButton",
       },
     ],
   },

@@ -27,11 +27,12 @@ describe("plugin manifest", () => {
     expect(page).toMatchObject({ routePath: "plica", exportName: "PlicaPage" });
   });
 
-  it("declares the sidebar entry as a slot, not a launcher", () => {
-    // The host mounts only PluginSlotOutlet for the sidebarPanel zone — a
-    // launcher declared there would never render.
-    const panel = manifest.ui?.slots?.find((slot) => slot.type === "sidebarPanel");
-    expect(panel).toMatchObject({ exportName: "PlicaSidebarPanel" });
+  it("declares the entry point as a global toolbar slot, not a launcher", () => {
+    // A launcher here would render without an icon — launcher declarations
+    // carry no icon field, which is why the original sidebar entry was a bare
+    // label. Slot components draw their own markup.
+    const button = manifest.ui?.slots?.find((slot) => slot.type === "globalToolbarButton");
+    expect(button).toMatchObject({ exportName: "PlicaToolbarButton" });
     expect(manifest.ui?.launchers ?? []).toHaveLength(0);
   });
 
