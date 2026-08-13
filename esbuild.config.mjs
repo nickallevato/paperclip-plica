@@ -9,10 +9,28 @@ import { createPluginBundlerPresets } from "@paperclipai/plugin-sdk/bundlers";
  * rewrites those bare specifiers to blob URLs at load time), while the worker
  * bundle inlines the SDK so `dist/worker.js` runs standalone.
  */
-// minify: the UI bundle carries react-query, radix, and lucide, which is ~1.1MB
-// unminified. Sourcemaps stay on so stack traces from the running instance
-// remain readable.
-const presets = createPluginBundlerPresets({ uiEntry: "src/ui/index.ts", minify: true });
+const presets = createPluginBundlerPresets({ uiEntry: "src/ui/index.ts" });
+
+/**
+ * The UI bundle must NOT be whitespace-minified.
+ *
+ * The host rewrites the bundle's bare specifiers to blob URLs before importing
+ * it, and that rewrite is a literal string replace requiring a leading space:
+ *
+ *   result.replaceAll(` from "react"`, ` from "<blob>"`)
+ *   — ui/src/plugins/slots.tsx, rewriteBareSpecifiers()
+ *
+ * Whitespace minification emits `from"react"`, which the rewrite misses. The
+ * browser then cannot resolve the bare specifier, the dynamic import fails, and
+ * the host silently renders its slot placeholder ("Plica: Plica") instead of
+ * the page — with no console error pointing at the cause.
+ *
+ * Identifier and syntax minification are safe and still cut the bundle roughly
+ * in half, so they stay on.
+ */
+presets.esbuild.ui.minifyIdentifiers = true;
+presets.esbuild.ui.minifySyntax = true;
+presets.esbuild.ui.minifyWhitespace = false;
 const watch = process.argv.includes("--watch");
 
 const workerCtx = await esbuild.context(presets.esbuild.worker);
