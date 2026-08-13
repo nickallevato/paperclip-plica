@@ -56,19 +56,29 @@ export function useToastActions() {
   return { pushToast };
 }
 
-export type OptionalCompany = { id: string; prefix: string | null } | null;
+export type OptionalCompany = {
+  selectedCompanyId: string | null;
+  companyPrefix: string | null;
+} | null;
 
 /**
- * Mirrors the host's `useOptionalCompany()`.
+ * Mirrors the host's `useOptionalCompany()` — the read half only.
+ *
+ * The host's version also exposes `setSelectedCompanyId`, which plugin UI
+ * cannot reach. Nothing needs it: the only caller was PlicaLink's company-flip
+ * workaround, and cross-company navigation now goes through `hardNavigate`,
+ * which lets the host re-derive the company from the URL on remount.
  *
  * On a plugin page the host context always carries the company whose prefix is
- * in the URL, so this is never null in practice — but the optional shape is
- * kept so ported call sites need no change.
+ * in the URL, so this is non-null in practice; the optional shape is kept so
+ * ported call sites need no change.
  */
 export function useOptionalCompany(): OptionalCompany {
   const host = useHostContext();
   return useMemo(
-    () => (host.companyId ? { id: host.companyId, prefix: host.companyPrefix } : null),
+    () => (host.companyId
+      ? { selectedCompanyId: host.companyId, companyPrefix: host.companyPrefix }
+      : null),
     [host.companyId, host.companyPrefix],
   );
 }
@@ -87,17 +97,43 @@ export function useBreadcrumbs() {
   return { setBreadcrumbs };
 }
 
+export type NewIssueDefaults = {
+  companyId?: string;
+  /** Required to build the destination URL; the host takes only companyId. */
+  companyPrefix?: string | null;
+};
+
 /**
- * Mirrors the host's `useDialogActions()`.
+ * Mirrors the host's `useDialogActions()` — the one action Plica uses.
  *
- * Plica used this only to open the host's global "new issue" dialog, which
- * lives in host context a plugin cannot reach. Rather than render a control
- * that silently does nothing, `openNewIssueDialog` is null and call sites hide
- * the affordance. Plica's other quick actions (comment, status change) go
- * through `host/api` and are unaffected.
+ * The host's `openNewIssue` flips React state on a dialog that lives in
+ * DialogContext, which plugin UI cannot reach, and there is no URL that opens
+ * it. So instead of a button that silently does nothing, this navigates to the
+ * target company's issues page, where the ticket can be created.
+ *
+ * Panes are cross-company by nature, so this reuses PlicaLink's rule: a
+ * different company means a full document load, because the host will not
+ * re-sync the selected company from the URL after a manual switch.
  */
-export function useDialogActions(): { openNewIssueDialog: null } {
-  return { openNewIssueDialog: null };
+export function useDialogActions() {
+  const nav = useHostNavigation();
+  const company = useOptionalCompany();
+
+  const openNewIssue = useCallback(
+    (defaults: NewIssueDefaults = {}) => {
+      const prefix = defaults.companyPrefix ?? company?.companyPrefix ?? null;
+      const target = buildCompanyPath(prefix, "issues");
+
+      if (defaults.companyId && company && company.selectedCompanyId !== defaults.companyId) {
+        hardNavigate(target);
+        return;
+      }
+      nav.navigate(target);
+    },
+    [company, nav],
+  );
+
+  return { openNewIssue };
 }
 
 export function buildCompanyPath(prefix: string | null | undefined, path: string): string {
@@ -121,8 +157,12 @@ export function buildCompanyPath(prefix: string | null | undefined, path: string
  * company sync without patching host code. Switching companies is a heavyweight
  * context change anyway, so the reload is honest rather than wasteful.
  */
+export function hardNavigate(to: string): void {
+  window.location.assign(to);
+}
+
 export function navigateToCompanyPath(prefix: string | null | undefined, path: string): void {
-  window.location.assign(buildCompanyPath(prefix, path));
+  hardNavigate(buildCompanyPath(prefix, path));
 }
 
 /** Same-company navigation stays a normal SPA transition via the host router. */
