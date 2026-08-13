@@ -8,10 +8,7 @@
   "homepage": "https://allevato.io",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/nickallevato/paperclip-plugin-plica.git"
-  },
-  "bugs": {
-    "url": "https://github.com/nickallevato/paperclip-plugin-plica/issues"
+    "url": "git+https://github.com/nickallevato/paperclip-plica.git"
   },
   "license": "MIT",
   "scripts": {
