@@ -1,0 +1,462 @@
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import { useQueries, useQuery } from "@tanstack/react-query";
+import { Bell, BellOff, FoldVertical, Layers, Maximize, Minimize, TriangleAlert, UnfoldVertical } from "lucide-react";
+import type { DashboardSummary } from "@paperclipai/shared";
+import { authApi } from "./host/api";
+import { companiesListQueryOptions } from "./host/companies-query";
+import { useBreadcrumbs } from "./host/shims";
+import { useCompanyOrder } from "./host/useCompanyOrder";
+import { dashboardApi } from "./host/api";
+import { PlicaBriefing } from "./components/PlicaBriefing";
+import { PlicaCompanySlot } from "./components/PlicaCompanySlot";
+import { PlicaDockedTile } from "./components/PlicaDockedTile";
+import { cn } from "./host/util";
+import {
+  PLICA_ALERTS_STORAGE_KEY,
+  PLICA_LAST_VISIT_STORAGE_KEY,
+  PLICA_LAYOUT_CLASSES,
+  PLICA_LAYOUT_STORAGE_KEY,
+  PLICA_VIEW_STORAGE_KEY,
+  normalizeAlertsEnabled,
+  normalizeLayoutMode,
+  normalizeViewMode,
+  PLICA_COLLAPSED_STORAGE_KEY,
+  PLICA_SORT_STORAGE_KEY,
+  normalizeCollapsedIds,
+  normalizeSortMode,
+  orderTriageCompanies,
+  partitionHotFirst,
+  type PlicaSortMode,
+  plicaRefetchInterval,
+  shouldShowBriefing,
+  type PlicaActionable,
+  type PlicaLayoutMode,
+  type PlicaViewMode,
+} from "./lib/plica";
+import { queryKeys } from "./host/util";
+
+const LAYOUT_MODES: Array<{ mode: PlicaLayoutMode; label: string }> = [
+  { mode: "auto", label: "Auto" },
+  { mode: "1", label: "1" },
+  { mode: "2", label: "2" },
+  { mode: "3", label: "3" },
+];
+
+const VIEW_MODES: Array<{ mode: PlicaViewMode; label: string }> = [
+  { mode: "wall", label: "Wall" },
+  { mode: "triage", label: "Triage" },
+];
+
+export function PlicaHud() {
+  const { setBreadcrumbs } = useBreadcrumbs();
+  useEffect(() => {
+    setBreadcrumbs([{ label: "Plica" }]);
+  }, [setBreadcrumbs]);
+  const [layout, setLayout] = useState<PlicaLayoutMode>(() =>
+    normalizeLayoutMode(typeof localStorage === "undefined" ? null : localStorage.getItem(PLICA_LAYOUT_STORAGE_KEY)),
+  );
+  const selectLayout = (mode: PlicaLayoutMode) => {
+    setLayout(mode);
+    try {
+      localStorage.setItem(PLICA_LAYOUT_STORAGE_KEY, mode);
+    } catch {
+      // storage unavailable (private mode) — layout still applies for this session
+    }
+  };
+  const [view, setView] = useState<PlicaViewMode>(() =>
+    normalizeViewMode(typeof localStorage === "undefined" ? null : localStorage.getItem(PLICA_VIEW_STORAGE_KEY)),
+  );
+  const selectView = (mode: PlicaViewMode) => {
+    setView(mode);
+    try {
+      localStorage.setItem(PLICA_VIEW_STORAGE_KEY, mode);
+    } catch {
+      // storage unavailable (private mode) — view still applies for this session
+    }
+  };
+
+  // Kiosk mode: fullscreens the HUD root and bumps text/spacing slightly.
+  // Not persisted (spec §4) — always starts off; `fullscreenchange` is the
+  // source of truth for `isKiosk` since fullscreen can also be exited via
+  // Esc or browser chrome, not just our own button.
+  const rootRef = useRef<HTMLDivElement>(null);
+  const [isKiosk, setIsKiosk] = useState(false);
+  useEffect(() => {
+    const onFullscreenChange = () => {
+      setIsKiosk(document.fullscreenElement === rootRef.current);
+    };
+    document.addEventListener("fullscreenchange", onFullscreenChange);
+    return () => document.removeEventListener("fullscreenchange", onFullscreenChange);
+  }, []);
+  const toggleKiosk = () => {
+    if (document.fullscreenElement) {
+      void document.exitFullscreen();
+    } else {
+      void rootRef.current?.requestFullscreen();
+    }
+  };
+  // Kiosk mode scales Plica's type via CSS variables — pane text uses
+  // text-[length:var(--plica-fs-*,<default>)], so a TV across the room gets
+  // ~1.3x sizes while the desk view keeps today's density. Set on the
+  // document root (not the HUD div) so portaled hover cards inherit too;
+  // nothing outside Plica reads these vars.
+  useEffect(() => {
+    const style = document.documentElement.style;
+    if (isKiosk) {
+      style.setProperty("--plica-fs-micro", "13px");
+      style.setProperty("--plica-fs-body", "15px");
+      style.setProperty("--plica-fs-stat", "17px");
+    }
+    return () => {
+      style.removeProperty("--plica-fs-micro");
+      style.removeProperty("--plica-fs-body");
+      style.removeProperty("--plica-fs-stat");
+    };
+  }, [isKiosk]);
+
+  // Alerts (§5): off by default, persisted; enabling requests Notification
+  // permission (only when it hasn't been decided yet — "default").
+  const [alertsEnabled, setAlertsEnabled] = useState<boolean>(() =>
+    normalizeAlertsEnabled(typeof localStorage === "undefined" ? null : localStorage.getItem(PLICA_ALERTS_STORAGE_KEY)),
+  );
+  const toggleAlerts = () => {
+    const next = !alertsEnabled;
+    setAlertsEnabled(next);
+    try {
+      localStorage.setItem(PLICA_ALERTS_STORAGE_KEY, next ? "on" : "off");
+    } catch {
+      // storage unavailable (private mode) — alerts still apply for this session
+    }
+    if (next && typeof Notification !== "undefined" && Notification.permission === "default") {
+      void Notification.requestPermission();
+    }
+  };
+  // Briefing (§7): read the previous visit timestamp on mount (before
+  // overwriting it), and only show the strip while it's un-dismissed for
+  // this visit. `plica.lastVisit` is then refreshed on mount and every 5
+  // minutes while the HUD stays open, so a long-lived tab doesn't keep
+  // reporting a stale "since" time to itself.
+  const [lastVisit] = useState<string | null>(() => {
+    try {
+      return typeof localStorage === "undefined" ? null : localStorage.getItem(PLICA_LAST_VISIT_STORAGE_KEY);
+    } catch {
+      return null;
+    }
+  });
+  const [briefingDismissed, setBriefingDismissed] = useState(false);
+  // Calm accordion: at most one triage company expanded at a time.
+  const [openTriageCompanyId, setOpenTriageCompanyId] = useState<string | null>(null);
+  // Per-company wall collapse ("as if it had nothing"), persisted per browser.
+  const [collapsedIds, setCollapsedIds] = useState<string[]>(() =>
+    normalizeCollapsedIds(typeof localStorage === "undefined" ? null : localStorage.getItem(PLICA_COLLAPSED_STORAGE_KEY)),
+  );
+  const toggleCollapsed = useCallback((companyId: string) => {
+    setCollapsedIds((current) => {
+      const next = current.includes(companyId)
+        ? current.filter((id) => id !== companyId)
+        : [...current, companyId];
+      try {
+        localStorage.setItem(PLICA_COLLAPSED_STORAGE_KEY, JSON.stringify(next));
+      } catch {
+        // storage unavailable — collapse still applies for this session
+      }
+      return next;
+    });
+  }, []);
+  const setCollapsedAll = useCallback((ids: string[]) => {
+    setCollapsedIds(ids);
+    try {
+      localStorage.setItem(PLICA_COLLAPSED_STORAGE_KEY, JSON.stringify(ids));
+    } catch {
+      // storage unavailable — collapse still applies for this session
+    }
+  }, []);
+  const showBriefing = !briefingDismissed && lastVisit !== null && shouldShowBriefing(lastVisit, Date.now());
+
+  useEffect(() => {
+    const recordVisit = () => {
+      try {
+        localStorage.setItem(PLICA_LAST_VISIT_STORAGE_KEY, new Date().toISOString());
+      } catch {
+        // storage unavailable (private mode) — briefing just won't persist across visits
+      }
+    };
+    recordVisit();
+    const interval = setInterval(recordVisit, 5 * 60_000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Wall and Triage share one PlicaCompanySlot per company (it owns the
+  // single usePlicaCompanyData poll). Triage ordering needs a per-company
+  // "actionable" summary, but the page itself never calls the data hook —
+  // so each slot reports its own summary up via this callback, and the
+  // page just orders by whatever it's been told so far. Simplest correct
+  // approach that avoids a second poll or lifting the hook itself.
+  const [actionableByCompany, setActionableByCompany] = useState<Record<string, PlicaActionable>>({});
+  const handleActionable = useCallback((companyId: string, actionable: PlicaActionable) => {
+    setActionableByCompany((prev) => {
+      const existing = prev[companyId];
+      if (existing && existing.criticalOrHigh === actionable.criticalOrHigh && existing.count === actionable.count) {
+        return prev;
+      }
+      return { ...prev, [companyId]: actionable };
+    });
+  }, []);
+  // The ["companies"] cache entry is shared app-wide and holds a CompanyListResult,
+  // not a bare array — reusing its canonical query options keeps the shape intact.
+  const companiesQuery = useQuery(companiesListQueryOptions);
+  const activeCompanies = (companiesQuery.data?.companies ?? []).filter((company) => company.status !== "archived");
+
+  const [sortMode, setSortMode] = useState<PlicaSortMode>(() =>
+    normalizeSortMode(typeof localStorage === "undefined" ? null : localStorage.getItem(PLICA_SORT_STORAGE_KEY)),
+  );
+  const selectSortMode = (mode: PlicaSortMode) => {
+    setSortMode(mode);
+    try {
+      localStorage.setItem(PLICA_SORT_STORAGE_KEY, mode);
+    } catch {
+      // storage unavailable (private mode) — sort still applies for this session
+    }
+  };
+  const { data: session } = useQuery({
+    queryKey: queryKeys.auth.session,
+    queryFn: () => authApi.getSession(),
+    retry: false,
+  });
+  // Base order = the user's sidebar company-switcher drag order (shared curation).
+  const { orderedCompanies } = useCompanyOrder({
+    companies: activeCompanies,
+    userId: session?.user?.id ?? session?.session?.userId ?? null,
+  });
+  const hotIds = useMemo(
+    () =>
+      new Set(
+        orderedCompanies
+          .filter((company) => actionableByCompany[company.id]?.criticalOrHigh)
+          .map((company) => company.id),
+      ),
+    [orderedCompanies, actionableByCompany],
+  );
+  const companies = useMemo(
+    () => (sortMode === "hot" ? partitionHotFirst(orderedCompanies, hotIds) : orderedCompanies),
+    [sortMode, orderedCompanies, hotIds],
+  );
+
+  const summaries = useQueries({
+    queries: companies.map((company) => ({
+      queryKey: queryKeys.plica.summary(company.id),
+      queryFn: () => dashboardApi.summary(company.id),
+      refetchInterval: plicaRefetchInterval,
+      refetchIntervalInBackground: true,
+    })),
+  });
+  const loaded = summaries
+    .map((query) => query.data)
+    .filter((summary): summary is DashboardSummary => summary !== undefined);
+  const totalRunning = loaded.reduce((sum, summary) => sum + summary.agents.running, 0);
+  const totalApprovals = loaded.reduce((sum, summary) => sum + summary.pendingApprovals, 0);
+  const anyStale = summaries.some((query) => query.isError && query.dataUpdatedAt > 0);
+
+  const orderedTriageCompanies = useMemo(
+    () =>
+      orderTriageCompanies(
+        companies.map((company) => ({
+          company,
+          actionable: actionableByCompany[company.id] ?? { criticalOrHigh: false, count: 0 },
+        })),
+      ).map((entry) => entry.company),
+    [companies, actionableByCompany],
+  );
+
+  return (
+    <div
+      ref={rootRef}
+      className={cn("space-y-4", isKiosk && "plica-kiosk bg-background p-4 leading-relaxed")}
+    >
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="flex items-center gap-2">
+          <Layers className="h-5 w-5 text-muted-foreground" />
+          <h1 className="text-xl font-semibold tracking-tight">Plica</h1>
+          <span className="text-sm text-muted-foreground">all companies</span>
+        </div>
+        <div
+          role="group"
+          aria-label="Layout columns"
+          className="flex items-center rounded-md border p-0.5"
+        >
+          {LAYOUT_MODES.map(({ mode, label }) => (
+            <button
+              key={mode}
+              type="button"
+              aria-pressed={layout === mode}
+              onClick={() => selectLayout(mode)}
+              className={cn(
+                "rounded px-2 py-0.5 text-xs",
+                layout === mode ? "bg-muted font-medium" : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <div role="group" aria-label="View mode" className="flex items-center rounded-md border p-0.5">
+          {VIEW_MODES.map(({ mode, label }) => (
+            <button
+              key={mode}
+              type="button"
+              aria-pressed={view === mode}
+              onClick={() => selectView(mode)}
+              className={cn(
+                "rounded px-2 py-0.5 text-xs",
+                view === mode ? "bg-muted font-medium" : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <div role="group" aria-label="Pane order" className="flex items-center rounded-md border p-0.5">
+          {(["manual", "hot"] as const).map((mode) => (
+            <button
+              key={mode}
+              type="button"
+              aria-pressed={sortMode === mode}
+              onClick={() => selectSortMode(mode)}
+              className={cn(
+                "rounded px-2 py-0.5 text-xs",
+                sortMode === mode ? "bg-muted font-medium" : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {mode === "manual" ? "Manual" : "Hot first"}
+            </button>
+          ))}
+        </div>
+        <div className="ml-auto flex items-center gap-3 text-sm text-muted-foreground">
+          <span className="tabular-nums">{totalRunning} running</span>
+          {totalApprovals > 0 ? (
+            <button
+              type="button"
+              onClick={() => selectView("triage")}
+              title="Show triage view"
+              className="rounded-full border border-amber-500/40 bg-amber-500/15 px-2 py-0.5 text-xs tabular-nums text-amber-700 hover:bg-amber-500/25 dark:text-amber-300"
+            >
+              {totalApprovals} approval{totalApprovals === 1 ? "" : "s"} pending
+            </button>
+          ) : (
+            <span className="tabular-nums">0 approvals pending</span>
+          )}
+          {anyStale && (
+            <span className="inline-flex items-center gap-1 text-amber-600 dark:text-amber-400">
+              <TriangleAlert className="h-3.5 w-3.5" /> polling degraded
+            </span>
+          )}
+          {view === "wall" && (
+            <>
+              <button
+                type="button"
+                aria-label="Dock all companies"
+                title="Dock all companies"
+                disabled={companies.length === 0 || companies.every((company) => collapsedIds.includes(company.id))}
+                onClick={() => setCollapsedAll(companies.map((company) => company.id))}
+                className="rounded-md border p-1 text-muted-foreground hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
+              >
+                <FoldVertical className="h-3.5 w-3.5" />
+              </button>
+              <button
+                type="button"
+                aria-label="Undock all companies"
+                title="Undock all companies"
+                disabled={collapsedIds.length === 0}
+                onClick={() => setCollapsedAll([])}
+                className="rounded-md border p-1 text-muted-foreground hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
+              >
+                <UnfoldVertical className="h-3.5 w-3.5" />
+              </button>
+            </>
+          )}
+          <button
+            type="button"
+            aria-pressed={alertsEnabled}
+            aria-label={alertsEnabled ? "Disable alerts" : "Enable alerts"}
+            onClick={toggleAlerts}
+            className={cn(
+              "rounded-md border p-1",
+              alertsEnabled ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground",
+            )}
+          >
+            {alertsEnabled ? <Bell className="h-3.5 w-3.5" /> : <BellOff className="h-3.5 w-3.5" />}
+          </button>
+          <button
+            type="button"
+            aria-label={isKiosk ? "Exit kiosk mode" : "Enter kiosk mode"}
+            onClick={toggleKiosk}
+            className="rounded-md border p-1 text-muted-foreground hover:text-foreground"
+          >
+            {isKiosk ? <Minimize className="h-3.5 w-3.5" /> : <Maximize className="h-3.5 w-3.5" />}
+          </button>
+        </div>
+      </div>
+
+      {showBriefing && lastVisit && companies.length > 0 && (
+        <PlicaBriefing companies={companies} since={lastVisit} onDismiss={() => setBriefingDismissed(true)} />
+      )}
+
+      {companiesQuery.isLoading ? (
+        <p className="text-sm text-muted-foreground">Loading companies…</p>
+      ) : companies.length === 0 ? (
+        <p className="text-sm text-muted-foreground">No companies to show.</p>
+      ) : view === "wall" ? (
+        <>
+        {collapsedIds.length > 0 && (
+          <div data-docked className="flex flex-wrap items-center gap-1.5">
+            <span className="text-[10px] uppercase tracking-wide text-muted-foreground">Docked</span>
+            {companies
+              .filter((company) => collapsedIds.includes(company.id))
+              .map((company) => (
+                <PlicaDockedTile key={company.id} company={company} onExpand={() => toggleCollapsed(company.id)} />
+              ))}
+          </div>
+        )}
+        <div
+          data-layout={layout}
+          className={cn(
+            "grid gap-4",
+            isKiosk && "gap-6",
+            layout === "1" && "mx-auto w-full max-w-3xl",
+            PLICA_LAYOUT_CLASSES[layout],
+          )}
+        >
+          {companies
+            .filter((company) => !collapsedIds.includes(company.id))
+            .map((company) => (
+              <PlicaCompanySlot
+                key={company.id}
+                company={company}
+                view="wall"
+                onActionable={handleActionable}
+                alertsEnabled={alertsEnabled}
+                onToggleCollapse={() => toggleCollapsed(company.id)}
+              />
+            ))}
+        </div>
+        </>
+      ) : (
+        <div data-view="triage" className="divide-y overflow-hidden rounded-lg border">
+          {orderedTriageCompanies.map((company) => (
+            <PlicaCompanySlot
+              key={company.id}
+              company={company}
+              view="triage"
+              onActionable={handleActionable}
+              alertsEnabled={alertsEnabled}
+              triageOpen={openTriageCompanyId === company.id}
+              onTriageToggle={() =>
+                setOpenTriageCompanyId((current) => (current === company.id ? null : company.id))
+              }
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}

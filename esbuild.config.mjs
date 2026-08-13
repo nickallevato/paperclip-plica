@@ -9,7 +9,10 @@ import { createPluginBundlerPresets } from "@paperclipai/plugin-sdk/bundlers";
  * rewrites those bare specifiers to blob URLs at load time), while the worker
  * bundle inlines the SDK so `dist/worker.js` runs standalone.
  */
-const presets = createPluginBundlerPresets({ uiEntry: "src/ui/index.ts" });
+// minify: the UI bundle carries react-query, radix, and lucide, which is ~1.1MB
+// unminified. Sourcemaps stay on so stack traces from the running instance
+// remain readable.
+const presets = createPluginBundlerPresets({ uiEntry: "src/ui/index.ts", minify: true });
 const watch = process.argv.includes("--watch");
 
 const workerCtx = await esbuild.context(presets.esbuild.worker);

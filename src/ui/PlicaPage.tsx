@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
+import { PlicaHud } from "./PlicaHud";
 
 /**
  * Root of the Plica plugin page.
@@ -18,7 +19,7 @@ export function PlicaPage() {
 
   return (
     <QueryClientProvider client={client}>
-      <div data-testid="plica-root">Plica plugin loaded</div>
+      <PlicaHud />
     </QueryClientProvider>
   );
 }

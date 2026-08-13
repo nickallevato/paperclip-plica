@@ -23,6 +23,7 @@ import type {
   IssueComment,
   Project,
   SidebarBadges,
+  SidebarOrderPreference,
   WorkTimelineResult,
 } from "@paperclipai/shared";
 
@@ -260,24 +261,14 @@ export const companiesApi = {
   list: () => api.get<Company[]>("/companies"),
 };
 
-export type CompanyListResult = { companies: Company[]; unauthorized: boolean };
-
 /**
- * Mirrors the host's companies-query options. A 401/403 becomes an explicit
- * `unauthorized` flag rather than an error, so the HUD can render a signed-out
- * state instead of an error boundary.
+ * Read-only: Plica sorts panes by the user's sidebar company order but never
+ * reorders it, so the update half of the host's sidebarPreferencesApi is not
+ * carried.
  */
-export const companiesListQueryOptions = {
-  queryKey: ["companies"] as const,
-  queryFn: async (): Promise<CompanyListResult> => {
-    try {
-      return { companies: await companiesApi.list(), unauthorized: false };
-    } catch (err) {
-      if (err instanceof ApiError && (err.status === 401 || err.status === 403)) {
-        return { companies: [], unauthorized: true };
-      }
-      throw err;
-    }
-  },
-  retry: false,
-} as const;
+export const sidebarPreferencesApi = {
+  getCompanyOrder: () => api.get<SidebarOrderPreference>("/sidebar-preferences/me"),
+};
+
+// `companiesListQueryOptions` lives in ./companies-query so that its call
+// to companiesApi.list() crosses a module boundary and stays mockable.
