@@ -63,6 +63,7 @@ import {
   thresholdsFor,
   tokenState,
   type PlicaAlertSnapshot,
+  viewSupports,
   worstSeverity,
 } from "./plica";
 
@@ -1199,5 +1200,25 @@ describe("attentionRowTitle", () => {
         item({ subject: { title: "   " }, detail: { kind: "questions", firstQuestionText: "  " } }),
       ),
     ).toBe("questions need answers");
+  });
+});
+
+describe("viewSupports", () => {
+  it("gives the wall every control", () => {
+    expect(viewSupports("wall")).toEqual({ layout: true, rows: true, order: true, docking: true });
+  });
+
+  it("drops the row mode in analytic, which renders measurements not rows", () => {
+    expect(viewSupports("analytic")).toMatchObject({ layout: true, rows: false, order: true });
+  });
+
+  it("leaves triage and feed with no workspace controls at all", () => {
+    for (const view of ["triage", "feed"] as const) {
+      expect(viewSupports(view)).toEqual({ layout: false, rows: false, order: false, docking: false });
+    }
+  });
+
+  it("treats an unknown view as supporting nothing rather than showing dead controls", () => {
+    expect(viewSupports("nonsense" as never).layout).toBe(false);
   });
 });

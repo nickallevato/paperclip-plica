@@ -1,6 +1,18 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useQueries, useQuery } from "@tanstack/react-query";
-import { Bell, BellOff, FoldVertical, Layers, LayoutGrid, Maximize, Minimize, Pin, Settings, TriangleAlert, UnfoldVertical } from "lucide-react";
+import {
+  Bell,
+  BellOff,
+  FoldVertical,
+  Layers,
+  LayoutGrid,
+  Maximize,
+  Minimize,
+  Pin,
+  Settings,
+  TriangleAlert,
+  UnfoldVertical,
+} from "lucide-react";
 import type { DashboardSummary } from "@paperclipai/shared";
 import { authApi } from "./host/api";
 import { companiesListQueryOptions } from "./host/companies-query";
@@ -38,6 +50,7 @@ import {
   normalizeSortMode,
   normalizeTokenSettings,
   thresholdsFor,
+  viewSupports,
   orderTriageCompanies,
   partitionHotFirst,
   type PlicaSortMode,
@@ -85,7 +98,11 @@ export function PlicaHud() {
     setBreadcrumbs([{ label: "Plica" }]);
   }, [setBreadcrumbs]);
   const [layout, setLayout] = useState<PlicaLayoutMode>(() =>
-    normalizeLayoutMode(typeof localStorage === "undefined" ? null : localStorage.getItem(PLICA_LAYOUT_STORAGE_KEY)),
+    normalizeLayoutMode(
+      typeof localStorage === "undefined"
+        ? null
+        : localStorage.getItem(PLICA_LAYOUT_STORAGE_KEY),
+    ),
   );
   const selectLayout = (mode: PlicaLayoutMode) => {
     setLayout(mode);
@@ -99,7 +116,11 @@ export function PlicaHud() {
   // is in exactly one place — which is what keeps the wall's column count
   // meaning something. Persisted alongside the other layout preferences.
   const [pinnedIds, setPinnedIds] = useState<string[]>(() =>
-    normalizePinnedIds(typeof localStorage === "undefined" ? null : localStorage.getItem(PLICA_PINNED_STORAGE_KEY)),
+    normalizePinnedIds(
+      typeof localStorage === "undefined"
+        ? null
+        : localStorage.getItem(PLICA_PINNED_STORAGE_KEY),
+    ),
   );
   const persistPinned = (ids: string[]) => {
     setPinnedIds(ids);
@@ -111,28 +132,44 @@ export function PlicaHud() {
   };
   const togglePinned = (companyId: string) =>
     persistPinned(
-      pinnedIds.includes(companyId) ? pinnedIds.filter((id) => id !== companyId) : [...pinnedIds, companyId],
+      pinnedIds.includes(companyId)
+        ? pinnedIds.filter((id) => id !== companyId)
+        : [...pinnedIds, companyId],
     );
-  const [statsByCompany, setStatsByCompany] = useState<Record<string, PlicaCompanyStats | undefined>>({});
-  const handleStats = useCallback((companyId: string, stats: PlicaCompanyStats) => {
-    setStatsByCompany((current) => ({ ...current, [companyId]: stats }));
-  }, []);
+  const [statsByCompany, setStatsByCompany] = useState<
+    Record<string, PlicaCompanyStats | undefined>
+  >({});
+  const handleStats = useCallback(
+    (companyId: string, stats: PlicaCompanyStats) => {
+      setStatsByCompany((current) => ({ ...current, [companyId]: stats }));
+    },
+    [],
+  );
   const [tokenSettings, setTokenSettings] = useState(() =>
     normalizeTokenSettings(
-      typeof localStorage === "undefined" ? null : localStorage.getItem(PLICA_TOKEN_THRESHOLDS_STORAGE_KEY),
+      typeof localStorage === "undefined"
+        ? null
+        : localStorage.getItem(PLICA_TOKEN_THRESHOLDS_STORAGE_KEY),
     ),
   );
   const [tokenSettingsOpen, setTokenSettingsOpen] = useState(false);
   const persistTokenSettings = (next: typeof tokenSettings) => {
     setTokenSettings(next);
     try {
-      localStorage.setItem(PLICA_TOKEN_THRESHOLDS_STORAGE_KEY, JSON.stringify(next));
+      localStorage.setItem(
+        PLICA_TOKEN_THRESHOLDS_STORAGE_KEY,
+        JSON.stringify(next),
+      );
     } catch {
       // storage unavailable (private mode) — thresholds still apply for this session
     }
   };
   const [rowMode, setRowMode] = useState<PlicaRowMode>(() =>
-    normalizeRowMode(typeof localStorage === "undefined" ? null : localStorage.getItem(PLICA_ROWS_STORAGE_KEY)),
+    normalizeRowMode(
+      typeof localStorage === "undefined"
+        ? null
+        : localStorage.getItem(PLICA_ROWS_STORAGE_KEY),
+    ),
   );
   const selectRowMode = (mode: PlicaRowMode) => {
     setRowMode(mode);
@@ -143,7 +180,11 @@ export function PlicaHud() {
     }
   };
   const [barMode, setBarMode] = useState<PlicaBarMode>(() =>
-    normalizeBarMode(typeof localStorage === "undefined" ? null : localStorage.getItem(PLICA_BAR_STORAGE_KEY)),
+    normalizeBarMode(
+      typeof localStorage === "undefined"
+        ? null
+        : localStorage.getItem(PLICA_BAR_STORAGE_KEY),
+    ),
   );
   const selectBarMode = (mode: PlicaBarMode) => {
     setBarMode(mode);
@@ -154,7 +195,11 @@ export function PlicaHud() {
     }
   };
   const [view, setView] = useState<PlicaViewMode>(() =>
-    normalizeViewMode(typeof localStorage === "undefined" ? null : localStorage.getItem(PLICA_VIEW_STORAGE_KEY)),
+    normalizeViewMode(
+      typeof localStorage === "undefined"
+        ? null
+        : localStorage.getItem(PLICA_VIEW_STORAGE_KEY),
+    ),
   );
   const selectView = (mode: PlicaViewMode) => {
     setView(mode);
@@ -176,7 +221,8 @@ export function PlicaHud() {
       setIsKiosk(document.fullscreenElement === rootRef.current);
     };
     document.addEventListener("fullscreenchange", onFullscreenChange);
-    return () => document.removeEventListener("fullscreenchange", onFullscreenChange);
+    return () =>
+      document.removeEventListener("fullscreenchange", onFullscreenChange);
   }, []);
   const toggleKiosk = () => {
     if (document.fullscreenElement) {
@@ -215,7 +261,11 @@ export function PlicaHud() {
   // Alerts (§5): off by default, persisted; enabling requests Notification
   // permission (only when it hasn't been decided yet — "default").
   const [alertsEnabled, setAlertsEnabled] = useState<boolean>(() =>
-    normalizeAlertsEnabled(typeof localStorage === "undefined" ? null : localStorage.getItem(PLICA_ALERTS_STORAGE_KEY)),
+    normalizeAlertsEnabled(
+      typeof localStorage === "undefined"
+        ? null
+        : localStorage.getItem(PLICA_ALERTS_STORAGE_KEY),
+    ),
   );
   const toggleAlerts = () => {
     const next = !alertsEnabled;
@@ -225,7 +275,11 @@ export function PlicaHud() {
     } catch {
       // storage unavailable (private mode) — alerts still apply for this session
     }
-    if (next && typeof Notification !== "undefined" && Notification.permission === "default") {
+    if (
+      next &&
+      typeof Notification !== "undefined" &&
+      Notification.permission === "default"
+    ) {
       void Notification.requestPermission();
     }
   };
@@ -236,17 +290,25 @@ export function PlicaHud() {
   // reporting a stale "since" time to itself.
   const [lastVisit] = useState<string | null>(() => {
     try {
-      return typeof localStorage === "undefined" ? null : localStorage.getItem(PLICA_LAST_VISIT_STORAGE_KEY);
+      return typeof localStorage === "undefined"
+        ? null
+        : localStorage.getItem(PLICA_LAST_VISIT_STORAGE_KEY);
     } catch {
       return null;
     }
   });
   const [briefingDismissed, setBriefingDismissed] = useState(false);
   // Calm accordion: at most one triage company expanded at a time.
-  const [openTriageCompanyId, setOpenTriageCompanyId] = useState<string | null>(null);
+  const [openTriageCompanyId, setOpenTriageCompanyId] = useState<string | null>(
+    null,
+  );
   // Per-company wall collapse ("as if it had nothing"), persisted per browser.
   const [collapsedIds, setCollapsedIds] = useState<string[]>(() =>
-    normalizeCollapsedIds(typeof localStorage === "undefined" ? null : localStorage.getItem(PLICA_COLLAPSED_STORAGE_KEY)),
+    normalizeCollapsedIds(
+      typeof localStorage === "undefined"
+        ? null
+        : localStorage.getItem(PLICA_COLLAPSED_STORAGE_KEY),
+    ),
   );
   const toggleCollapsed = useCallback((companyId: string) => {
     setCollapsedIds((current) => {
@@ -269,12 +331,21 @@ export function PlicaHud() {
       // storage unavailable — collapse still applies for this session
     }
   }, []);
-  const showBriefing = !briefingDismissed && lastVisit !== null && shouldShowBriefing(lastVisit, Date.now());
+  // A control the current view ignores is worse than one that is absent: it
+  // invites a press and then says nothing.
+  const supports = viewSupports(view);
+  const showBriefing =
+    !briefingDismissed &&
+    lastVisit !== null &&
+    shouldShowBriefing(lastVisit, Date.now());
 
   useEffect(() => {
     const recordVisit = () => {
       try {
-        localStorage.setItem(PLICA_LAST_VISIT_STORAGE_KEY, new Date().toISOString());
+        localStorage.setItem(
+          PLICA_LAST_VISIT_STORAGE_KEY,
+          new Date().toISOString(),
+        );
       } catch {
         // storage unavailable (private mode) — briefing just won't persist across visits
       }
@@ -290,23 +361,38 @@ export function PlicaHud() {
   // so each slot reports its own summary up via this callback, and the
   // page just orders by whatever it's been told so far. Simplest correct
   // approach that avoids a second poll or lifting the hook itself.
-  const [actionableByCompany, setActionableByCompany] = useState<Record<string, PlicaActionable>>({});
-  const handleActionable = useCallback((companyId: string, actionable: PlicaActionable) => {
-    setActionableByCompany((prev) => {
-      const existing = prev[companyId];
-      if (existing && existing.criticalOrHigh === actionable.criticalOrHigh && existing.count === actionable.count) {
-        return prev;
-      }
-      return { ...prev, [companyId]: actionable };
-    });
-  }, []);
+  const [actionableByCompany, setActionableByCompany] = useState<
+    Record<string, PlicaActionable>
+  >({});
+  const handleActionable = useCallback(
+    (companyId: string, actionable: PlicaActionable) => {
+      setActionableByCompany((prev) => {
+        const existing = prev[companyId];
+        if (
+          existing &&
+          existing.criticalOrHigh === actionable.criticalOrHigh &&
+          existing.count === actionable.count
+        ) {
+          return prev;
+        }
+        return { ...prev, [companyId]: actionable };
+      });
+    },
+    [],
+  );
   // The ["companies"] cache entry is shared app-wide and holds a CompanyListResult,
   // not a bare array — reusing its canonical query options keeps the shape intact.
   const companiesQuery = useQuery(companiesListQueryOptions);
-  const activeCompanies = (companiesQuery.data?.companies ?? []).filter((company) => company.status !== "archived");
+  const activeCompanies = (companiesQuery.data?.companies ?? []).filter(
+    (company) => company.status !== "archived",
+  );
 
   const [sortMode, setSortMode] = useState<PlicaSortMode>(() =>
-    normalizeSortMode(typeof localStorage === "undefined" ? null : localStorage.getItem(PLICA_SORT_STORAGE_KEY)),
+    normalizeSortMode(
+      typeof localStorage === "undefined"
+        ? null
+        : localStorage.getItem(PLICA_SORT_STORAGE_KEY),
+    ),
   );
   const selectSortMode = (mode: PlicaSortMode) => {
     setSortMode(mode);
@@ -336,7 +422,10 @@ export function PlicaHud() {
     [orderedCompanies, actionableByCompany],
   );
   const companies = useMemo(
-    () => (sortMode === "hot" ? partitionHotFirst(orderedCompanies, hotIds) : orderedCompanies),
+    () =>
+      sortMode === "hot"
+        ? partitionHotFirst(orderedCompanies, hotIds)
+        : orderedCompanies,
     [sortMode, orderedCompanies, hotIds],
   );
   // Pinned companies are hoisted, not duplicated: the bar shows them and the
@@ -361,16 +450,27 @@ export function PlicaHud() {
   const loaded = summaries
     .map((query) => query.data)
     .filter((summary): summary is DashboardSummary => summary !== undefined);
-  const totalRunning = loaded.reduce((sum, summary) => sum + summary.agents.running, 0);
-  const totalApprovals = loaded.reduce((sum, summary) => sum + summary.pendingApprovals, 0);
-  const anyStale = summaries.some((query) => query.isError && query.dataUpdatedAt > 0);
+  const totalRunning = loaded.reduce(
+    (sum, summary) => sum + summary.agents.running,
+    0,
+  );
+  const totalApprovals = loaded.reduce(
+    (sum, summary) => sum + summary.pendingApprovals,
+    0,
+  );
+  const anyStale = summaries.some(
+    (query) => query.isError && query.dataUpdatedAt > 0,
+  );
 
   const orderedTriageCompanies = useMemo(
     () =>
       orderTriageCompanies(
         companies.map((company) => ({
           company,
-          actionable: actionableByCompany[company.id] ?? { criticalOrHigh: false, count: 0 },
+          actionable: actionableByCompany[company.id] ?? {
+            criticalOrHigh: false,
+            count: 0,
+          },
         })),
       ).map((entry) => entry.company),
     [companies, actionableByCompany],
@@ -384,8 +484,12 @@ export function PlicaHud() {
       <div className="flex flex-wrap items-center gap-3">
         <div className="flex items-center gap-2">
           <Layers className="h-5 w-5 text-muted-foreground" />
-          <h1 className="text-[length:var(--plica-fs-title,20px)] leading-[1.3] font-semibold tracking-tight">Plica</h1>
-          <span className="text-[length:var(--plica-fs-body,14px)] leading-[1.45] text-muted-foreground">all companies</span>
+          <h1 className="text-[length:var(--plica-fs-title,20px)] leading-[1.3] font-semibold tracking-tight">
+            Plica
+          </h1>
+          <span className="text-[length:var(--plica-fs-body,14px)] leading-[1.45] text-muted-foreground">
+            all companies
+          </span>
         </div>
         <div className="ml-auto flex items-center gap-3 text-[length:var(--plica-fs-body,14px)] leading-[1.45] text-muted-foreground">
           <span className="tabular-nums">{totalRunning} running</span>
@@ -414,7 +518,9 @@ export function PlicaHud() {
             onClick={() => setTokenSettingsOpen((open) => !open)}
             className={cn(
               "rounded-md border p-1",
-              tokenSettingsOpen ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground",
+              tokenSettingsOpen
+                ? "bg-muted text-foreground"
+                : "text-muted-foreground hover:text-foreground",
             )}
           >
             <Settings className="h-3.5 w-3.5" />
@@ -426,10 +532,16 @@ export function PlicaHud() {
             onClick={toggleAlerts}
             className={cn(
               "rounded-md border p-1",
-              alertsEnabled ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground",
+              alertsEnabled
+                ? "bg-muted text-foreground"
+                : "text-muted-foreground hover:text-foreground",
             )}
           >
-            {alertsEnabled ? <Bell className="h-3.5 w-3.5" /> : <BellOff className="h-3.5 w-3.5" />}
+            {alertsEnabled ? (
+              <Bell className="h-3.5 w-3.5" />
+            ) : (
+              <BellOff className="h-3.5 w-3.5" />
+            )}
           </button>
           <button
             type="button"
@@ -437,7 +549,11 @@ export function PlicaHud() {
             onClick={toggleKiosk}
             className="rounded-md border p-1 text-muted-foreground hover:text-foreground"
           >
-            {isKiosk ? <Minimize className="h-3.5 w-3.5" /> : <Maximize className="h-3.5 w-3.5" />}
+            {isKiosk ? (
+              <Minimize className="h-3.5 w-3.5" />
+            ) : (
+              <Maximize className="h-3.5 w-3.5" />
+            )}
           </button>
         </div>
       </div>
@@ -464,7 +580,8 @@ export function PlicaHud() {
               aria-label="Pinned bar mode"
               className={cn(
                 "flex items-center rounded-md border p-0.5",
-                pinnedCompanies.length === 0 && "pointer-events-none opacity-40",
+                pinnedCompanies.length === 0 &&
+                  "pointer-events-none opacity-40",
               )}
             >
               {BAR_MODES.map(({ mode, label }) => (
@@ -475,7 +592,9 @@ export function PlicaHud() {
                   onClick={() => selectBarMode(mode)}
                   className={cn(
                     "rounded px-2 py-0.5 text-[length:var(--plica-fs-micro,11px)] leading-[1.45]",
-                    barMode === mode ? "bg-muted font-medium" : "text-muted-foreground hover:text-foreground",
+                    barMode === mode
+                      ? "bg-muted font-medium"
+                      : "text-muted-foreground hover:text-foreground",
                   )}
                 >
                   {label}
@@ -492,8 +611,9 @@ export function PlicaHud() {
               className="flex items-center gap-2 rounded-lg border border-dashed px-3 py-2 text-[length:var(--plica-fs-micro,11px)] leading-[1.45] text-muted-foreground"
             >
               <Pin className="h-3 w-3 shrink-0" />
-              Pin a company from any pane below to watch it up here — its attention counts stay visible
-              while you work in the rest of the wall.
+              Pin a company from any pane below to watch it up here — its
+              attention counts stay visible while you work in the rest of the
+              wall.
             </p>
           ) : barMode === "matrix" || barMode === "scoreboard" ? (
             <div className="overflow-x-auto rounded-lg border bg-card">
@@ -504,14 +624,22 @@ export function PlicaHud() {
                       Company
                     </th>
                     {(barMode === "matrix"
-                      ? PLICA_ATTENTION_GROUPS.map(({ key, label }) => ({ key, label }))
-                      : PLICA_SCOREBOARD_COLUMNS.map((label) => ({ key: label, label }))
+                      ? PLICA_ATTENTION_GROUPS.map(({ key, label }) => ({
+                          key,
+                          label,
+                        }))
+                      : PLICA_SCOREBOARD_COLUMNS.map((label) => ({
+                          key: label,
+                          label,
+                        }))
                     ).map(({ key, label }) => (
                       <th
                         key={key}
                         className={cn(
                           "py-1 text-[length:var(--plica-fs-micro,11px)] leading-[1.45] font-semibold uppercase tracking-wide text-muted-foreground",
-                          barMode === "matrix" ? "px-0.5 text-center" : "px-2 text-right",
+                          barMode === "matrix"
+                            ? "px-0.5 text-center"
+                            : "px-2 text-right",
                         )}
                       >
                         {label}
@@ -580,27 +708,35 @@ export function PlicaHud() {
           <span className="text-[length:var(--plica-fs-micro,11px)] leading-[1.45] font-semibold uppercase tracking-wide text-muted-foreground">
             Workspace
           </span>
+          {supports.layout && (
+            <div
+              role="group"
+              aria-label="Layout columns"
+              className="flex items-center rounded-md border p-0.5"
+            >
+              {LAYOUT_MODES.map(({ mode, label }) => (
+                <button
+                  key={mode}
+                  type="button"
+                  aria-pressed={layout === mode}
+                  onClick={() => selectLayout(mode)}
+                  className={cn(
+                    "rounded px-2 py-0.5 text-[length:var(--plica-fs-micro,11px)] leading-[1.45]",
+                    layout === mode
+                      ? "bg-muted font-medium"
+                      : "text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          )}
           <div
             role="group"
-            aria-label="Layout columns"
+            aria-label="View mode"
             className="flex items-center rounded-md border p-0.5"
           >
-            {LAYOUT_MODES.map(({ mode, label }) => (
-              <button
-                key={mode}
-                type="button"
-                aria-pressed={layout === mode}
-                onClick={() => selectLayout(mode)}
-                className={cn(
-                  "rounded px-2 py-0.5 text-[length:var(--plica-fs-micro,11px)] leading-[1.45]",
-                  layout === mode ? "bg-muted font-medium" : "text-muted-foreground hover:text-foreground",
-                )}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-          <div role="group" aria-label="View mode" className="flex items-center rounded-md border p-0.5">
             {VIEW_MODES.map(({ mode, label }) => (
               <button
                 key={mode}
@@ -609,121 +745,159 @@ export function PlicaHud() {
                 onClick={() => selectView(mode)}
                 className={cn(
                   "rounded px-2 py-0.5 text-[length:var(--plica-fs-micro,11px)] leading-[1.45]",
-                  view === mode ? "bg-muted font-medium" : "text-muted-foreground hover:text-foreground",
+                  view === mode
+                    ? "bg-muted font-medium"
+                    : "text-muted-foreground hover:text-foreground",
                 )}
               >
                 {label}
               </button>
             ))}
           </div>
-          <div role="group" aria-label="Attention rows" className="flex items-center rounded-md border p-0.5">
-            {ROW_MODES.map(({ mode, label }) => (
-              <button
-                key={mode}
-                type="button"
-                aria-pressed={rowMode === mode}
-                onClick={() => selectRowMode(mode)}
-                className={cn(
-                  "rounded px-2 py-0.5 text-[length:var(--plica-fs-micro,11px)] leading-[1.45]",
-                  rowMode === mode ? "bg-muted font-medium" : "text-muted-foreground hover:text-foreground",
-                )}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-          <div role="group" aria-label="Pane order" className="flex items-center rounded-md border p-0.5">
-            {(["manual", "hot"] as const).map((mode) => (
-              <button
-                key={mode}
-                type="button"
-                aria-pressed={sortMode === mode}
-                onClick={() => selectSortMode(mode)}
-                className={cn(
-                  "rounded px-2 py-0.5 text-[length:var(--plica-fs-micro,11px)] leading-[1.45]",
-                  sortMode === mode ? "bg-muted font-medium" : "text-muted-foreground hover:text-foreground",
-                )}
-              >
-                {mode === "manual" ? "Manual" : "Hot first"}
-              </button>
-            ))}
-          </div>
-          {view === "wall" && (
+          {supports.rows && (
+            <div
+              role="group"
+              aria-label="Attention rows"
+              className="flex items-center rounded-md border p-0.5"
+            >
+              {ROW_MODES.map(({ mode, label }) => (
+                <button
+                  key={mode}
+                  type="button"
+                  aria-pressed={rowMode === mode}
+                  onClick={() => selectRowMode(mode)}
+                  className={cn(
+                    "rounded px-2 py-0.5 text-[length:var(--plica-fs-micro,11px)] leading-[1.45]",
+                    rowMode === mode
+                      ? "bg-muted font-medium"
+                      : "text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          )}
+          {supports.order && (
+            <div
+              role="group"
+              aria-label="Pane order"
+              className="flex items-center rounded-md border p-0.5"
+            >
+              {(["manual", "hot"] as const).map((mode) => (
+                <button
+                  key={mode}
+                  type="button"
+                  aria-pressed={sortMode === mode}
+                  onClick={() => selectSortMode(mode)}
+                  className={cn(
+                    "rounded px-2 py-0.5 text-[length:var(--plica-fs-micro,11px)] leading-[1.45]",
+                    sortMode === mode
+                      ? "bg-muted font-medium"
+                      : "text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  {mode === "manual" ? "Manual" : "Hot first"}
+                </button>
+              ))}
+            </div>
+          )}
+          {supports.docking && (
             <>
-            <button
-              type="button"
-              aria-label="Dock all companies"
-              title="Dock all companies"
-              disabled={
-                workspaceCompanies.length === 0 ||
-                workspaceCompanies.every((company) => collapsedIds.includes(company.id))
-              }
-              onClick={() => setCollapsedAll(workspaceCompanies.map((company) => company.id))}
-              className="rounded-md border p-1 text-muted-foreground hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
-            >
-              <FoldVertical className="h-3.5 w-3.5" />
-            </button>
-            <button
-              type="button"
-              aria-label="Undock all companies"
-              title="Undock all companies"
-              disabled={collapsedIds.length === 0}
-              onClick={() => setCollapsedAll([])}
-              className="rounded-md border p-1 text-muted-foreground hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
-            >
-              <UnfoldVertical className="h-3.5 w-3.5" />
-            </button>
+              <button
+                type="button"
+                aria-label="Dock all companies"
+                title="Dock all companies"
+                disabled={
+                  workspaceCompanies.length === 0 ||
+                  workspaceCompanies.every((company) =>
+                    collapsedIds.includes(company.id),
+                  )
+                }
+                onClick={() =>
+                  setCollapsedAll(
+                    workspaceCompanies.map((company) => company.id),
+                  )
+                }
+                className="rounded-md border p-1 text-muted-foreground hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
+              >
+                <FoldVertical className="h-3.5 w-3.5" />
+              </button>
+              <button
+                type="button"
+                aria-label="Undock all companies"
+                title="Undock all companies"
+                disabled={collapsedIds.length === 0}
+                onClick={() => setCollapsedAll([])}
+                className="rounded-md border p-1 text-muted-foreground hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
+              >
+                <UnfoldVertical className="h-3.5 w-3.5" />
+              </button>
             </>
           )}
         </div>
       </div>
 
       {showBriefing && lastVisit && companies.length > 0 && (
-        <PlicaBriefing companies={companies} since={lastVisit} onDismiss={() => setBriefingDismissed(true)} />
+        <PlicaBriefing
+          companies={companies}
+          since={lastVisit}
+          onDismiss={() => setBriefingDismissed(true)}
+        />
       )}
 
       {companiesQuery.isLoading ? (
-        <p className="text-[length:var(--plica-fs-body,14px)] leading-[1.45] text-muted-foreground">Loading companies…</p>
+        <p className="text-[length:var(--plica-fs-body,14px)] leading-[1.45] text-muted-foreground">
+          Loading companies…
+        </p>
       ) : companies.length === 0 ? (
-        <p className="text-[length:var(--plica-fs-body,14px)] leading-[1.45] text-muted-foreground">No companies to show.</p>
+        <p className="text-[length:var(--plica-fs-body,14px)] leading-[1.45] text-muted-foreground">
+          No companies to show.
+        </p>
       ) : view === "wall" || view === "analytic" ? (
         <>
-        {collapsedIds.length > 0 && (
-          <div data-docked className="flex flex-wrap items-center gap-1.5">
-            <span className="text-[length:var(--plica-fs-micro,11px)] leading-[1.45] uppercase tracking-wide text-muted-foreground">Docked</span>
+          {collapsedIds.length > 0 && (
+            <div data-docked className="flex flex-wrap items-center gap-1.5">
+              <span className="text-[length:var(--plica-fs-micro,11px)] leading-[1.45] uppercase tracking-wide text-muted-foreground">
+                Docked
+              </span>
+              {workspaceCompanies
+                .filter((company) => collapsedIds.includes(company.id))
+                .map((company) => (
+                  <PlicaDockedTile
+                    key={company.id}
+                    company={company}
+                    onExpand={() => toggleCollapsed(company.id)}
+                  />
+                ))}
+            </div>
+          )}
+          <div
+            data-layout={layout}
+            className={cn(
+              "grid gap-4",
+              isKiosk && "gap-6",
+              layout === "1" && "mx-auto w-full max-w-3xl",
+              PLICA_LAYOUT_CLASSES[layout],
+            )}
+          >
             {workspaceCompanies
-              .filter((company) => collapsedIds.includes(company.id))
+              .filter((company) => !collapsedIds.includes(company.id))
               .map((company) => (
-                <PlicaDockedTile key={company.id} company={company} onExpand={() => toggleCollapsed(company.id)} />
+                <PlicaCompanySlot
+                  key={company.id}
+                  company={company}
+                  view={view === "analytic" ? "analytic" : "wall"}
+                  onActionable={handleActionable}
+                  onStats={handleStats}
+                  tokenThresholds={thresholdsFor(tokenSettings, company.id)}
+                  alertsEnabled={alertsEnabled}
+                  onToggleCollapse={() => toggleCollapsed(company.id)}
+                  onTogglePin={() => togglePinned(company.id)}
+                  rowMode={rowMode}
+                />
               ))}
           </div>
-        )}
-        <div
-          data-layout={layout}
-          className={cn(
-            "grid gap-4",
-            isKiosk && "gap-6",
-            layout === "1" && "mx-auto w-full max-w-3xl",
-            PLICA_LAYOUT_CLASSES[layout],
-          )}
-        >
-          {workspaceCompanies
-            .filter((company) => !collapsedIds.includes(company.id))
-            .map((company) => (
-              <PlicaCompanySlot
-                key={company.id}
-                company={company}
-                view={view === "analytic" ? "analytic" : "wall"}
-                onActionable={handleActionable}
-                onStats={handleStats}
-                tokenThresholds={thresholdsFor(tokenSettings, company.id)}
-                alertsEnabled={alertsEnabled}
-                onToggleCollapse={() => toggleCollapsed(company.id)}
-                onTogglePin={() => togglePinned(company.id)}
-                rowMode={rowMode}
-              />
-            ))}
-        </div>
         </>
       ) : view === "feed" ? (
         <PlicaFeed
@@ -733,22 +907,27 @@ export function PlicaHud() {
           since={lastVisit}
         />
       ) : (
-        <div data-view="triage" className="divide-y overflow-hidden rounded-lg border">
+        <div
+          data-view="triage"
+          className="divide-y overflow-hidden rounded-lg border"
+        >
           {orderedTriageCompanies
             .filter((company) => !pinnedIds.includes(company.id))
             .map((company) => (
-            <PlicaCompanySlot
-              key={company.id}
-              company={company}
-              view="triage"
-              onActionable={handleActionable}
-              alertsEnabled={alertsEnabled}
-              triageOpen={openTriageCompanyId === company.id}
-              onTriageToggle={() =>
-                setOpenTriageCompanyId((current) => (current === company.id ? null : company.id))
-              }
-            />
-          ))}
+              <PlicaCompanySlot
+                key={company.id}
+                company={company}
+                view="triage"
+                onActionable={handleActionable}
+                alertsEnabled={alertsEnabled}
+                triageOpen={openTriageCompanyId === company.id}
+                onTriageToggle={() =>
+                  setOpenTriageCompanyId((current) =>
+                    current === company.id ? null : company.id,
+                  )
+                }
+              />
+            ))}
         </div>
       )}
     </div>

@@ -1132,3 +1132,31 @@ export function attentionRowTitle(item: AttentionItem): string {
   if (subjectTitle) return subjectTitle;
   return attentionSpecificText(item.detail) ?? item.whyNow;
 }
+
+/**
+ * Which workspace controls a view actually obeys.
+ *
+ * Not every control applies to every view, and a control that is visible but
+ * inert is worse than one that is absent: it invites you to press it and then
+ * says nothing. Triage carries its own ordering and its own single-column
+ * layout; Feed is one merged list sorted by time and has neither panes to lay
+ * out nor attention rows to restyle; Analytic renders measurements rather than
+ * attention rows, so the row mode has nothing to change.
+ */
+export function viewSupports(view: PlicaViewMode): {
+  layout: boolean;
+  rows: boolean;
+  order: boolean;
+  docking: boolean;
+} {
+  switch (view) {
+    case "wall":
+      return { layout: true, rows: true, order: true, docking: true };
+    case "analytic":
+      return { layout: true, rows: false, order: true, docking: false };
+    case "triage":
+    case "feed":
+    default:
+      return { layout: false, rows: false, order: false, docking: false };
+  }
+}
