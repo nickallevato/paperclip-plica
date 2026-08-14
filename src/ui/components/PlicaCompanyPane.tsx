@@ -132,9 +132,10 @@ export function PlicaCompanyPane({
               onClick={onTogglePin}
               title="Pin to the bar"
               aria-label={`Pin ${company.name} to the bar`}
-              className="text-muted-foreground hover:text-foreground"
+              className="inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[length:var(--plica-fs-micro,11px)] leading-[1.45] text-muted-foreground hover:bg-muted/50 hover:text-foreground"
             >
-              <Pin className="h-3.5 w-3.5" />
+              <Pin className="h-3 w-3" />
+              Pin
             </button>
           )}
           {onToggleCollapse && (

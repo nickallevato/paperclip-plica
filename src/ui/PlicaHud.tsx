@@ -458,14 +458,21 @@ export function PlicaHud() {
         </div>
       </div>
 
-      {pinnedCompanies.length > 0 && (
+      {companies.length > 0 && (
         <div data-plica-bar className="space-y-1.5">
           <div className="flex items-center gap-2">
             <Pin className="h-3.5 w-3.5 text-muted-foreground" />
             <span className="text-[length:var(--plica-fs-micro,11px)] leading-[1.45] font-semibold uppercase tracking-wide text-muted-foreground">
               Pinned
             </span>
-            <div role="group" aria-label="Pinned bar mode" className="flex items-center rounded-md border p-0.5">
+            <div
+              role="group"
+              aria-label="Pinned bar mode"
+              className={cn(
+                "flex items-center rounded-md border p-0.5",
+                pinnedCompanies.length === 0 && "pointer-events-none opacity-40",
+              )}
+            >
               {BAR_MODES.map(({ mode, label }) => (
                 <button
                   key={mode}
@@ -485,7 +492,16 @@ export function PlicaHud() {
               {pinnedCompanies.length} of {companies.length} watched
             </span>
           </div>
-          {barMode === "matrix" ? (
+          {pinnedCompanies.length === 0 ? (
+            <p
+              data-plica-bar-empty
+              className="flex items-center gap-2 rounded-lg border border-dashed px-3 py-2 text-[length:var(--plica-fs-micro,11px)] leading-[1.45] text-muted-foreground"
+            >
+              <Pin className="h-3 w-3 shrink-0" />
+              Pin a company from any pane below to watch it up here — its attention counts stay visible
+              while you work in the rest of the wall.
+            </p>
+          ) : barMode === "matrix" ? (
             <div className="overflow-x-auto rounded-lg border bg-card">
               <table className="w-full border-collapse">
                 <thead>
