@@ -18,6 +18,7 @@ import type {
   Approval,
   AttentionFeed,
   Company,
+  CostByAgent,
   DashboardSummary,
   Issue,
   IssueComment,
@@ -88,6 +89,23 @@ export const projectsApi = {
 
 export const dashboardApi = {
   summary: (companyId: string) => api.get<DashboardSummary>(`/companies/${companyId}/dashboard`),
+};
+
+/**
+ * Token usage. There is no company-level token total in the API — the
+ * dashboard summary carries costs in cents only — so Plica sums the per-agent
+ * breakdown, which is the coarsest endpoint that reports tokens at all.
+ *
+ * `from`/`to` are ISO dates; omitting them gives the endpoint's default range.
+ */
+export const costsApi = {
+  byAgent: (companyId: string, from?: string, to?: string) => {
+    const params = new URLSearchParams();
+    if (from) params.set("from", from);
+    if (to) params.set("to", to);
+    const qs = params.toString();
+    return api.get<CostByAgent[]>(`/companies/${companyId}/costs/by-agent${qs ? `?${qs}` : ""}`);
+  },
 };
 
 export const sidebarBadgesApi = {

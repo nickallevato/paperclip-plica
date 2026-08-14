@@ -15,6 +15,7 @@ const mockAgentsApi = vi.hoisted(() => ({ list: vi.fn() }));
 const mockApprovalsApi = vi.hoisted(() => ({ list: vi.fn(), approve: vi.fn(), reject: vi.fn() }));
 const mockSidebarBadgesApi = vi.hoisted(() => ({ get: vi.fn() }));
 const mockAttentionApi = vi.hoisted(() => ({ list: vi.fn() }));
+const mockCostsApi = vi.hoisted(() => ({ byAgent: vi.fn() }));
 
 vi.mock("../host/shims", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../host/shims")>()),
@@ -31,6 +32,7 @@ vi.mock("../host/api", async (importOriginal) => ({
   approvalsApi: mockApprovalsApi,
   sidebarBadgesApi: mockSidebarBadgesApi,
   attentionApi: mockAttentionApi,
+  costsApi: mockCostsApi,
 }));
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -86,7 +88,12 @@ async function flush() {
   });
 }
 
-function render(container: HTMLDivElement, view: "signal" | "matrix", onUnpin?: () => void) {
+function render(
+  container: HTMLDivElement,
+  view: "signal" | "matrix" | "scoreboard",
+  onUnpin?: () => void,
+  onStats?: (companyId: string, stats: unknown) => void,
+) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
@@ -95,14 +102,14 @@ function render(container: HTMLDivElement, view: "signal" | "matrix", onUnpin?: 
     root.render(
       <QueryClientProvider client={queryClient}>
         <MemoryRouter>
-          {view === "matrix" ? (
+          {view === "signal" ? (
+            <PlicaCompanySlot company={company} view="signal" onUnpin={onUnpin} onStats={onStats as never} />
+          ) : (
             <table>
               <tbody>
-                <PlicaCompanySlot company={company} view="matrix" onUnpin={onUnpin} />
+                <PlicaCompanySlot company={company} view={view} onUnpin={onUnpin} onStats={onStats as never} />
               </tbody>
             </table>
-          ) : (
-            <PlicaCompanySlot company={company} view="signal" onUnpin={onUnpin} />
           )}
         </MemoryRouter>
       </QueryClientProvider>,
@@ -124,6 +131,9 @@ describe("PlicaSignalCard / PlicaMatrixRow", () => {
     mockAgentsApi.list.mockResolvedValue([]);
     mockApprovalsApi.list.mockResolvedValue([]);
     mockSidebarBadgesApi.get.mockResolvedValue({ inbox: 0, approvals: 0, failedRuns: 0, joinRequests: 0 });
+    mockCostsApi.byAgent.mockResolvedValue([
+      { inputTokens: 300_000_000, cachedInputTokens: 0, outputTokens: 20_000_000 },
+    ]);
     mockAttentionApi.list.mockResolvedValue({
       companyId: "company-1",
       generatedAt: "",
@@ -223,6 +233,71 @@ describe("PlicaSignalCard / PlicaMatrixRow", () => {
       expect(row?.textContent).toContain("Acme Robotics");
       expect(container.querySelector('[title="Acme Robotics · Failed: 2"]')).not.toBeNull();
       expect(container.querySelector('[title="Acme Robotics · Approve: 1"]')).not.toBeNull();
+    });
+  });
+});
+
+describe("PlicaScoreboardRow", () => {
+  let container: HTMLDivElement;
+
+  beforeEach(() => {
+    container = document.createElement("div");
+    document.body.appendChild(container);
+    mockDashboardApi.summary.mockResolvedValue(summary);
+    mockHeartbeatsApi.liveRunsForCompany.mockResolvedValue([]);
+    mockProjectsApi.list.mockResolvedValue([]);
+    mockIssuesApi.list.mockResolvedValue([]);
+    mockAgentsApi.list.mockResolvedValue([]);
+    mockApprovalsApi.list.mockResolvedValue([]);
+    mockSidebarBadgesApi.get.mockResolvedValue({ inbox: 7, approvals: 0, failedRuns: 0, joinRequests: 0 });
+    mockAttentionApi.list.mockResolvedValue({
+      companyId: "company-1",
+      generatedAt: "",
+      totalCount: 2,
+      countsBySourceKind: {},
+      items: [attentionItem("1", "failed_run", "critical"), attentionItem("2", "approval", "medium")],
+    });
+  });
+
+  afterEach(() => {
+    document.body.innerHTML = "";
+    vi.clearAllMocks();
+  });
+
+  it("lays the company's whole state out as one row and reports stats upward", async () => {
+    const onStats = vi.fn();
+    mockCostsApi.byAgent.mockResolvedValue([
+      { inputTokens: 600_000_000, cachedInputTokens: 0, outputTokens: 0 },
+    ]);
+    render(container, "scoreboard", undefined, onStats);
+    await flush();
+
+    await vi.waitFor(() => {
+      const row = container.querySelector('[data-scoreboard-row="company-1"]');
+      expect(row).not.toBeNull();
+      const text = row?.textContent ?? "";
+      expect(text).toContain("Acme Robotics");
+      expect(text).toContain("2");      // agents running
+      expect(text).toContain("600M");   // month tokens, over the 500M default crit
+      expect(text).toContain("7");      // inbox badge
+    });
+
+    await vi.waitFor(() => {
+      const last = onStats.mock.calls.at(-1);
+      expect(last?.[0]).toBe("company-1");
+      expect(last?.[1]).toMatchObject({ running: 2, needs: 2, critical: 1, failed: 1, inbox: 7, tokens: 600_000_000 });
+    });
+  });
+
+  it("shows a dash rather than a zero when cost access is denied", async () => {
+    mockCostsApi.byAgent.mockRejectedValue(new Error("403"));
+    render(container, "scoreboard");
+    await flush();
+
+    await vi.waitFor(() => {
+      const row = container.querySelector('[data-scoreboard-row="company-1"]');
+      expect(row).not.toBeNull();
+      expect(row?.textContent).toContain("\u2014");
     });
   });
 });

@@ -5,6 +5,7 @@ import type {
   AttentionItem,
   AttentionSeverity,
   Company,
+  CostByAgent,
   DashboardRunActivityDay,
   DashboardSummary,
   Issue,
@@ -542,7 +543,7 @@ export function normalizePinnedIds(raw: string | null | undefined): string[] {
  * independently — you can watch four companies as a heatmap up top while
  * reading the rest as panes below.
  */
-export type PlicaBarMode = "signal" | "matrix";
+export type PlicaBarMode = "signal" | "matrix" | "scoreboard" | "tote";
 
 /**
  * Everything PlicaCompanySlot can render a company as. One union so the slot
@@ -552,8 +553,10 @@ export type PlicaSlotPresentation = PlicaViewMode | PlicaBarMode;
 
 export const PLICA_BAR_STORAGE_KEY = "plica.bar";
 
+const PLICA_BAR_MODES: ReadonlyArray<PlicaBarMode> = ["signal", "matrix", "scoreboard", "tote"];
+
 export function normalizeBarMode(value: string | null | undefined): PlicaBarMode {
-  return value === "matrix" ? "matrix" : "signal";
+  return PLICA_BAR_MODES.includes(value as PlicaBarMode) ? (value as PlicaBarMode) : "signal";
 }
 
 /**
@@ -619,4 +622,182 @@ export function attentionKindSummary(attention: AttentionFeed | undefined): Plic
     }),
     total: live.length,
   };
+}
+
+/**
+ * Total tokens a company burned over the rows returned by costs/by-agent.
+ *
+ * Counts input + cached input + output, and the subscription-billed columns
+ * alongside the API-billed ones — a fleet running on a subscription plan would
+ * otherwise report zero, which reads as "idle" rather than "billed elsewhere".
+ */
+export function sumAgentTokens(rows: ReadonlyArray<CostByAgent> | undefined): number {
+  return (rows ?? []).reduce(
+    (total, row) =>
+      total +
+      (row.inputTokens ?? 0) +
+      (row.cachedInputTokens ?? 0) +
+      (row.outputTokens ?? 0) +
+      (row.subscriptionInputTokens ?? 0) +
+      (row.subscriptionCachedInputTokens ?? 0) +
+      (row.subscriptionOutputTokens ?? 0),
+    0,
+  );
+}
+
+/** Compact token counts: 1.19B, 574M, 99.3M, 250K. */
+export function formatTokens(n: number): string {
+  if (!Number.isFinite(n) || n <= 0) return "0";
+  if (n >= 1e9) return `${(n / 1e9).toFixed(2)}B`;
+  if (n >= 1e6) return `${(n / 1e6).toFixed(n >= 1e8 ? 0 : 1)}M`;
+  if (n >= 1e3) return `${Math.round(n / 1e3)}K`;
+  return String(Math.round(n));
+}
+
+/**
+ * Absolute monthly token thresholds. Paperclip has no token budget concept, so
+ * there is no denominator to express these as a percentage of — a company is
+ * over a number you chose, not over a cap the system knows about.
+ */
+export interface PlicaTokenThresholds {
+  warn: number;
+  crit: number;
+}
+
+export const PLICA_TOKEN_DEFAULTS: PlicaTokenThresholds = { warn: 250_000_000, crit: 500_000_000 };
+
+export function tokenState(tokens: number, thresholds: PlicaTokenThresholds): "crit" | "warn" | "ok" {
+  if (tokens > thresholds.crit) return "crit";
+  if (tokens > thresholds.warn) return "warn";
+  return "ok";
+}
+
+/**
+ * First-of-month through today, as the ISO dates the costs endpoints expect.
+ * Tokens are quoted per calendar month because that is the window budgets and
+ * invoices use; a rolling 30 days would not line up with either.
+ */
+export function currentMonthRange(nowMs: number): { from: string; to: string } {
+  const now = new Date(nowMs);
+  const iso = (d: Date) => d.toISOString().slice(0, 10);
+  return { from: iso(new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1))), to: iso(now) };
+}
+
+/**
+ * The compact per-company facts the bar's cross-company modes need. Slots
+ * derive this from data they already hold and report it up, so Scoreboard can
+ * lay companies side by side and Tote can add them together without either
+ * one owning a second copy of the fetching.
+ */
+export interface PlicaCompanyStats {
+  running: number;
+  active: number;
+  tasks: number;
+  /** Live attention items, dismissed excluded. */
+  needs: number;
+  critical: number;
+  failed: number;
+  /** Age in minutes of the oldest live attention item, or null when clear. */
+  oldestMins: number | null;
+  inbox: number;
+  /** Undefined when the costs endpoint is unavailable to this user. */
+  tokens: number | undefined;
+  unavailable: boolean;
+}
+
+export function deriveCompanyStats(input: {
+  summary: DashboardSummary | undefined;
+  attention: AttentionFeed | undefined;
+  badges: { inbox: number } | undefined;
+  tokens: number | undefined;
+  unavailable: boolean;
+  nowMs: number;
+}): PlicaCompanyStats {
+  const live = (input.attention?.items ?? []).filter((item) => !item.dismissal);
+  const ages = live
+    .map((item) => (item.activityAt ? Math.round((input.nowMs - new Date(item.activityAt).getTime()) / 60_000) : null))
+    .filter((mins): mins is number => mins !== null && Number.isFinite(mins) && mins >= 0);
+  return {
+    running: input.summary?.agents.running ?? 0,
+    active: input.summary?.agents.active ?? 0,
+    tasks: input.summary?.tasks.inProgress ?? 0,
+    needs: live.length,
+    critical: live.filter((item) => item.severity === "critical").length,
+    failed: live.filter((item) => item.sourceKind === "failed_run").length,
+    oldestMins: ages.length ? Math.max(...ages) : null,
+    inbox: input.badges?.inbox ?? 0,
+    tokens: input.tokens,
+    unavailable: input.unavailable,
+  };
+}
+
+/** Compact ages for the bar: 18m, 4h, 2d. */
+export function formatAgeMinutes(mins: number | null): string {
+  if (mins === null) return "—";
+  if (mins < 60) return `${mins}m`;
+  if (mins < 1440) return `${Math.round(mins / 60)}h`;
+  return `${Math.round(mins / 1440)}d`;
+}
+
+export const PLICA_TOKEN_THRESHOLDS_STORAGE_KEY = "plica.tokenThresholds";
+
+export interface PlicaTokenSettings {
+  /** Applies to every company without an override of its own. */
+  defaults: PlicaTokenThresholds;
+  /** companyId -> thresholds. Absent means "inherit the default". */
+  overrides: Record<string, PlicaTokenThresholds>;
+}
+
+function readThresholds(value: unknown): PlicaTokenThresholds | null {
+  if (!value || typeof value !== "object") return null;
+  const { warn, crit } = value as Record<string, unknown>;
+  if (typeof warn !== "number" || typeof crit !== "number") return null;
+  if (!Number.isFinite(warn) || !Number.isFinite(crit) || warn <= 0 || crit <= warn) return null;
+  return { warn, crit };
+}
+
+/** Parse persisted token settings, falling back to defaults for anything junk. */
+export function normalizeTokenSettings(raw: string | null | undefined): PlicaTokenSettings {
+  const empty: PlicaTokenSettings = { defaults: PLICA_TOKEN_DEFAULTS, overrides: {} };
+  if (!raw) return empty;
+  try {
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    const overrides: Record<string, PlicaTokenThresholds> = {};
+    const rawOverrides = parsed.overrides;
+    if (rawOverrides && typeof rawOverrides === "object") {
+      for (const [companyId, value] of Object.entries(rawOverrides as Record<string, unknown>)) {
+        const thresholds = readThresholds(value);
+        if (thresholds) overrides[companyId] = thresholds;
+      }
+    }
+    return { defaults: readThresholds(parsed.defaults) ?? PLICA_TOKEN_DEFAULTS, overrides };
+  } catch {
+    return empty;
+  }
+}
+
+/**
+ * The thresholds a company is actually judged by. A company with no override
+ * inherits, rather than holding a copy — so raising the default afterwards
+ * still moves everyone who never opted out.
+ */
+export function thresholdsFor(settings: PlicaTokenSettings, companyId: string): PlicaTokenThresholds {
+  return settings.overrides[companyId] ?? settings.defaults;
+}
+
+/**
+ * Thresholds for a group read as one number. Summing each member's own
+ * thresholds keeps the aggregate on the same footing as the rows that compose
+ * it, including any overrides, instead of needing a second pair of numbers
+ * that drifts whenever the per-company ones are tuned.
+ */
+export function aggregateTokenState(
+  settings: PlicaTokenSettings,
+  members: ReadonlyArray<{ id: string; tokens: number | undefined }>,
+): { total: number; state: "crit" | "warn" | "ok"; known: boolean } {
+  const known = members.some((member) => member.tokens !== undefined);
+  const total = members.reduce((sum, member) => sum + (member.tokens ?? 0), 0);
+  const warn = members.reduce((sum, member) => sum + thresholdsFor(settings, member.id).warn, 0);
+  const crit = members.reduce((sum, member) => sum + thresholdsFor(settings, member.id).crit, 0);
+  return { total, state: total > crit ? "crit" : total > warn ? "warn" : "ok", known };
 }

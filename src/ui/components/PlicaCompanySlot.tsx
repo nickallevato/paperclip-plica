@@ -7,10 +7,15 @@ import {
   deriveActionable,
   type PlicaActionable,
   type PlicaAlertSnapshot,
+  PLICA_TOKEN_DEFAULTS,
+  deriveCompanyStats,
+  type PlicaCompanyStats,
   type PlicaSlotPresentation,
+  type PlicaTokenThresholds,
 } from "../lib/plica";
 import { PlicaCompanyPane } from "./PlicaCompanyPane";
 import { PlicaMatrixRow } from "./PlicaMatrixRow";
+import { PlicaScoreboardRow } from "./PlicaScoreboardRow";
 import { PlicaSignalCard } from "./PlicaSignalCard";
 import { PlicaTriageSection } from "./PlicaTriageSection";
 import { usePlicaAlerts } from "./usePlicaAlerts";
@@ -34,6 +39,8 @@ export function PlicaCompanySlot({
   onToggleCollapse,
   onUnpin,
   onTogglePin,
+  onStats,
+  tokenThresholds,
 }: {
   company: Company;
   view: PlicaSlotPresentation;
@@ -46,6 +53,14 @@ export function PlicaCompanySlot({
   onUnpin?: () => void;
   /** Pins this company up into the bar, hoisting it out of the workspace. */
   onTogglePin?: () => void;
+  /**
+   * Reports this company's compact stats up to the page, the same way
+   * onActionable does — the bar's cross-company modes (Scoreboard, Tote) lay
+   * companies side by side or add them together, which no single slot can do.
+   */
+  onStats?: (companyId: string, stats: PlicaCompanyStats) => void;
+  /** Only needed by the presentations that colour a token count. */
+  tokenThresholds?: PlicaTokenThresholds;
 }) {
   const data = usePlicaCompanyData(company.id);
   const ceoOverdue = deriveCeoHeartbeat(selectCeo(data.agents), Date.now()).state === "overdue";
@@ -76,12 +91,46 @@ export function PlicaCompanySlot({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [company.id, actionable.criticalOrHigh, actionable.count]);
 
+  const stats = deriveCompanyStats({
+    summary: data.summary,
+    attention: data.attention,
+    badges: data.badges,
+    tokens: data.tokens,
+    unavailable: data.unavailable,
+    nowMs: Date.now(),
+  });
+  // Same reason as onActionable: a parent setter must not run during this
+  // component's render. Depend on the values rather than the object, which is
+  // rebuilt every render and would otherwise loop.
+  useEffect(() => {
+    onStats?.(company.id, stats);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    company.id,
+    stats.running, stats.active, stats.tasks, stats.needs, stats.critical,
+    stats.failed, stats.oldestMins, stats.inbox, stats.tokens, stats.unavailable,
+  ]);
+
   if (view === "signal") {
     return <PlicaSignalCard company={company} data={data} onUnpin={onUnpin} />;
   }
   if (view === "matrix") {
     return <PlicaMatrixRow company={company} data={data} onUnpin={onUnpin} />;
   }
+  if (view === "scoreboard") {
+    return (
+      <PlicaScoreboardRow
+        company={company}
+        data={data}
+        stats={stats}
+        thresholds={tokenThresholds ?? PLICA_TOKEN_DEFAULTS}
+        onUnpin={onUnpin}
+      />
+    );
+  }
+  // Tote renders from the page's collected stats, so the slot exists only to
+  // keep this company polling and reporting.
+  if (view === "tote") return null;
   if (view === "triage") {
     return <PlicaTriageSection company={company} data={data} open={triageOpen} onToggle={onTriageToggle} />;
   }

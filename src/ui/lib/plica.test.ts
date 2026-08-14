@@ -11,15 +11,21 @@ import type {
 import {
   PLICA_ATTENTION_KINDS,
   PLICA_LAYOUT_CLASSES,
+  PLICA_TOKEN_DEFAULTS,
+  aggregateTokenState,
   attentionDetailText,
   attentionKindSummary,
+  currentMonthRange,
   deriveActionable,
   deriveBriefingLine,
   deriveCeoHeartbeat,
+  deriveCompanyStats,
   derivePaneHealth,
   deriveTriageSummary,
   detectAlertEdges,
+  formatAgeMinutes,
   formatCents,
+  formatTokens,
   healthLabel,
   intervalLabel,
   issueStatusLabel,
@@ -28,6 +34,7 @@ import {
   normalizeLayoutMode,
   normalizePinnedIds,
   normalizeSortMode,
+  normalizeTokenSettings,
   normalizeViewMode,
   nudgeTitle,
   orderTriageCompanies,
@@ -37,7 +44,10 @@ import {
   selectProjectChips,
   shouldShowBriefing,
   sparklineDays,
+  sumAgentTokens,
   summarizePayloadEntries,
+  thresholdsFor,
+  tokenState,
   type PlicaAlertSnapshot,
   worstSeverity,
 } from "./plica";
@@ -705,5 +715,172 @@ describe("attentionKindSummary", () => {
     const summary = attentionKindSummary(feed([{ kind: "something_new", severity: "high" }]));
     expect(summary.total).toBe(1);
     expect(summary.cells.every((cell) => cell.count === 0)).toBe(true);
+  });
+});
+
+describe("sumAgentTokens", () => {
+  it("returns 0 for missing or empty rows", () => {
+    expect(sumAgentTokens(undefined)).toBe(0);
+    expect(sumAgentTokens([])).toBe(0);
+  });
+
+  it("counts api and subscription columns together", () => {
+    const rows = [
+      {
+        inputTokens: 10, cachedInputTokens: 5, outputTokens: 2,
+        subscriptionInputTokens: 100, subscriptionCachedInputTokens: 50, subscriptionOutputTokens: 20,
+      },
+      { inputTokens: 1, cachedInputTokens: 0, outputTokens: 1 },
+    ] as never;
+    // 17 api + 170 subscription + 2 = 189
+    expect(sumAgentTokens(rows)).toBe(189);
+  });
+});
+
+describe("formatTokens", () => {
+  it("scales to B/M/K and drops the decimal above 100M", () => {
+    expect(formatTokens(1_190_000_000)).toBe("1.19B");
+    expect(formatTokens(574_200_000)).toBe("574M");
+    expect(formatTokens(99_300_000)).toBe("99.3M");
+    expect(formatTokens(250_000)).toBe("250K");
+    expect(formatTokens(42)).toBe("42");
+  });
+
+  it("treats absent or nonsense counts as zero rather than NaN", () => {
+    expect(formatTokens(0)).toBe("0");
+    expect(formatTokens(Number.NaN)).toBe("0");
+  });
+});
+
+describe("tokenState", () => {
+  const th = { warn: 250e6, crit: 500e6 };
+  it("is exclusive at both bounds, so a threshold is a ceiling not a trigger", () => {
+    expect(tokenState(250e6, th)).toBe("ok");
+    expect(tokenState(250e6 + 1, th)).toBe("warn");
+    expect(tokenState(500e6, th)).toBe("warn");
+    expect(tokenState(500e6 + 1, th)).toBe("crit");
+  });
+});
+
+describe("normalizeTokenSettings", () => {
+  it("falls back to defaults for junk and absent values", () => {
+    expect(normalizeTokenSettings(null)).toEqual({ defaults: PLICA_TOKEN_DEFAULTS, overrides: {} });
+    expect(normalizeTokenSettings("{oops")).toEqual({ defaults: PLICA_TOKEN_DEFAULTS, overrides: {} });
+  });
+
+  it("round-trips defaults and overrides", () => {
+    const raw = JSON.stringify({ defaults: { warn: 1, crit: 2 }, overrides: { c1: { warn: 3, crit: 4 } } });
+    expect(normalizeTokenSettings(raw)).toEqual({ defaults: { warn: 1, crit: 2 }, overrides: { c1: { warn: 3, crit: 4 } } });
+  });
+
+  it("rejects thresholds that are not a usable pair", () => {
+    // crit must sit above warn, and neither may be zero or negative
+    const bad = JSON.stringify({
+      defaults: { warn: 500, crit: 100 },
+      overrides: { c1: { warn: 0, crit: 5 }, c2: { warn: "x", crit: 5 }, c3: { warn: 1, crit: 2 } },
+    });
+    const settings = normalizeTokenSettings(bad);
+    expect(settings.defaults).toEqual(PLICA_TOKEN_DEFAULTS);
+    expect(settings.overrides).toEqual({ c3: { warn: 1, crit: 2 } });
+  });
+});
+
+describe("thresholdsFor", () => {
+  it("inherits the default when a company has no override", () => {
+    const settings = { defaults: { warn: 1, crit: 2 }, overrides: { other: { warn: 9, crit: 10 } } };
+    expect(thresholdsFor(settings, "c1")).toEqual({ warn: 1, crit: 2 });
+    expect(thresholdsFor(settings, "other")).toEqual({ warn: 9, crit: 10 });
+  });
+});
+
+describe("aggregateTokenState", () => {
+  const settings = { defaults: { warn: 100, crit: 200 }, overrides: {} };
+
+  it("judges the group against the sum of its members' own thresholds", () => {
+    // two members => warn 200, crit 400
+    expect(aggregateTokenState(settings, [{ id: "a", tokens: 90 }, { id: "b", tokens: 90 }]).state).toBe("ok");
+    expect(aggregateTokenState(settings, [{ id: "a", tokens: 150 }, { id: "b", tokens: 90 }]).state).toBe("warn");
+    expect(aggregateTokenState(settings, [{ id: "a", tokens: 300 }, { id: "b", tokens: 150 }]).state).toBe("crit");
+  });
+
+  it("respects overrides when summing the group's allowance", () => {
+    const withOverride = { defaults: { warn: 100, crit: 200 }, overrides: { b: { warn: 900, crit: 1000 } } };
+    // warn allowance is 100 + 900 = 1000, so 500 total stays ok
+    expect(aggregateTokenState(withOverride, [{ id: "a", tokens: 250 }, { id: "b", tokens: 250 }]).state).toBe("ok");
+  });
+
+  it("reports whether any member actually knew its token count", () => {
+    expect(aggregateTokenState(settings, [{ id: "a", tokens: undefined }]).known).toBe(false);
+    expect(aggregateTokenState(settings, [{ id: "a", tokens: 1 }]).known).toBe(true);
+  });
+});
+
+describe("currentMonthRange", () => {
+  it("runs from the first of the month to today", () => {
+    expect(currentMonthRange(Date.UTC(2026, 7, 14, 9, 30))).toEqual({ from: "2026-08-01", to: "2026-08-14" });
+  });
+});
+
+describe("deriveCompanyStats", () => {
+  const now = Date.UTC(2026, 7, 14, 12, 0);
+  const base = {
+    summary: {
+      agents: { active: 9, running: 6, paused: 0, error: 0 },
+      tasks: { open: 1, inProgress: 23, blocked: 0, done: 0 },
+    },
+    badges: { inbox: 4 },
+    tokens: 500,
+    unavailable: false,
+    nowMs: now,
+  } as never;
+
+  const feed = (items: Array<{ kind: string; severity: string; minsAgo?: number; dismissed?: boolean }>) =>
+    ({
+      items: items.map((item, index) => ({
+        id: `a${index}`,
+        sourceKind: item.kind,
+        severity: item.severity,
+        dismissal: item.dismissed ? { dismissedAt: "x" } : null,
+        activityAt: item.minsAgo === undefined ? null : new Date(now - item.minsAgo * 60_000).toISOString(),
+      })),
+    }) as never;
+
+  it("summarises agents, tasks, attention, criticals, failures and the oldest wait", () => {
+    const stats = deriveCompanyStats({
+      ...(base as object),
+      attention: feed([
+        { kind: "failed_run", severity: "critical", minsAgo: 41 },
+        { kind: "failed_run", severity: "high", minsAgo: 12 },
+        { kind: "approval", severity: "medium", minsAgo: 900 },
+        { kind: "approval", severity: "critical", dismissed: true, minsAgo: 5 },
+      ]),
+    } as never);
+    expect(stats).toMatchObject({
+      running: 6, active: 9, tasks: 23,
+      needs: 3, critical: 1, failed: 2,
+      oldestMins: 900, inbox: 4, tokens: 500,
+    });
+  });
+
+  it("reports no oldest wait when nothing is waiting", () => {
+    expect(deriveCompanyStats({ ...(base as object), attention: feed([]) } as never).oldestMins).toBeNull();
+  });
+
+  it("ignores items with no timestamp rather than treating them as ancient", () => {
+    const stats = deriveCompanyStats({
+      ...(base as object),
+      attention: feed([{ kind: "approval", severity: "low" }, { kind: "approval", severity: "low", minsAgo: 30 }]),
+    } as never);
+    expect(stats.needs).toBe(2);
+    expect(stats.oldestMins).toBe(30);
+  });
+});
+
+describe("formatAgeMinutes", () => {
+  it("renders an em dash for nothing waiting, then m/h/d", () => {
+    expect(formatAgeMinutes(null)).toBe("—");
+    expect(formatAgeMinutes(18)).toBe("18m");
+    expect(formatAgeMinutes(240)).toBe("4h");
+    expect(formatAgeMinutes(2880)).toBe("2d");
   });
 });

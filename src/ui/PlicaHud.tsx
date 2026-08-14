@@ -10,6 +10,8 @@ import { dashboardApi } from "./host/api";
 import { PlicaBriefing } from "./components/PlicaBriefing";
 import { PlicaCompanySlot } from "./components/PlicaCompanySlot";
 import { PlicaDockedTile } from "./components/PlicaDockedTile";
+import { PLICA_SCOREBOARD_COLUMNS } from "./components/PlicaScoreboardRow";
+import { PlicaTote } from "./components/PlicaTote";
 import { cn } from "./host/util";
 import {
   PLICA_ALERTS_STORAGE_KEY,
@@ -25,10 +27,13 @@ import {
   PLICA_COLLAPSED_STORAGE_KEY,
   PLICA_PINNED_STORAGE_KEY,
   PLICA_SORT_STORAGE_KEY,
+  PLICA_TOKEN_THRESHOLDS_STORAGE_KEY,
   normalizeBarMode,
   normalizeCollapsedIds,
   normalizePinnedIds,
   normalizeSortMode,
+  normalizeTokenSettings,
+  thresholdsFor,
   orderTriageCompanies,
   partitionHotFirst,
   type PlicaSortMode,
@@ -36,6 +41,7 @@ import {
   shouldShowBriefing,
   type PlicaActionable,
   type PlicaBarMode,
+  type PlicaCompanyStats,
   type PlicaLayoutMode,
   type PlicaViewMode,
 } from "./lib/plica";
@@ -56,6 +62,8 @@ const VIEW_MODES: Array<{ mode: PlicaViewMode; label: string }> = [
 const BAR_MODES: Array<{ mode: PlicaBarMode; label: string }> = [
   { mode: "signal", label: "Signal" },
   { mode: "matrix", label: "Matrix" },
+  { mode: "scoreboard", label: "Scoreboard" },
+  { mode: "tote", label: "Tote" },
 ];
 
 export function PlicaHud() {
@@ -92,6 +100,15 @@ export function PlicaHud() {
     persistPinned(
       pinnedIds.includes(companyId) ? pinnedIds.filter((id) => id !== companyId) : [...pinnedIds, companyId],
     );
+  const [statsByCompany, setStatsByCompany] = useState<Record<string, PlicaCompanyStats | undefined>>({});
+  const handleStats = useCallback((companyId: string, stats: PlicaCompanyStats) => {
+    setStatsByCompany((current) => ({ ...current, [companyId]: stats }));
+  }, []);
+  const [tokenSettings] = useState(() =>
+    normalizeTokenSettings(
+      typeof localStorage === "undefined" ? null : localStorage.getItem(PLICA_TOKEN_THRESHOLDS_STORAGE_KEY),
+    ),
+  );
   const [barMode, setBarMode] = useState<PlicaBarMode>(() =>
     normalizeBarMode(typeof localStorage === "undefined" ? null : localStorage.getItem(PLICA_BAR_STORAGE_KEY)),
   );
@@ -501,18 +518,24 @@ export function PlicaHud() {
               Pin a company from any pane below to watch it up here — its attention counts stay visible
               while you work in the rest of the wall.
             </p>
-          ) : barMode === "matrix" ? (
+          ) : barMode === "matrix" || barMode === "scoreboard" ? (
             <div className="overflow-x-auto rounded-lg border bg-card">
-              <table className="w-full border-collapse">
+              <table className="w-full border-collapse text-[length:var(--plica-fs-body,14px)] leading-[1.45]">
                 <thead>
                   <tr>
                     <th className="py-1 pl-2 text-left text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                       Company
                     </th>
-                    {PLICA_ATTENTION_KINDS.map(({ kind, label }) => (
+                    {(barMode === "matrix"
+                      ? PLICA_ATTENTION_KINDS.map(({ kind, label }) => ({ key: kind, label }))
+                      : PLICA_SCOREBOARD_COLUMNS.map((label) => ({ key: label, label }))
+                    ).map(({ key, label }) => (
                       <th
-                        key={kind}
-                        className="px-0.5 py-1 text-center text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
+                        key={key}
+                        className={cn(
+                          "py-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground",
+                          barMode === "matrix" ? "px-0.5 text-center" : "px-2 text-right",
+                        )}
                       >
                         {label}
                       </th>
@@ -525,8 +548,10 @@ export function PlicaHud() {
                     <PlicaCompanySlot
                       key={company.id}
                       company={company}
-                      view="matrix"
+                      view={barMode}
                       onActionable={handleActionable}
+                      onStats={handleStats}
+                      tokenThresholds={thresholdsFor(tokenSettings, company.id)}
                       alertsEnabled={alertsEnabled}
                       onUnpin={() => togglePinned(company.id)}
                     />
@@ -534,6 +559,26 @@ export function PlicaHud() {
                 </tbody>
               </table>
             </div>
+          ) : barMode === "tote" ? (
+            <>
+              {/* Slots render nothing in this mode; they exist to keep each
+                  pinned company polling and reporting into statsByCompany. */}
+              {pinnedCompanies.map((company) => (
+                <PlicaCompanySlot
+                  key={company.id}
+                  company={company}
+                  view="tote"
+                  onActionable={handleActionable}
+                  onStats={handleStats}
+                  alertsEnabled={alertsEnabled}
+                />
+              ))}
+              <PlicaTote
+                companies={pinnedCompanies}
+                statsById={statsByCompany}
+                tokenSettings={tokenSettings}
+              />
+            </>
           ) : (
             <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
               {pinnedCompanies.map((company) => (
@@ -542,6 +587,7 @@ export function PlicaHud() {
                   company={company}
                   view="signal"
                   onActionable={handleActionable}
+                  onStats={handleStats}
                   alertsEnabled={alertsEnabled}
                   onUnpin={() => togglePinned(company.id)}
                 />

@@ -10,6 +10,7 @@ import type {
   SidebarBadges,
 } from "@paperclipai/shared";
 import { attentionApi } from "../host/api";
+import { costsApi } from "../host/api";
 import { agentsApi } from "../host/api";
 import { approvalsApi } from "../host/api";
 import { dashboardApi } from "../host/api";
@@ -17,7 +18,7 @@ import { heartbeatsApi, type LiveRunForIssue } from "../host/api";
 import { issuesApi } from "../host/api";
 import { projectsApi } from "../host/api";
 import { sidebarBadgesApi } from "../host/api";
-import { plicaRefetchInterval } from "../lib/plica";
+import { currentMonthRange, plicaRefetchInterval, sumAgentTokens } from "../lib/plica";
 import { queryKeys } from "../host/util";
 
 export interface PlicaCompanyData {
@@ -29,6 +30,12 @@ export interface PlicaCompanyData {
   approvals: Approval[];
   badges: SidebarBadges | undefined;
   attention: AttentionFeed | undefined;
+  /**
+   * Month-to-date tokens across every agent, or undefined when the costs
+   * endpoint is unavailable — it is permission-gated, so a viewer without cost
+   * access sees no token figures rather than a misleading zero.
+   */
+  tokens: number | undefined;
   isLoading: boolean;
   /**
    * True when the pane's core summary query has failed and has never
@@ -88,7 +95,20 @@ export function usePlicaCompanyData(companyId: string): PlicaCompanyData {
     queryFn: () => attentionApi.list(companyId),
     ...POLL,
   });
+  // Tokens move far more slowly than attention and cost a heavier query, so
+  // this one polls on its own longer interval rather than riding POLL.
+  const monthRange = currentMonthRange(Date.now());
+  const tokens = useQuery({
+    queryKey: queryKeys.plica.tokens(companyId, monthRange.from, monthRange.to),
+    queryFn: () => costsApi.byAgent(companyId, monthRange.from, monthRange.to),
+    refetchInterval: 5 * 60_000,
+    refetchIntervalInBackground: true,
+    retry: false,
+  });
 
+  // `tokens` is deliberately outside this list: it is permission-gated and
+  // slow-moving, so a 403 there must not make the whole pane read as loading,
+  // stale, or unavailable.
   const queries = [summary, liveRuns, projects, issues, agents, approvals, badges, attention];
   const erroring = queries.filter((query) => query.isError && query.dataUpdatedAt > 0);
   const staleSince = erroring.length
@@ -108,6 +128,7 @@ export function usePlicaCompanyData(companyId: string): PlicaCompanyData {
     approvals: approvals.data ?? [],
     badges: badges.data,
     attention: attention.data,
+    tokens: tokens.isSuccess ? sumAgentTokens(tokens.data) : undefined,
     isLoading: queries.some((query) => query.isLoading),
     unavailable: summary.isError && summary.dataUpdatedAt === 0,
     staleSince,
