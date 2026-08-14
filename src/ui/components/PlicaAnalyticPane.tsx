@@ -97,7 +97,7 @@ export function PlicaAnalyticPane({
   thresholds: PlicaTokenThresholds;
   onTogglePin?: () => void;
 }) {
-  const health = data.unavailable ? "red" : derivePaneHealth(data.summary);
+  const health = data.unavailable ? "red" : derivePaneHealth(data.summary, data.attention);
   const live = (data.attention?.items ?? []).filter((item) => !item.dismissal);
   const nowMs = Date.now();
   const ages = bucketAttentionByAge(live, nowMs);
@@ -109,7 +109,7 @@ export function PlicaAnalyticPane({
   const tokenTone = tokens === undefined ? undefined : tokenState(tokens, thresholds);
 
   return (
-    <Card className={cn("flex h-full flex-col gap-3 py-4", health === "amber" && "border-l-4 border-l-amber-500", health === "red" && "border-l-4 border-l-red-500")}>
+    <Card className={cn("flex h-full flex-col gap-3 py-4", health === "green" && "border-l-4 border-l-emerald-500", health === "amber" && "border-l-4 border-l-amber-500", health === "red" && "border-l-4 border-l-red-500")}>
       <CardHeader className="flex flex-row items-center gap-2 space-y-0 px-4">
         <CompanyPatternIcon
           companyName={company.name}

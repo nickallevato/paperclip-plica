@@ -32,15 +32,17 @@ import {
 import { PlicaApprovalsSection } from "./PlicaApprovalsSection";
 import { PlicaAttentionSection } from "./PlicaAttentionSection";
 import { PlicaCeoStrip } from "./PlicaCeoStrip";
+import { PlicaRoutinesStrip } from "./PlicaRoutinesStrip";
 import { PlicaRunsStrip } from "./PlicaRunsStrip";
 import { PlicaSparkline } from "./PlicaSparkline";
 import { PlicaLink } from "./PlicaLink";
 import type { PlicaCompanyData } from "./usePlicaCompanyData";
 
-// Troubled panes get a colored left edge + faint wash so they pop at wall
-// scale; green panes keep the plain border and recede.
+// Every pane carries a coloured left edge, green included: a clean company
+// should read as affirmatively clear at wall scale, not as the absence of a
+// mark that could equally mean nothing has loaded.
 const HEALTH_FRAME_CLASSES: Record<string, string> = {
-  green: "",
+  green: "border-l-4 border-l-emerald-500",
   amber: "border-l-4 border-l-amber-500",
   red: "border-l-4 border-l-red-500 bg-red-500/[0.03]",
 };
@@ -75,7 +77,7 @@ export function PlicaCompanyPane({
   // An unavailable pane (first poll failed, no data ever received) must
   // never read as healthy — override the derived health rather than let
   // derivePaneHealth(undefined) default to "green".
-  const health = data.unavailable ? "red" : derivePaneHealth(data.summary);
+  const health = data.unavailable ? "red" : derivePaneHealth(data.summary, data.attention);
   const isFirstLoad = data.isLoading && !data.unavailable && data.summary === undefined;
   const { chips, overflow } = selectProjectChips(data.projects, data.issues);
   const ceoOverdue = deriveCeoHeartbeat(selectCeo(data.agents), Date.now()).state === "overdue";
@@ -235,6 +237,8 @@ export function PlicaCompanyPane({
         />
 
         <PlicaRunsStrip runs={data.liveRuns} issues={data.issues} company={company} onActed={data.invalidate} />
+
+        <PlicaRoutinesStrip routines={data.routines} company={company} nowMs={Date.now()} />
 
         {(chips.length > 0 || overflow > 0) && (
           <div className="flex flex-wrap items-center gap-1.5">

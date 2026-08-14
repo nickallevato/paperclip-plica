@@ -24,11 +24,13 @@ import {
   deriveCeoHeartbeat,
   deriveCompanyStats,
   derivePaneHealth,
+  deriveRoutineHealth,
   deriveTriageSummary,
   detectAlertEdges,
   filterFeed,
   formatAgeMinutes,
   formatCents,
+  formatCountdown,
   formatTokens,
   groupAttentionByKind,
   healthLabel,
@@ -1069,5 +1071,86 @@ describe("selectFeedCompanies", () => {
   it("treats pinning as the stronger statement when a company carries both marks", () => {
     // "both" is pinned and holds a stale collapsed id; pinning wins
     expect(selectFeedCompanies(companies, zones, "active").map((c) => c.id)).toContain("both");
+  });
+});
+
+describe("deriveRoutineHealth", () => {
+  const now = Date.UTC(2026, 7, 14, 12);
+  const at = (mins: number) => new Date(now + mins * 60_000).toISOString();
+  const routine = (over: Record<string, unknown> = {}) =>
+    ({ id: "r", title: "Nightly report", status: "active", triggers: [], lastRun: null, ...over }) as never;
+
+  it("counts nothing when a company has no routines", () => {
+    expect(deriveRoutineHealth(undefined, now)).toMatchObject({ total: 0, active: 0, overdue: 0, nextRunAt: null });
+  });
+
+  it("separates active from paused and ignores archived entirely", () => {
+    const health = deriveRoutineHealth(
+      [routine(), routine({ status: "paused" }), routine({ status: "archived" })],
+      now,
+    );
+    expect(health).toMatchObject({ total: 2, active: 1, paused: 1 });
+  });
+
+  it("reports the soonest upcoming run and which routine it belongs to", () => {
+    const health = deriveRoutineHealth(
+      [
+        routine({ title: "Later", triggers: [{ enabled: true, nextRunAt: at(120) }] }),
+        routine({ title: "Sooner", triggers: [{ enabled: true, nextRunAt: at(15) }] }),
+      ],
+      now,
+    );
+    expect(health.nextTitle).toBe("Sooner");
+    expect(health.nextRunAt).toBe(at(15));
+  });
+
+  it("counts a trigger as overdue only once it is past the grace window", () => {
+    const withinGrace = deriveRoutineHealth([routine({ triggers: [{ enabled: true, nextRunAt: at(-5) }] })], now);
+    expect(withinGrace.overdue).toBe(0);
+    // still counts as the next run, since it has not been written off yet
+    expect(withinGrace.nextRunAt).toBe(at(-5));
+
+    const past = deriveRoutineHealth([routine({ triggers: [{ enabled: true, nextRunAt: at(-45) }] })], now);
+    expect(past.overdue).toBe(1);
+    expect(past.nextRunAt).toBeNull();
+  });
+
+  it("ignores disabled triggers and paused routines when looking for overdue work", () => {
+    const health = deriveRoutineHealth(
+      [
+        routine({ triggers: [{ enabled: false, nextRunAt: at(-500) }] }),
+        routine({ status: "paused", triggers: [{ enabled: true, nextRunAt: at(-500) }] }),
+      ],
+      now,
+    );
+    expect(health.overdue).toBe(0);
+  });
+
+  it("counts a failed last run as failing", () => {
+    const health = deriveRoutineHealth(
+      [routine({ lastRun: { status: "failed" } }), routine({ lastRun: { status: "completed" } })],
+      now,
+    );
+    expect(health.failing).toBe(1);
+  });
+});
+
+describe("formatCountdown", () => {
+  const now = Date.UTC(2026, 7, 14, 12);
+  const at = (mins: number) => new Date(now + mins * 60_000).toISOString();
+
+  it("renders an em dash when nothing is scheduled", () => {
+    expect(formatCountdown(null, now)).toBe("—");
+  });
+
+  it("counts forward in m/h/d", () => {
+    expect(formatCountdown(at(12), now)).toBe("in 12m");
+    expect(formatCountdown(at(180), now)).toBe("in 3h");
+    expect(formatCountdown(at(2880), now)).toBe("in 2d");
+  });
+
+  it("says now for anything already due", () => {
+    expect(formatCountdown(at(0), now)).toBe("now");
+    expect(formatCountdown(at(-5), now)).toBe("now");
   });
 });

@@ -23,6 +23,7 @@ import type {
   Issue,
   IssueComment,
   Project,
+  RoutineListItem,
   SidebarBadges,
   SidebarOrderPreference,
   WorkTimelineResult,
@@ -106,6 +107,16 @@ export const costsApi = {
     const qs = params.toString();
     return api.get<CostByAgent[]>(`/companies/${companyId}/costs/by-agent${qs ? `?${qs}` : ""}`);
   },
+};
+
+/**
+ * Routines. The list endpoint returns each routine with its triggers
+ * (including nextRunAt / lastFiredAt / lastResult) and its last run, which is
+ * everything Plica needs to say whether the schedule is actually firing —
+ * no per-routine follow-up calls.
+ */
+export const routinesApi = {
+  list: (companyId: string) => api.get<RoutineListItem[]>(`/companies/${companyId}/routines`),
 };
 
 export const sidebarBadgesApi = {

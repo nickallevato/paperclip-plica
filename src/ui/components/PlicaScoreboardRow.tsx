@@ -22,6 +22,7 @@ export const PLICA_SCOREBOARD_COLUMNS = [
   "Crit",
   "Failed",
   "Oldest",
+  "Routines",
   "Tokens",
   "Inbox",
 ] as const;
@@ -65,7 +66,7 @@ export function PlicaScoreboardRow({
   thresholds: PlicaTokenThresholds;
   onUnpin?: () => void;
 }) {
-  const health = data.unavailable ? "red" : derivePaneHealth(data.summary);
+  const health = data.unavailable ? "red" : derivePaneHealth(data.summary, data.attention);
   const tokens = stats.tokens;
   const tokenTone = tokens === undefined ? undefined : tokenState(tokens, thresholds);
 
@@ -102,6 +103,17 @@ export function PlicaScoreboardRow({
         // Anything untouched for half a day is the neglect case no count surfaces.
         tone={stats.oldestMins !== null && stats.oldestMins > 720 ? "warn" : undefined}
         faint={stats.oldestMins === null}
+      />
+      {/* A routine that stopped firing shows up nowhere else — no attention
+          item, no failed run — so the count carries its own alarm. */}
+      <Cell
+        value={
+          stats.routinesOverdue > 0 || stats.routinesFailing > 0
+            ? `${stats.routines}!`
+            : String(stats.routines)
+        }
+        tone={stats.routinesFailing > 0 ? "crit" : stats.routinesOverdue > 0 ? "warn" : undefined}
+        faint={stats.routines === 0}
       />
       <Cell
         value={tokens === undefined ? "—" : formatTokens(tokens)}

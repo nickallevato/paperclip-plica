@@ -10,6 +10,7 @@ import type {
   DashboardSummary,
   Issue,
   Project,
+  RoutineListItem,
 } from "@paperclipai/shared";
 
 export type PlicaHealth = "red" | "amber" | "green";
@@ -21,10 +22,22 @@ export interface PlicaProjectChip {
 
 const CLOSED_ISSUE_STATUSES = new Set(["done", "cancelled"]);
 
-export function derivePaneHealth(summary: DashboardSummary | undefined): PlicaHealth {
+export function derivePaneHealth(
+  summary: DashboardSummary | undefined,
+  /**
+   * Optional, and worth passing wherever it is available. Incidents and agent
+   * errors are not the only way a company is in trouble: a critical blocker in
+   * the attention feed is exactly the state a HUD exists to surface, and
+   * without this a company with three of them reads green.
+   */
+  attention?: AttentionFeed,
+): PlicaHealth {
+  const live = (attention?.items ?? []).filter((item) => !item.dismissal);
+  if (summary && (summary.budgets.activeIncidents > 0 || summary.agents.error > 0)) return "red";
+  if (live.some((item) => item.severity === "critical")) return "red";
   if (!summary) return "green";
-  if (summary.budgets.activeIncidents > 0 || summary.agents.error > 0) return "red";
   if (summary.pendingApprovals > 0) return "amber";
+  if (live.some((item) => item.severity === "high")) return "amber";
   return "green";
 }
 
@@ -704,6 +717,10 @@ export interface PlicaCompanyStats {
   inbox: number;
   /** Undefined when the costs endpoint is unavailable to this user. */
   tokens: number | undefined;
+  /** Active routines, and how many of them are not firing when they should. */
+  routines: number;
+  routinesOverdue: number;
+  routinesFailing: number;
   unavailable: boolean;
 }
 
@@ -712,9 +729,11 @@ export function deriveCompanyStats(input: {
   attention: AttentionFeed | undefined;
   badges: { inbox: number } | undefined;
   tokens: number | undefined;
+  routines?: ReadonlyArray<RoutineListItem>;
   unavailable: boolean;
   nowMs: number;
 }): PlicaCompanyStats {
+  const routineHealth = deriveRoutineHealth(input.routines, input.nowMs);
   const live = (input.attention?.items ?? []).filter((item) => !item.dismissal);
   const ages = live
     .map((item) => (item.activityAt ? Math.round((input.nowMs - new Date(item.activityAt).getTime()) / 60_000) : null))
@@ -729,6 +748,9 @@ export function deriveCompanyStats(input: {
     oldestMins: ages.length ? Math.max(...ages) : null,
     inbox: input.badges?.inbox ?? 0,
     tokens: input.tokens,
+    routines: routineHealth.active,
+    routinesOverdue: routineHealth.overdue,
+    routinesFailing: routineHealth.failing,
     unavailable: input.unavailable,
   };
 }
@@ -967,4 +989,77 @@ export function selectFeedCompanies<T extends { id: string }>(
   return companies.filter(
     (company) => zones.pinnedIds.includes(company.id) || !zones.collapsedIds.includes(company.id),
   );
+}
+
+/**
+ * A routine that should have fired by now but has not is invisible in every
+ * other surface — it produces no attention item, no failed run, nothing. It
+ * simply stops happening. This grace window keeps normal scheduler lag from
+ * reading as a fault.
+ */
+export const PLICA_ROUTINE_OVERDUE_GRACE_MS = 10 * 60_000;
+
+export interface PlicaRoutineHealth {
+  total: number;
+  /** Status "active" — paused and archived routines are not expected to fire. */
+  active: number;
+  paused: number;
+  /** Active routines whose next scheduled run is further past than the grace window. */
+  overdue: number;
+  /** Active routines whose most recent run failed. */
+  failing: number;
+  /** Soonest upcoming run across every enabled trigger, or null when nothing is scheduled. */
+  nextRunAt: string | null;
+  /** The routine that soonest run belongs to. */
+  nextTitle: string | null;
+}
+
+export function deriveRoutineHealth(
+  routines: ReadonlyArray<RoutineListItem> | undefined,
+  nowMs: number,
+): PlicaRoutineHealth {
+  const all = routines ?? [];
+  const live = all.filter((routine) => routine.status !== "archived");
+  const active = live.filter((routine) => routine.status === "active");
+
+  let overdue = 0;
+  let nextRunAt: number | null = null;
+  let nextTitle: string | null = null;
+
+  for (const routine of active) {
+    for (const trigger of routine.triggers ?? []) {
+      if (!trigger.enabled || !trigger.nextRunAt) continue;
+      const runAt = new Date(trigger.nextRunAt).getTime();
+      if (!Number.isFinite(runAt)) continue;
+      if (runAt < nowMs - PLICA_ROUTINE_OVERDUE_GRACE_MS) {
+        overdue += 1;
+        continue;
+      }
+      if (nextRunAt === null || runAt < nextRunAt) {
+        nextRunAt = runAt;
+        nextTitle = routine.title;
+      }
+    }
+  }
+
+  return {
+    total: live.length,
+    active: active.length,
+    paused: live.filter((routine) => routine.status === "paused").length,
+    overdue,
+    failing: active.filter((routine) => routine.lastRun?.status === "failed").length,
+    nextRunAt: nextRunAt === null ? null : new Date(nextRunAt).toISOString(),
+    nextTitle,
+  };
+}
+
+/** "in 12m", "in 3h", "in 2d" — or "now" when it is due this minute. */
+export function formatCountdown(iso: string | null, nowMs: number): string {
+  if (!iso) return "—";
+  const mins = Math.round((new Date(iso).getTime() - nowMs) / 60_000);
+  if (!Number.isFinite(mins)) return "—";
+  if (mins <= 0) return "now";
+  if (mins < 60) return `in ${mins}m`;
+  if (mins < 1440) return `in ${Math.round(mins / 60)}h`;
+  return `in ${Math.round(mins / 1440)}d`;
 }

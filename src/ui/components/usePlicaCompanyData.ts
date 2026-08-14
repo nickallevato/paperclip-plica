@@ -7,10 +7,12 @@ import type {
   DashboardSummary,
   Issue,
   Project,
+  RoutineListItem,
   SidebarBadges,
 } from "@paperclipai/shared";
 import { attentionApi } from "../host/api";
 import { costsApi } from "../host/api";
+import { routinesApi } from "../host/api";
 import { agentsApi } from "../host/api";
 import { approvalsApi } from "../host/api";
 import { dashboardApi } from "../host/api";
@@ -30,6 +32,8 @@ export interface PlicaCompanyData {
   approvals: Approval[];
   badges: SidebarBadges | undefined;
   attention: AttentionFeed | undefined;
+  /** Company routines with their triggers and last run. */
+  routines: RoutineListItem[];
   /**
    * Month-to-date tokens across every agent, or undefined when the costs
    * endpoint is unavailable — it is permission-gated, so a viewer without cost
@@ -95,6 +99,16 @@ export function usePlicaCompanyData(companyId: string): PlicaCompanyData {
     queryFn: () => attentionApi.list(companyId),
     ...POLL,
   });
+  // Schedules change on human timescales, not agent ones — a minute-by-minute
+  // poll would buy nothing. The countdown is computed from nextRunAt at render
+  // time, so it stays live between fetches.
+  const routines = useQuery({
+    queryKey: queryKeys.plica.routines(companyId),
+    queryFn: () => routinesApi.list(companyId),
+    refetchInterval: 60_000,
+    refetchIntervalInBackground: true,
+    retry: false,
+  });
   // Tokens move far more slowly than attention and cost a heavier query, so
   // this one polls on its own longer interval rather than riding POLL.
   const monthRange = currentMonthRange(Date.now());
@@ -128,6 +142,7 @@ export function usePlicaCompanyData(companyId: string): PlicaCompanyData {
     approvals: approvals.data ?? [],
     badges: badges.data,
     attention: attention.data,
+    routines: routines.data ?? [],
     tokens: tokens.isSuccess ? sumAgentTokens(tokens.data) : undefined,
     isLoading: queries.some((query) => query.isLoading),
     unavailable: summary.isError && summary.dataUpdatedAt === 0,

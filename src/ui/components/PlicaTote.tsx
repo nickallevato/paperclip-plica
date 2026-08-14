@@ -137,6 +137,18 @@ export function PlicaTote({
         }
       />
       <Tile
+        value={String(sum((stats) => stats.routines))}
+        label="Routines"
+        detail={
+          sum((s) => s.routinesOverdue) + sum((s) => s.routinesFailing) > 0
+            ? `${sum((s) => s.routinesOverdue)} overdue · ${sum((s) => s.routinesFailing)} failing`
+            : "all firing on schedule"
+        }
+        tone={
+          sum((s) => s.routinesFailing) > 0 ? "crit" : sum((s) => s.routinesOverdue) > 0 ? "warn" : undefined
+        }
+      />
+      <Tile
         value={String(failed)}
         label="Failed runs"
         detail={split(entries.map((e) => ({ company: e.company, value: e.stats.failed })))}

@@ -73,7 +73,7 @@ export function PlicaCompanySlot({
 
   // An unavailable pane must alert as red too, matching the pane's own
   // health-override rule (never render/alert an unreachable pane as healthy).
-  const health = data.unavailable ? "red" : derivePaneHealth(data.summary);
+  const health = data.unavailable ? "red" : derivePaneHealth(data.summary, data.attention);
   const criticalAttentionIds = (data.attention?.items ?? [])
     .filter((item) => !item.dismissal && item.severity === "critical")
     .map((item) => item.id);
@@ -101,6 +101,7 @@ export function PlicaCompanySlot({
     attention: data.attention,
     badges: data.badges,
     tokens: data.tokens,
+    routines: data.routines,
     unavailable: data.unavailable,
     nowMs: Date.now(),
   });
@@ -114,6 +115,7 @@ export function PlicaCompanySlot({
     company.id,
     stats.running, stats.active, stats.tasks, stats.needs, stats.critical,
     stats.failed, stats.oldestMins, stats.inbox, stats.tokens, stats.unavailable,
+    stats.routines, stats.routinesOverdue, stats.routinesFailing,
   ]);
 
   if (view === "signal") {

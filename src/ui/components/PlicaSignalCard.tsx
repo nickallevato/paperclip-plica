@@ -48,7 +48,7 @@ export function PlicaSignalCard({
   onUnpin?: () => void;
 }) {
   const [openKind, setOpenKind] = useState<AttentionItem["sourceKind"] | null>(null);
-  const health = data.unavailable ? "red" : derivePaneHealth(data.summary);
+  const health = data.unavailable ? "red" : derivePaneHealth(data.summary, data.attention);
   const { cells, total } = attentionKindSummary(data.attention);
   const drilled = openKind
     ? (data.attention?.items ?? []).filter((item) => !item.dismissal && item.sourceKind === openKind)
@@ -59,6 +59,7 @@ export function PlicaSignalCard({
       data-signal-card={company.id}
       className={cn(
         "flex min-w-0 flex-col gap-2 rounded-lg border bg-card p-2.5",
+        health === "green" && "border-l-4 border-l-emerald-500",
         health === "amber" && "border-l-4 border-l-amber-500",
         health === "red" && "border-l-4 border-l-red-500 bg-red-500/[0.03]",
       )}
@@ -85,7 +86,9 @@ export function PlicaSignalCard({
           className={cn(
             "ml-auto shrink-0 rounded-full px-1.5 text-[length:var(--plica-fs-micro,11px)] leading-[1.45] font-semibold tabular-nums",
             total === 0
-              ? "border text-muted-foreground"
+              ? health === "green"
+                ? "border border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+                : "border text-muted-foreground"
               : health === "red"
                 ? "bg-red-600 text-white"
                 : "bg-amber-600 text-white",

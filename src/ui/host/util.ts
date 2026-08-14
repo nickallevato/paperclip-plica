@@ -42,6 +42,7 @@ export const queryKeys = {
     summary: (companyId: string) => ["plica", "summary", companyId] as const,
     badges: (companyId: string) => ["plica", "badges", companyId] as const,
     attention: (companyId: string) => ["plica", "attention", companyId] as const,
+    routines: (companyId: string) => ["plica", "routines", companyId] as const,
     tokens: (companyId: string, from: string, to: string) =>
       ["plica", "tokens", companyId, from, to] as const,
     activity: (companyId: string) => ["plica", "activity", companyId] as const,

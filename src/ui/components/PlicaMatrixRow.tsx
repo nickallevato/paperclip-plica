@@ -34,7 +34,7 @@ export function PlicaMatrixRow({
   data: PlicaCompanyData;
   onUnpin?: () => void;
 }) {
-  const health = data.unavailable ? "red" : derivePaneHealth(data.summary);
+  const health = data.unavailable ? "red" : derivePaneHealth(data.summary, data.attention);
   const { cells } = attentionKindSummary(data.attention);
 
   return (
