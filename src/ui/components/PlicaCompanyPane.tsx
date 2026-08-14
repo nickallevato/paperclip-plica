@@ -7,6 +7,7 @@ import {
   CircleDollarSign,
   ExternalLink,
   ListTodo,
+  Pin,
   Plus,
 } from "lucide-react";
 import type { Company } from "@paperclipai/shared";
@@ -52,12 +53,15 @@ export function PlicaCompanyPane({
   data,
   pulse = false,
   onToggleCollapse,
+  onTogglePin,
 }: {
   company: Company;
   data: PlicaCompanyData;
   pulse?: boolean;
   /** Docks the company out of the wall into the compact strip. */
   onToggleCollapse?: () => void;
+  /** Pins the company up into the bar, hoisting it out of the wall. */
+  onTogglePin?: () => void;
 }) {
   // Tri-state: null = automatic (show whenever approvals are pending — the
   // wall should let you approve without an extra click); true/false = the
@@ -122,6 +126,17 @@ export function PlicaCompanyPane({
         </div>
         <div className="flex items-center gap-3">
           <PlicaSparkline runActivity={data.summary?.runActivity ?? []} />
+          {onTogglePin && (
+            <button
+              type="button"
+              onClick={onTogglePin}
+              title="Pin to the bar"
+              aria-label={`Pin ${company.name} to the bar`}
+              className="text-muted-foreground hover:text-foreground"
+            >
+              <Pin className="h-3.5 w-3.5" />
+            </button>
+          )}
           {onToggleCollapse && (
             <button
               type="button"

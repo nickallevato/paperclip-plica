@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useQueries, useQuery } from "@tanstack/react-query";
-import { Bell, BellOff, FoldVertical, Layers, Maximize, Minimize, TriangleAlert, UnfoldVertical } from "lucide-react";
+import { Bell, BellOff, FoldVertical, Layers, Maximize, Minimize, Pin, TriangleAlert, UnfoldVertical } from "lucide-react";
 import type { DashboardSummary } from "@paperclipai/shared";
 import { authApi } from "./host/api";
 import { companiesListQueryOptions } from "./host/companies-query";
@@ -20,9 +20,14 @@ import {
   normalizeAlertsEnabled,
   normalizeLayoutMode,
   normalizeViewMode,
+  PLICA_ATTENTION_KINDS,
+  PLICA_BAR_STORAGE_KEY,
   PLICA_COLLAPSED_STORAGE_KEY,
+  PLICA_PINNED_STORAGE_KEY,
   PLICA_SORT_STORAGE_KEY,
+  normalizeBarMode,
   normalizeCollapsedIds,
+  normalizePinnedIds,
   normalizeSortMode,
   orderTriageCompanies,
   partitionHotFirst,
@@ -30,6 +35,7 @@ import {
   plicaRefetchInterval,
   shouldShowBriefing,
   type PlicaActionable,
+  type PlicaBarMode,
   type PlicaLayoutMode,
   type PlicaViewMode,
 } from "./lib/plica";
@@ -47,6 +53,11 @@ const VIEW_MODES: Array<{ mode: PlicaViewMode; label: string }> = [
   { mode: "triage", label: "Triage" },
 ];
 
+const BAR_MODES: Array<{ mode: PlicaBarMode; label: string }> = [
+  { mode: "signal", label: "Signal" },
+  { mode: "matrix", label: "Matrix" },
+];
+
 export function PlicaHud() {
   const { setBreadcrumbs } = useBreadcrumbs();
   useEffect(() => {
@@ -61,6 +72,35 @@ export function PlicaHud() {
       localStorage.setItem(PLICA_LAYOUT_STORAGE_KEY, mode);
     } catch {
       // storage unavailable (private mode) — layout still applies for this session
+    }
+  };
+  // Pinned companies are hoisted out of the wall into the bar, so a company
+  // is in exactly one place — which is what keeps the wall's column count
+  // meaning something. Persisted alongside the other layout preferences.
+  const [pinnedIds, setPinnedIds] = useState<string[]>(() =>
+    normalizePinnedIds(typeof localStorage === "undefined" ? null : localStorage.getItem(PLICA_PINNED_STORAGE_KEY)),
+  );
+  const persistPinned = (ids: string[]) => {
+    setPinnedIds(ids);
+    try {
+      localStorage.setItem(PLICA_PINNED_STORAGE_KEY, JSON.stringify(ids));
+    } catch {
+      // storage unavailable (private mode) — pins still apply for this session
+    }
+  };
+  const togglePinned = (companyId: string) =>
+    persistPinned(
+      pinnedIds.includes(companyId) ? pinnedIds.filter((id) => id !== companyId) : [...pinnedIds, companyId],
+    );
+  const [barMode, setBarMode] = useState<PlicaBarMode>(() =>
+    normalizeBarMode(typeof localStorage === "undefined" ? null : localStorage.getItem(PLICA_BAR_STORAGE_KEY)),
+  );
+  const selectBarMode = (mode: PlicaBarMode) => {
+    setBarMode(mode);
+    try {
+      localStorage.setItem(PLICA_BAR_STORAGE_KEY, mode);
+    } catch {
+      // storage unavailable (private mode) — bar mode still applies for this session
     }
   };
   const [view, setView] = useState<PlicaViewMode>(() =>
@@ -249,6 +289,16 @@ export function PlicaHud() {
     () => (sortMode === "hot" ? partitionHotFirst(orderedCompanies, hotIds) : orderedCompanies),
     [sortMode, orderedCompanies, hotIds],
   );
+  // Pinned companies are hoisted, not duplicated: the bar shows them and the
+  // wall below does not, so each company occupies exactly one place.
+  const pinnedCompanies = useMemo(
+    () => companies.filter((company) => pinnedIds.includes(company.id)),
+    [companies, pinnedIds],
+  );
+  const workspaceCompanies = useMemo(
+    () => companies.filter((company) => !pinnedIds.includes(company.id)),
+    [companies, pinnedIds],
+  );
 
   const summaries = useQueries({
     queries: companies.map((company) => ({
@@ -364,8 +414,11 @@ export function PlicaHud() {
                 type="button"
                 aria-label="Dock all companies"
                 title="Dock all companies"
-                disabled={companies.length === 0 || companies.every((company) => collapsedIds.includes(company.id))}
-                onClick={() => setCollapsedAll(companies.map((company) => company.id))}
+                disabled={
+                  workspaceCompanies.length === 0 ||
+                  workspaceCompanies.every((company) => collapsedIds.includes(company.id))
+                }
+                onClick={() => setCollapsedAll(workspaceCompanies.map((company) => company.id))}
                 className="rounded-md border p-1 text-muted-foreground hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
               >
                 <FoldVertical className="h-3.5 w-3.5" />
@@ -405,6 +458,83 @@ export function PlicaHud() {
         </div>
       </div>
 
+      {pinnedCompanies.length > 0 && (
+        <div data-plica-bar className="space-y-1.5">
+          <div className="flex items-center gap-2">
+            <Pin className="h-3.5 w-3.5 text-muted-foreground" />
+            <span className="text-[length:var(--plica-fs-micro,11px)] leading-[1.45] font-semibold uppercase tracking-wide text-muted-foreground">
+              Pinned
+            </span>
+            <div role="group" aria-label="Pinned bar mode" className="flex items-center rounded-md border p-0.5">
+              {BAR_MODES.map(({ mode, label }) => (
+                <button
+                  key={mode}
+                  type="button"
+                  aria-pressed={barMode === mode}
+                  onClick={() => selectBarMode(mode)}
+                  className={cn(
+                    "rounded px-2 py-0.5 text-[length:var(--plica-fs-micro,11px)] leading-[1.45]",
+                    barMode === mode ? "bg-muted font-medium" : "text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            <span className="ml-auto text-[length:var(--plica-fs-micro,11px)] leading-[1.45] text-muted-foreground tabular-nums">
+              {pinnedCompanies.length} of {companies.length} watched
+            </span>
+          </div>
+          {barMode === "matrix" ? (
+            <div className="overflow-x-auto rounded-lg border bg-card">
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr>
+                    <th className="py-1 pl-2 text-left text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      Company
+                    </th>
+                    {PLICA_ATTENTION_KINDS.map(({ kind, label }) => (
+                      <th
+                        key={kind}
+                        className="px-0.5 py-1 text-center text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
+                      >
+                        {label}
+                      </th>
+                    ))}
+                    <th className="w-6" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {pinnedCompanies.map((company) => (
+                    <PlicaCompanySlot
+                      key={company.id}
+                      company={company}
+                      view="matrix"
+                      onActionable={handleActionable}
+                      alertsEnabled={alertsEnabled}
+                      onUnpin={() => togglePinned(company.id)}
+                    />
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+              {pinnedCompanies.map((company) => (
+                <PlicaCompanySlot
+                  key={company.id}
+                  company={company}
+                  view="signal"
+                  onActionable={handleActionable}
+                  alertsEnabled={alertsEnabled}
+                  onUnpin={() => togglePinned(company.id)}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {showBriefing && lastVisit && companies.length > 0 && (
         <PlicaBriefing companies={companies} since={lastVisit} onDismiss={() => setBriefingDismissed(true)} />
       )}
@@ -418,7 +548,7 @@ export function PlicaHud() {
         {collapsedIds.length > 0 && (
           <div data-docked className="flex flex-wrap items-center gap-1.5">
             <span className="text-[length:var(--plica-fs-micro,11px)] leading-[1.45] uppercase tracking-wide text-muted-foreground">Docked</span>
-            {companies
+            {workspaceCompanies
               .filter((company) => collapsedIds.includes(company.id))
               .map((company) => (
                 <PlicaDockedTile key={company.id} company={company} onExpand={() => toggleCollapsed(company.id)} />
@@ -434,7 +564,7 @@ export function PlicaHud() {
             PLICA_LAYOUT_CLASSES[layout],
           )}
         >
-          {companies
+          {workspaceCompanies
             .filter((company) => !collapsedIds.includes(company.id))
             .map((company) => (
               <PlicaCompanySlot
@@ -444,13 +574,16 @@ export function PlicaHud() {
                 onActionable={handleActionable}
                 alertsEnabled={alertsEnabled}
                 onToggleCollapse={() => toggleCollapsed(company.id)}
+                onTogglePin={() => togglePinned(company.id)}
               />
             ))}
         </div>
         </>
       ) : (
         <div data-view="triage" className="divide-y overflow-hidden rounded-lg border">
-          {orderedTriageCompanies.map((company) => (
+          {orderedTriageCompanies
+            .filter((company) => !pinnedIds.includes(company.id))
+            .map((company) => (
             <PlicaCompanySlot
               key={company.id}
               company={company}

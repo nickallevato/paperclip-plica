@@ -7,9 +7,11 @@ import {
   deriveActionable,
   type PlicaActionable,
   type PlicaAlertSnapshot,
-  type PlicaViewMode,
+  type PlicaSlotPresentation,
 } from "../lib/plica";
 import { PlicaCompanyPane } from "./PlicaCompanyPane";
+import { PlicaMatrixRow } from "./PlicaMatrixRow";
+import { PlicaSignalCard } from "./PlicaSignalCard";
 import { PlicaTriageSection } from "./PlicaTriageSection";
 import { usePlicaAlerts } from "./usePlicaAlerts";
 import { usePlicaCompanyData } from "./usePlicaCompanyData";
@@ -30,14 +32,20 @@ export function PlicaCompanySlot({
   triageOpen = false,
   onTriageToggle = () => undefined,
   onToggleCollapse,
+  onUnpin,
+  onTogglePin,
 }: {
   company: Company;
-  view: PlicaViewMode;
+  view: PlicaSlotPresentation;
   onActionable?: (companyId: string, actionable: PlicaActionable) => void;
   alertsEnabled?: boolean;
   triageOpen?: boolean;
   onTriageToggle?: () => void;
   onToggleCollapse?: () => void;
+  /** Present when this company is pinned to the bar. */
+  onUnpin?: () => void;
+  /** Pins this company up into the bar, hoisting it out of the workspace. */
+  onTogglePin?: () => void;
 }) {
   const data = usePlicaCompanyData(company.id);
   const ceoOverdue = deriveCeoHeartbeat(selectCeo(data.agents), Date.now()).state === "overdue";
@@ -68,8 +76,22 @@ export function PlicaCompanySlot({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [company.id, actionable.criticalOrHigh, actionable.count]);
 
+  if (view === "signal") {
+    return <PlicaSignalCard company={company} data={data} onUnpin={onUnpin} />;
+  }
+  if (view === "matrix") {
+    return <PlicaMatrixRow company={company} data={data} onUnpin={onUnpin} />;
+  }
   if (view === "triage") {
     return <PlicaTriageSection company={company} data={data} open={triageOpen} onToggle={onTriageToggle} />;
   }
-  return <PlicaCompanyPane company={company} data={data} pulse={pulse} onToggleCollapse={onToggleCollapse} />;
+  return (
+    <PlicaCompanyPane
+      company={company}
+      data={data}
+      pulse={pulse}
+      onToggleCollapse={onToggleCollapse}
+      onTogglePin={onTogglePin}
+    />
+  );
 }

@@ -3,6 +3,7 @@ import type {
   Approval,
   AttentionFeed,
   AttentionItem,
+  AttentionSeverity,
   Company,
   DashboardRunActivityDay,
   DashboardSummary,
@@ -520,4 +521,102 @@ export function normalizeCollapsedIds(raw: string | null | undefined): string[] 
   } catch {
     return [];
   }
+}
+
+export const PLICA_PINNED_STORAGE_KEY = "plica.pinned";
+
+/** Parse the persisted pinned-company id list, tolerating junk. */
+export function normalizePinnedIds(raw: string | null | undefined): string[] {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * How the pinned bar presents a company. Separate from PlicaViewMode because
+ * the bar and the workspace answer different questions and are switched
+ * independently — you can watch four companies as a heatmap up top while
+ * reading the rest as panes below.
+ */
+export type PlicaBarMode = "signal" | "matrix";
+
+/**
+ * Everything PlicaCompanySlot can render a company as. One union so the slot
+ * keeps a single data poll no matter which zone it is rendering into.
+ */
+export type PlicaSlotPresentation = PlicaViewMode | PlicaBarMode;
+
+export const PLICA_BAR_STORAGE_KEY = "plica.bar";
+
+export function normalizeBarMode(value: string | null | undefined): PlicaBarMode {
+  return value === "matrix" ? "matrix" : "signal";
+}
+
+/**
+ * The attention kinds the bar rolls up, in the order they appear. Ordered by
+ * how much they demand of you rather than alphabetically, so the leftmost
+ * cells are the ones worth looking at first. Labels are deliberately short —
+ * they sit in a ~60px cell and must not wrap at kiosk scale.
+ *
+ * Covers every member of ATTENTION_SOURCE_KINDS; a feed carrying a kind we
+ * don't know about still counts toward the card total via attentionKindSummary,
+ * it just has no cell of its own.
+ */
+export const PLICA_ATTENTION_KINDS: ReadonlyArray<{ kind: AttentionItem["sourceKind"]; label: string }> = [
+  { kind: "blocker_attention", label: "Blocked" },
+  { kind: "failed_run", label: "Failed" },
+  { kind: "agent_error_alert", label: "Errors" },
+  { kind: "approval", label: "Approve" },
+  { kind: "decision", label: "Decide" },
+  { kind: "issue_thread_interaction", label: "Answer" },
+  { kind: "review", label: "Review" },
+  { kind: "recovery_action", label: "Recover" },
+  { kind: "join_request", label: "Access" },
+  { kind: "budget_alert", label: "Budget" },
+  { kind: "productivity_review", label: "Report" },
+];
+
+export type PlicaKindCell = {
+  kind: AttentionItem["sourceKind"];
+  label: string;
+  count: number;
+  /** Worst severity present in this cell, or null when the cell is empty. */
+  worst: AttentionSeverity | null;
+};
+
+export interface PlicaKindSummary {
+  cells: PlicaKindCell[];
+  /** Every live item, including kinds with no cell of their own. */
+  total: number;
+}
+
+const SEVERITY_RANK: Record<AttentionSeverity, number> = { critical: 0, high: 1, medium: 2, low: 3 };
+
+/** The worst severity in a set, or null when the set is empty. */
+export function worstSeverity(items: ReadonlyArray<Pick<AttentionItem, "severity">>): AttentionSeverity | null {
+  let worst: AttentionSeverity | null = null;
+  for (const item of items) {
+    if (worst === null || SEVERITY_RANK[item.severity] < SEVERITY_RANK[worst]) worst = item.severity;
+  }
+  return worst;
+}
+
+/**
+ * Roll an attention feed up into one cell per kind. Dismissed items are
+ * excluded to match what the panes below already show — a card that counted
+ * dismissed work would send you looking for something that isn't there.
+ */
+export function attentionKindSummary(attention: AttentionFeed | undefined): PlicaKindSummary {
+  const live = (attention?.items ?? []).filter((item) => !item.dismissal);
+  return {
+    cells: PLICA_ATTENTION_KINDS.map(({ kind, label }) => {
+      const inKind = live.filter((item) => item.sourceKind === kind);
+      return { kind, label, count: inKind.length, worst: worstSeverity(inKind) };
+    }),
+    total: live.length,
+  };
 }

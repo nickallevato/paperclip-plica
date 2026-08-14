@@ -9,32 +9,37 @@ import type {
   Issue,
 } from "@paperclipai/shared";
 import {
+  PLICA_ATTENTION_KINDS,
+  PLICA_LAYOUT_CLASSES,
+  attentionDetailText,
+  attentionKindSummary,
   deriveActionable,
   deriveBriefingLine,
   deriveCeoHeartbeat,
   derivePaneHealth,
+  deriveTriageSummary,
   detectAlertEdges,
   formatCents,
   healthLabel,
   intervalLabel,
   issueStatusLabel,
+  normalizeBarMode,
+  normalizeCollapsedIds,
   normalizeLayoutMode,
-  PLICA_LAYOUT_CLASSES,
+  normalizePinnedIds,
+  normalizeSortMode,
   normalizeViewMode,
   nudgeTitle,
   orderTriageCompanies,
-  relativeTimeLabel,
-  attentionDetailText,
-  normalizeCollapsedIds,
-  deriveTriageSummary,
-  normalizeSortMode,
   partitionHotFirst,
+  relativeTimeLabel,
   selectCeo,
   selectProjectChips,
   shouldShowBriefing,
   sparklineDays,
   summarizePayloadEntries,
   type PlicaAlertSnapshot,
+  worstSeverity,
 } from "./plica";
 
 function summaryWith(overrides: {
@@ -600,5 +605,105 @@ describe("normalizeCollapsedIds", () => {
     expect(normalizeCollapsedIds("not json")).toEqual([]);
     expect(normalizeCollapsedIds(JSON.stringify({ a: 1 }))).toEqual([]);
     expect(normalizeCollapsedIds(null)).toEqual([]);
+  });
+});
+
+describe("normalizePinnedIds", () => {
+  it("round-trips a stored list", () => {
+    expect(normalizePinnedIds(JSON.stringify(["a", "b"]))).toEqual(["a", "b"]);
+  });
+
+  it("returns empty for junk, non-arrays, and absent values", () => {
+    expect(normalizePinnedIds(null)).toEqual([]);
+    expect(normalizePinnedIds("")).toEqual([]);
+    expect(normalizePinnedIds("{oops")).toEqual([]);
+    expect(normalizePinnedIds(JSON.stringify({ a: 1 }))).toEqual([]);
+  });
+
+  it("drops non-string entries rather than trusting the blob", () => {
+    expect(normalizePinnedIds(JSON.stringify(["a", 3, null, "b"]))).toEqual(["a", "b"]);
+  });
+});
+
+describe("normalizeBarMode", () => {
+  it("defaults to signal for anything unrecognized", () => {
+    expect(normalizeBarMode(null)).toBe("signal");
+    expect(normalizeBarMode("nonsense")).toBe("signal");
+    expect(normalizeBarMode("signal")).toBe("signal");
+  });
+
+  it("accepts matrix", () => {
+    expect(normalizeBarMode("matrix")).toBe("matrix");
+  });
+});
+
+describe("worstSeverity", () => {
+  it("returns null for an empty set", () => {
+    expect(worstSeverity([])).toBeNull();
+  });
+
+  it("ranks critical above high above medium above low", () => {
+    expect(worstSeverity([{ severity: "low" }, { severity: "high" }, { severity: "medium" }])).toBe("high");
+    expect(worstSeverity([{ severity: "high" }, { severity: "critical" }])).toBe("critical");
+    expect(worstSeverity([{ severity: "low" }, { severity: "medium" }])).toBe("medium");
+  });
+});
+
+describe("attentionKindSummary", () => {
+  const feed = (items: Array<{ kind: string; severity: string; dismissed?: boolean }>): AttentionFeed =>
+    ({
+      companyId: "c1",
+      generatedAt: "",
+      totalCount: items.length,
+      countsBySourceKind: {},
+      items: items.map((item, index) => ({
+        id: `att-${index}`,
+        companyId: "c1",
+        sourceKind: item.kind,
+        severity: item.severity,
+        rank: index,
+        whyNow: "",
+        dismissal: item.dismissed ? { dismissedAt: "2026-07-28T00:00:00Z" } : null,
+        subject: { kind: "issue", id: `i${index}`, companyId: "c1", title: null, identifier: null, status: null, href: null },
+      })),
+    }) as never;
+
+  it("returns a cell per known kind even when the feed is missing", () => {
+    const summary = attentionKindSummary(undefined);
+    expect(summary.total).toBe(0);
+    expect(summary.cells).toHaveLength(PLICA_ATTENTION_KINDS.length);
+    expect(summary.cells.every((cell) => cell.count === 0 && cell.worst === null)).toBe(true);
+  });
+
+  it("counts per kind and reports each cell's worst severity", () => {
+    const summary = attentionKindSummary(
+      feed([
+        { kind: "failed_run", severity: "high" },
+        { kind: "failed_run", severity: "critical" },
+        { kind: "approval", severity: "medium" },
+      ]),
+    );
+    const failed = summary.cells.find((cell) => cell.kind === "failed_run");
+    const approval = summary.cells.find((cell) => cell.kind === "approval");
+    expect(failed).toMatchObject({ count: 2, worst: "critical" });
+    expect(approval).toMatchObject({ count: 1, worst: "medium" });
+    expect(summary.total).toBe(3);
+  });
+
+  it("excludes dismissed items, matching what the panes below show", () => {
+    const summary = attentionKindSummary(
+      feed([
+        { kind: "approval", severity: "critical", dismissed: true },
+        { kind: "approval", severity: "low" },
+      ]),
+    );
+    expect(summary.cells.find((cell) => cell.kind === "approval")).toMatchObject({ count: 1, worst: "low" });
+    expect(summary.total).toBe(1);
+  });
+
+  it("counts an unknown kind toward the total without inventing a cell", () => {
+    const summary = attentionKindSummary(feed([{ kind: "something_new", severity: "high" }]));
+    expect(summary.total).toBe(1);
+    expect(summary.cells.every((cell) => cell.count === 0)).toBe(true);
   });
 });
