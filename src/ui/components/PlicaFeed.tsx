@@ -8,6 +8,7 @@ import { CompanyPatternIcon } from "../host/ui-kit";
 import {
   attentionAgeMinutes,
   attentionDetailText,
+  attentionRowTitle,
   filterFeed,
   formatAgeMinutes,
   mergeAttentionFeed,
@@ -197,7 +198,7 @@ export function PlicaFeed({
                     {subject.identifier}
                   </span>
                 )}
-                <span className="min-w-0 flex-1 truncate">{subject.title ?? item.whyNow}</span>
+                <span className="min-w-0 flex-1 truncate">{attentionRowTitle(item)}</span>
                 <span className="shrink-0 tabular-nums text-[length:var(--plica-fs-micro,11px)] leading-[1.45] text-muted-foreground">
                   {formatAgeMinutes(attentionAgeMinutes(item, nowMs))}
                 </span>

@@ -1,6 +1,6 @@
 import type { AttentionItem, Company } from "@paperclipai/shared";
 import { cn, toCompanyRelativePath } from "../host/util";
-import { attentionAgeMinutes, attentionDetailText, formatAgeMinutes } from "../lib/plica";
+import { attentionAgeMinutes, attentionDetailText, attentionRowTitle, formatAgeMinutes } from "../lib/plica";
 import { PlicaIssueHover } from "./PlicaIssueHover";
 import { PlicaKindGlyph } from "./PlicaKindGlyph";
 import { PlicaLink } from "./PlicaLink";
@@ -30,7 +30,7 @@ export function PlicaAttentionLedgerRow({
   const age = formatAgeMinutes(attentionAgeMinutes(item, nowMs));
   // Prose is still the most useful thing on hover, so keep it as the title.
   const prose = attentionDetailText(item.detail) ?? item.whyNow;
-  const title = subject.title ?? item.whyNow;
+  const title = attentionRowTitle(item);
 
   const inner = (
     <>

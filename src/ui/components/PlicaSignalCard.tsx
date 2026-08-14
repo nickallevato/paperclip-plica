@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { PinOff } from "lucide-react";
+import { ChevronDown, PinOff } from "lucide-react";
 import type { AttentionItem, Company } from "@paperclipai/shared";
 import { CompanyPatternIcon } from "../host/ui-kit";
 import { Popover, PopoverContent, PopoverTrigger } from "../host/ui-kit";
@@ -148,7 +148,7 @@ export function PlicaSignalCard({
                       cell.count === 0
                         ? "border-dashed border-border/60 bg-transparent"
                         : cn("bg-muted/40 hover:bg-muted/70", tone),
-                      isOpen && "ring-1 ring-ring",
+                      isOpen && "bg-muted ring-1 ring-ring",
                     )}
                   >
                     <span className="flex w-full items-center gap-1">
@@ -174,8 +174,20 @@ export function PlicaSignalCard({
                         {cell.count}
                       </span>
                     </span>
-                    <span className="w-full truncate text-[length:var(--plica-fs-micro,11px)] leading-[1.45] uppercase tracking-wide text-muted-foreground">
-                      {cell.label}
+                    <span className="flex w-full items-center gap-0.5 text-[length:var(--plica-fs-micro,11px)] leading-[1.45] uppercase tracking-wide text-muted-foreground">
+                      <span className="min-w-0 truncate">{cell.label}</span>
+                      {/* The host marks anything that opens a menu with a
+                          chevron; without one these read as plain stats and
+                          nobody discovers the drill. */}
+                      {cell.count > 0 && (
+                        <ChevronDown
+                          aria-hidden
+                          className={cn(
+                            "ml-auto h-3 w-3 shrink-0 transition-transform",
+                            isOpen && "rotate-180",
+                          )}
+                        />
+                      )}
                     </span>
                   </button>
                 </PopoverTrigger>
@@ -187,7 +199,11 @@ export function PlicaSignalCard({
                   align="start"
                   sideOffset={6}
                   data-signal-drill={cell.key}
-                  className="w-[22rem] max-w-[90vw] p-1.5"
+                  // w-80 is the host's widest standard menu step; the cell
+                  // trigger is far too narrow to anchor to with
+                  // w-(--radix-popover-trigger-width) the way the host's
+                  // field popovers do.
+                  className="w-80 max-w-[90vw] p-1.5"
                 >
                   <div className="flex items-center gap-1.5 px-1.5 pb-1 text-[length:var(--plica-fs-micro,11px)] leading-[1.45] font-semibold uppercase tracking-wide text-muted-foreground">
                     <PlicaGroupGlyph group={cell.key} />

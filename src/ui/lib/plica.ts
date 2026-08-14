@@ -1084,3 +1084,51 @@ export function groupAttentionByGroup(items: ReadonlyArray<AttentionItem>): Plic
   }
   return groups;
 }
+
+/**
+ * The specific thing an item is about, or null.
+ *
+ * attentionDetailText will happily return a generic sentence — "3 questions
+ * awaiting answers", "blocked by ?" — which tells you the shape of the problem
+ * and nothing about which problem. That is fine as a subtitle and useless as a
+ * row title. This returns only text drawn from the item itself, so callers can
+ * fall back to something better rather than printing a placeholder.
+ */
+export function attentionSpecificText(detail: AttentionItem["detail"]): string | null {
+  if (!detail) return null;
+  const nonEmpty = (value: string | null | undefined) => (value && value.trim() ? value.trim() : null);
+  switch (detail.kind) {
+    case "approval":
+    case "plan_approval":
+    case "generic":
+      return nonEmpty(detail.summaryExcerpt);
+    case "confirmation":
+    case "checkbox_confirmation":
+    case "item_verdicts":
+      return nonEmpty(detail.promptExcerpt);
+    case "questions":
+      return nonEmpty(detail.firstQuestionText);
+    case "suggested_tasks":
+      return nonEmpty(detail.firstTaskTitle);
+    case "failed_run":
+    case "agent_error":
+      return nonEmpty(detail.failureReasonExcerpt);
+    case "blocker":
+      return nonEmpty(detail.blockingIssue?.title);
+    default:
+      return null;
+  }
+}
+
+/**
+ * What a one-line row should say an item is.
+ *
+ * Prefers the ticket title, because that is the noun you recognise; falls back
+ * to the specific question or excerpt the item carries; and only then to
+ * whyNow, which is written as an explanation rather than a name.
+ */
+export function attentionRowTitle(item: AttentionItem): string {
+  const subjectTitle = item.subject.title?.trim();
+  if (subjectTitle) return subjectTitle;
+  return attentionSpecificText(item.detail) ?? item.whyNow;
+}

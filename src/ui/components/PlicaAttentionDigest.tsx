@@ -2,7 +2,13 @@ import { useState } from "react";
 import { ChevronDown } from "lucide-react";
 import type { AttentionItem, Company } from "@paperclipai/shared";
 import { cn } from "../host/util";
-import { attentionAgeMinutes, compareAttention, formatAgeMinutes, groupAttentionByGroup } from "../lib/plica";
+import {
+  attentionAgeMinutes,
+  attentionRowTitle,
+  compareAttention,
+  formatAgeMinutes,
+  groupAttentionByGroup,
+} from "../lib/plica";
 import { PlicaAttentionCard } from "./PlicaAttentionCard";
 import { PlicaAttentionLedgerRow } from "./PlicaAttentionLedgerRow";
 import { PlicaGroupGlyph } from "./PlicaKindGlyph";
@@ -73,7 +79,7 @@ export function PlicaAttentionDigest({
                     ))}
                   </span>
                   <span className="min-w-0 flex-1 truncate text-muted-foreground">
-                    {group.items.map((item) => item.subject.title ?? item.whyNow).join(" · ")}
+                    {group.items.map((item) => attentionRowTitle(item)).join(" · ")}
                   </span>
                   {youngest.length > 0 && (
                     <span className="shrink-0 tabular-nums text-[length:var(--plica-fs-micro,11px)] leading-[1.45] text-muted-foreground">

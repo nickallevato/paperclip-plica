@@ -15,7 +15,7 @@ import type { AttentionItem, Company } from "@paperclipai/shared";
 import { toCompanyRelativePath } from "../host/util";
 import { cn } from "../host/util";
 import { priorityColor } from "../host/util";
-import { attentionDetailText, relativeTimeLabel } from "../lib/plica";
+import { attentionRowTitle, attentionSpecificText, relativeTimeLabel } from "../lib/plica";
 import { PlicaIssueHover } from "./PlicaIssueHover";
 import { PlicaLink } from "./PlicaLink";
 
@@ -52,8 +52,13 @@ const KIND_META: Partial<Record<AttentionItem["sourceKind"], string>> = {
  */
 export function PlicaAttentionCard({ item, company }: { item: AttentionItem; company: Company }) {
   const Icon = KIND_ICONS[item.sourceKind] ?? Info;
-  const detail = attentionDetailText(item.detail);
-  const primary = detail ?? item.whyNow;
+  // Lead with the noun you recognise, then say why underneath. Leading with
+  // prose meant a row could open with "3 questions awaiting answers", which
+  // describes the shape of the problem and not which problem.
+  const primary = attentionRowTitle(item);
+  // The prose keeps its place as the reason, and is dropped only when it would
+  // repeat the line above it.
+  const reason = attentionSpecificText(item.detail) ?? item.whyNow;
   const subject = item.subject;
   const href = subject.href ? `/${company.issuePrefix}${toCompanyRelativePath(subject.href)}` : null;
   const when = item.activityAt ? relativeTimeLabel(new Date(item.activityAt).toISOString(), Date.now()) : null;
@@ -78,9 +83,7 @@ export function PlicaAttentionCard({ item, company }: { item: AttentionItem; com
           )}
           <span className="shrink-0">{KIND_META[item.sourceKind] ?? item.sourceKind}</span>
           {subject.identifier && <span className="shrink-0 font-mono">{subject.identifier}</span>}
-          {subject.kind === "issue" && subject.title && subject.title !== primary && (
-            <span className="min-w-0 truncate">{subject.title}</span>
-          )}
+          {reason && reason !== primary && <span className="min-w-0 truncate">{reason}</span>}
           {when && <span className="shrink-0">{when}</span>}
           {href && (
             <span className="ml-auto inline-flex shrink-0 items-center gap-0.5">

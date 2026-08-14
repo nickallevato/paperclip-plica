@@ -18,6 +18,8 @@ import {
   attentionDetailText,
   attentionGroupFor,
   attentionGroupSummary,
+  attentionRowTitle,
+  attentionSpecificText,
   bucketAttentionByAge,
   compareAttention,
   currentMonthRange,
@@ -1151,5 +1153,51 @@ describe("attention group coverage", () => {
     // Nothing may fall through the six cells: an uncovered kind would count
     // toward a company's total while being invisible in every bar mode.
     expect([...ATTENTION_SOURCE_KINDS].sort()).toEqual([...grouped].sort());
+  });
+});
+
+describe("attentionRowTitle", () => {
+  const item = (over: Record<string, unknown>) =>
+    ({ subject: { title: null }, whyNow: "questions need answers", detail: null, ...over }) as never;
+
+  it("prefers the ticket title, the noun you recognise", () => {
+    expect(attentionRowTitle(item({ subject: { title: "Migrate billing webhooks" } }))).toBe(
+      "Migrate billing webhooks",
+    );
+  });
+
+  it("falls back to the exact question rather than a count of them", () => {
+    expect(
+      attentionRowTitle(
+        item({ detail: { kind: "questions", questionCount: 3, firstQuestionText: "Cap retry at 30s?" } }),
+      ),
+    ).toBe("Cap retry at 30s?");
+  });
+
+  it("uses the failure reason for a failed run", () => {
+    expect(
+      attentionRowTitle(item({ detail: { kind: "failed_run", failureReasonExcerpt: "OOM at 82%" } })),
+    ).toBe("OOM at 82%");
+  });
+
+  it("names the blocking issue for a blocker", () => {
+    expect(
+      attentionRowTitle(item({ detail: { kind: "blocker", blockingIssue: { title: "Vendor creds" } } })),
+    ).toBe("Vendor creds");
+  });
+
+  it("only reaches whyNow when the item carries nothing specific", () => {
+    expect(attentionRowTitle(item({ detail: { kind: "questions", questionCount: 3, firstQuestionText: null } }))).toBe(
+      "questions need answers",
+    );
+    expect(attentionRowTitle(item({}))).toBe("questions need answers");
+  });
+
+  it("treats a blank title or excerpt as absent rather than rendering emptiness", () => {
+    expect(
+      attentionRowTitle(
+        item({ subject: { title: "   " }, detail: { kind: "questions", firstQuestionText: "  " } }),
+      ),
+    ).toBe("questions need answers");
   });
 });
