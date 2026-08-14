@@ -181,7 +181,7 @@ describe("PlicaSignalCard / PlicaMatrixRow", () => {
     });
   });
 
-  it("drills a kind open in place, then closed again", async () => {
+  it("drills a group open in a popover, leaving the card's own height alone", async () => {
     render(container, "signal");
     await flush();
 
@@ -190,21 +190,30 @@ describe("PlicaSignalCard / PlicaMatrixRow", () => {
       failed = container.querySelector('button[title="Failed: 2"]');
       expect(failed).not.toBeNull();
     });
-    expect(container.querySelector("[data-signal-drill]")).toBeNull();
+    // The list floats in a portal, so it is never inside the card.
+    const cardHeightBefore = container.querySelector('[data-signal-card="company-1"]')?.children.length;
+    expect(document.querySelector("[data-signal-drill]")).toBeNull();
 
     await act(async () => {
       failed!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
-    const drill = container.querySelector("[data-signal-drill]");
-    expect(drill).not.toBeNull();
-    // both failed_run items, and not the approval
-    expect(drill?.querySelectorAll("li")).toHaveLength(2);
+
+    await vi.waitFor(() => {
+      const drill = document.querySelector('[data-signal-drill="failed"]');
+      expect(drill).not.toBeNull();
+      // both failed_run items, and not the approval
+      expect(drill?.querySelectorAll("li")).toHaveLength(2);
+    });
     expect(failed!.getAttribute("aria-expanded")).toBe("true");
+    // the card itself did not grow
+    expect(container.querySelector('[data-signal-card="company-1"]')?.children.length).toBe(cardHeightBefore);
 
     await act(async () => {
       failed!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
-    expect(container.querySelector("[data-signal-drill]")).toBeNull();
+    await vi.waitFor(() => {
+      expect(document.querySelector("[data-signal-drill]")).toBeNull();
+    });
   });
 
   it("offers an unpin control only when the company is pinned", async () => {
