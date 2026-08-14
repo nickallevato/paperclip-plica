@@ -5,12 +5,13 @@ import { CompanyPatternIcon } from "../host/ui-kit";
 import { cn } from "../host/util";
 import {
   PLICA_HEALTH_DOT_CLASSES,
-  attentionKindSummary,
+  attentionGroupFor,
+  attentionGroupSummary,
   derivePaneHealth,
   healthLabel,
 } from "../lib/plica";
 import { PlicaAttentionCard } from "./PlicaAttentionCard";
-import { PlicaKindGlyph } from "./PlicaKindGlyph";
+import { PlicaGroupGlyph } from "./PlicaKindGlyph";
 import type { PlicaCompanyData } from "./usePlicaCompanyData";
 
 /**
@@ -47,11 +48,13 @@ export function PlicaSignalCard({
   data: PlicaCompanyData;
   onUnpin?: () => void;
 }) {
-  const [openKind, setOpenKind] = useState<AttentionItem["sourceKind"] | null>(null);
+  const [openGroup, setOpenGroup] = useState<string | null>(null);
   const health = data.unavailable ? "red" : derivePaneHealth(data.summary, data.attention);
-  const { cells, total } = attentionKindSummary(data.attention);
-  const drilled = openKind
-    ? (data.attention?.items ?? []).filter((item) => !item.dismissal && item.sourceKind === openKind)
+  const { cells, total } = attentionGroupSummary(data.attention);
+  const drilled = openGroup
+    ? (data.attention?.items ?? []).filter(
+        (item) => !item.dismissal && attentionGroupFor(item.sourceKind)?.key === openGroup,
+      )
     : [];
 
   return (
@@ -114,18 +117,18 @@ export function PlicaSignalCard({
           Unreachable — no data yet
         </p>
       ) : (
-        <div className="grid grid-cols-4 gap-1">
+        <div className="grid grid-cols-3 gap-1">
           {cells.map((cell) => {
             const tone = cell.worst ? CELL_TONE[cell.worst] : undefined;
-            const isOpen = openKind === cell.kind;
+            const isOpen = openGroup === cell.key;
             return (
               <button
-                key={cell.kind}
+                key={cell.key}
                 type="button"
                 disabled={cell.count === 0}
                 aria-expanded={cell.count === 0 ? undefined : isOpen}
                 title={`${cell.label}: ${cell.count}`}
-                onClick={() => setOpenKind(isOpen ? null : cell.kind)}
+                onClick={() => setOpenGroup(isOpen ? null : cell.key)}
                 className={cn(
                   "flex min-w-0 flex-col items-start rounded-md border px-1.5 py-1 text-left",
                   cell.count === 0
@@ -135,8 +138,8 @@ export function PlicaSignalCard({
                 )}
               >
                 <span className="flex w-full items-center gap-1">
-                  <PlicaKindGlyph
-                    kind={cell.kind}
+                  <PlicaGroupGlyph
+                    group={cell.key}
                     className={cn(cell.worst ? VALUE_TONE[cell.worst] : "text-muted-foreground")}
                   />
                   <span

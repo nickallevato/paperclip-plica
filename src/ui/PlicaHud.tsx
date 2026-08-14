@@ -24,7 +24,7 @@ import {
   normalizeAlertsEnabled,
   normalizeLayoutMode,
   normalizeViewMode,
-  PLICA_ATTENTION_KINDS,
+  PLICA_ATTENTION_GROUPS,
   PLICA_BAR_STORAGE_KEY,
   PLICA_COLLAPSED_STORAGE_KEY,
   PLICA_PINNED_STORAGE_KEY,
@@ -504,7 +504,7 @@ export function PlicaHud() {
                       Company
                     </th>
                     {(barMode === "matrix"
-                      ? PLICA_ATTENTION_KINDS.map(({ kind, label }) => ({ key: kind, label }))
+                      ? PLICA_ATTENTION_GROUPS.map(({ key, label }) => ({ key, label }))
                       : PLICA_SCOREBOARD_COLUMNS.map((label) => ({ key: label, label }))
                     ).map(({ key, label }) => (
                       <th

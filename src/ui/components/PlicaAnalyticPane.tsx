@@ -5,7 +5,7 @@ import { CompanyPatternIcon } from "../host/ui-kit";
 import { cn } from "../host/util";
 import {
   PLICA_HEALTH_DOT_CLASSES,
-  attentionKindSummary,
+  attentionGroupSummary,
   bucketAttentionByAge,
   derivePaneHealth,
   formatCents,
@@ -16,7 +16,7 @@ import {
   type PlicaTokenThresholds,
 } from "../lib/plica";
 import { PlicaLink } from "./PlicaLink";
-import { PlicaKindGlyph } from "./PlicaKindGlyph";
+import { PlicaGroupGlyph } from "./PlicaKindGlyph";
 import { PlicaSparkline } from "./PlicaSparkline";
 import type { PlicaCompanyData } from "./usePlicaCompanyData";
 
@@ -102,7 +102,7 @@ export function PlicaAnalyticPane({
   const nowMs = Date.now();
   const ages = bucketAttentionByAge(live, nowMs);
   const ageMax = Math.max(1, ...ages.map((bucket) => bucket.count));
-  const kinds = attentionKindSummary(data.attention).cells.filter((cell) => cell.count > 0);
+  const kinds = attentionGroupSummary(data.attention).cells.filter((cell) => cell.count > 0);
   const kindMax = Math.max(1, ...kinds.map((cell) => cell.count));
   const utilization = data.summary?.costs.monthUtilizationPercent ?? 0;
   const tokens = stats.tokens;
@@ -202,12 +202,12 @@ export function PlicaAnalyticPane({
             <div className="space-y-0.5">
               {kinds.map((cell) => (
                 <Bar
-                  key={cell.kind}
+                  key={cell.key}
                   label={cell.label}
                   count={cell.count}
                   max={kindMax}
                   tone={cell.worst === "critical" ? "crit" : cell.worst === "high" ? "warn" : undefined}
-                  icon={<PlicaKindGlyph kind={cell.kind} className="h-2.5 w-2.5" />}
+                  icon={<PlicaGroupGlyph group={cell.key} className="h-2.5 w-2.5" />}
                 />
               ))}
             </div>

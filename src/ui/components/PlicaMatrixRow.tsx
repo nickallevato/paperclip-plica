@@ -4,7 +4,7 @@ import { CompanyPatternIcon } from "../host/ui-kit";
 import { cn } from "../host/util";
 import {
   PLICA_HEALTH_DOT_CLASSES,
-  attentionKindSummary,
+  attentionGroupSummary,
   derivePaneHealth,
   healthLabel,
 } from "../lib/plica";
@@ -35,7 +35,7 @@ export function PlicaMatrixRow({
   onUnpin?: () => void;
 }) {
   const health = data.unavailable ? "red" : derivePaneHealth(data.summary, data.attention);
-  const { cells } = attentionKindSummary(data.attention);
+  const { cells } = attentionGroupSummary(data.attention);
 
   return (
     <tr data-matrix-row={company.id} className="hover:bg-muted/40">
@@ -60,7 +60,7 @@ export function PlicaMatrixRow({
         </div>
       </td>
       {cells.map((cell) => (
-        <td key={cell.kind} className="px-0.5 py-0.5 text-center">
+        <td key={cell.key} className="px-0.5 py-0.5 text-center">
           <span
             title={`${company.name} · ${cell.label}: ${cell.count}`}
             className={cn(

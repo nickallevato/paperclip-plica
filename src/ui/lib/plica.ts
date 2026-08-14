@@ -574,44 +574,6 @@ export function normalizeBarMode(value: string | null | undefined): PlicaBarMode
   return PLICA_BAR_MODES.includes(value as PlicaBarMode) ? (value as PlicaBarMode) : "signal";
 }
 
-/**
- * The attention kinds the bar rolls up, in the order they appear. Ordered by
- * how much they demand of you rather than alphabetically, so the leftmost
- * cells are the ones worth looking at first. Labels are deliberately short —
- * they sit in a ~60px cell and must not wrap at kiosk scale.
- *
- * Covers every member of ATTENTION_SOURCE_KINDS; a feed carrying a kind we
- * don't know about still counts toward the card total via attentionKindSummary,
- * it just has no cell of its own.
- */
-export const PLICA_ATTENTION_KINDS: ReadonlyArray<{ kind: AttentionItem["sourceKind"]; label: string }> = [
-  { kind: "blocker_attention", label: "Blocked" },
-  { kind: "failed_run", label: "Failed" },
-  { kind: "agent_error_alert", label: "Errors" },
-  { kind: "approval", label: "Approve" },
-  { kind: "decision", label: "Decide" },
-  { kind: "issue_thread_interaction", label: "Answer" },
-  { kind: "review", label: "Review" },
-  { kind: "recovery_action", label: "Recover" },
-  { kind: "join_request", label: "Access" },
-  { kind: "budget_alert", label: "Budget" },
-  { kind: "productivity_review", label: "Report" },
-];
-
-export type PlicaKindCell = {
-  kind: AttentionItem["sourceKind"];
-  label: string;
-  count: number;
-  /** Worst severity present in this cell, or null when the cell is empty. */
-  worst: AttentionSeverity | null;
-};
-
-export interface PlicaKindSummary {
-  cells: PlicaKindCell[];
-  /** Every live item, including kinds with no cell of their own. */
-  total: number;
-}
-
 const SEVERITY_RANK: Record<AttentionSeverity, number> = { critical: 0, high: 1, medium: 2, low: 3 };
 
 /** The worst severity in a set, or null when the set is empty. */
@@ -623,21 +585,6 @@ export function worstSeverity(items: ReadonlyArray<Pick<AttentionItem, "severity
   return worst;
 }
 
-/**
- * Roll an attention feed up into one cell per kind. Dismissed items are
- * excluded to match what the panes below already show — a card that counted
- * dismissed work would send you looking for something that isn't there.
- */
-export function attentionKindSummary(attention: AttentionFeed | undefined): PlicaKindSummary {
-  const live = (attention?.items ?? []).filter((item) => !item.dismissal);
-  return {
-    cells: PLICA_ATTENTION_KINDS.map(({ kind, label }) => {
-      const inKind = live.filter((item) => item.sourceKind === kind);
-      return { kind, label, count: inKind.length, worst: worstSeverity(inKind) };
-    }),
-    total: live.length,
-  };
-}
 
 /**
  * Total tokens a company burned over the rows returned by costs/by-agent.
@@ -860,32 +807,6 @@ export interface PlicaAttentionGroup {
   worst: AttentionSeverity | null;
 }
 
-/**
- * Group items by kind for the digest, in the bar's kind order so a company
- * reads the same way whichever surface you meet it on. Unknown kinds are kept
- * under their own raw name rather than dropped.
- */
-export function groupAttentionByKind(items: ReadonlyArray<AttentionItem>): PlicaAttentionGroup[] {
-  const groups: PlicaAttentionGroup[] = [];
-  const seen = new Set<string>();
-  for (const { kind, label } of PLICA_ATTENTION_KINDS) {
-    const inKind = items.filter((item) => item.sourceKind === kind);
-    seen.add(kind);
-    if (inKind.length) groups.push({ kind, label, items: [...inKind].sort(compareAttention), worst: worstSeverity(inKind) });
-  }
-  for (const item of items) {
-    if (seen.has(item.sourceKind)) continue;
-    seen.add(item.sourceKind);
-    const inKind = items.filter((other) => other.sourceKind === item.sourceKind);
-    groups.push({
-      kind: item.sourceKind,
-      label: item.sourceKind.replace(/_/g, " "),
-      items: [...inKind].sort(compareAttention),
-      worst: worstSeverity(inKind),
-    });
-  }
-  return groups;
-}
 
 /** Minutes since an item last moved, or null when it carries no timestamp. */
 export function attentionAgeMinutes(item: { activityAt: string | null }, nowMs: number): number | null {
@@ -1062,4 +983,104 @@ export function formatCountdown(iso: string | null, nowMs: number): string {
   if (mins < 60) return `in ${mins}m`;
   if (mins < 1440) return `in ${Math.round(mins / 60)}h`;
   return `in ${Math.round(mins / 1440)}d`;
+}
+
+/**
+ * The six things a company can need from you.
+ *
+ * The API has eleven attention source kinds, which is the right vocabulary for
+ * a feed and the wrong one for a glance: eleven cells is three rows of reading,
+ * and several of the kinds differ only in provenance, not in what you would do
+ * about them. These group by the response they ask for.
+ *
+ * A kind outside this table still counts toward a company's total and still
+ * appears in the digest under its own name — it just has no cell of its own,
+ * which is better than inventing a seventh group nobody scans for.
+ */
+export const PLICA_ATTENTION_GROUPS: ReadonlyArray<{
+  key: string;
+  label: string;
+  kinds: ReadonlyArray<AttentionItem["sourceKind"]>;
+}> = [
+  // Work has stopped and needs you to unstick it.
+  { key: "blocked", label: "Blocked", kinds: ["blocker_attention", "recovery_action"] },
+  // Something broke. Agent errors are failures that never got as far as a run.
+  { key: "failed", label: "Failed", kinds: ["failed_run", "agent_error_alert"] },
+  // Say yes or no. A join request is an approval that happens to be about a person.
+  { key: "approve", label: "Approve", kinds: ["approval", "decision", "join_request"] },
+  // Someone is waiting on an answer from you specifically.
+  { key: "answer", label: "Answer", kinds: ["issue_thread_interaction"] },
+  // Read it and respond; nothing is blocked while you do.
+  { key: "review", label: "Review", kinds: ["review", "productivity_review"] },
+  // Money.
+  { key: "budget", label: "Budget", kinds: ["budget_alert"] },
+];
+
+const GROUP_BY_KIND = new Map<string, (typeof PLICA_ATTENTION_GROUPS)[number]>();
+for (const group of PLICA_ATTENTION_GROUPS) {
+  for (const kind of group.kinds) GROUP_BY_KIND.set(kind, group);
+}
+
+export function attentionGroupFor(kind: string): (typeof PLICA_ATTENTION_GROUPS)[number] | undefined {
+  return GROUP_BY_KIND.get(kind);
+}
+
+export type PlicaGroupCell = {
+  key: string;
+  label: string;
+  kinds: ReadonlyArray<AttentionItem["sourceKind"]>;
+  count: number;
+  worst: AttentionSeverity | null;
+};
+
+export interface PlicaGroupSummary {
+  cells: PlicaGroupCell[];
+  /** Every live item, including kinds that fall outside the six groups. */
+  total: number;
+}
+
+/** Roll an attention feed up into the six response groups. */
+export function attentionGroupSummary(attention: AttentionFeed | undefined): PlicaGroupSummary {
+  const live = (attention?.items ?? []).filter((item) => !item.dismissal);
+  return {
+    cells: PLICA_ATTENTION_GROUPS.map((group) => {
+      const inGroup = live.filter((item) => group.kinds.includes(item.sourceKind));
+      return { key: group.key, label: group.label, kinds: group.kinds, count: inGroup.length, worst: worstSeverity(inGroup) };
+    }),
+    total: live.length,
+  };
+}
+
+/**
+ * Group items for the digest by response group rather than raw kind, so a pane
+ * folds to at most six rows and reads the same way as the bar. Kinds with no
+ * group keep their own row rather than disappearing.
+ */
+export function groupAttentionByGroup(items: ReadonlyArray<AttentionItem>): PlicaAttentionGroup[] {
+  const groups: PlicaAttentionGroup[] = [];
+  for (const group of PLICA_ATTENTION_GROUPS) {
+    const inGroup = items.filter((item) => group.kinds.includes(item.sourceKind));
+    if (inGroup.length) {
+      groups.push({
+        kind: group.key as AttentionItem["sourceKind"],
+        label: group.label,
+        items: [...inGroup].sort(compareAttention),
+        worst: worstSeverity(inGroup),
+      });
+    }
+  }
+  const ungrouped = items.filter((item) => !GROUP_BY_KIND.has(item.sourceKind));
+  const seen = new Set<string>();
+  for (const item of ungrouped) {
+    if (seen.has(item.sourceKind)) continue;
+    seen.add(item.sourceKind);
+    const inKind = ungrouped.filter((other) => other.sourceKind === item.sourceKind);
+    groups.push({
+      kind: item.sourceKind,
+      label: item.sourceKind.replace(/_/g, " "),
+      items: [...inKind].sort(compareAttention),
+      worst: worstSeverity(inKind),
+    });
+  }
+  return groups;
 }

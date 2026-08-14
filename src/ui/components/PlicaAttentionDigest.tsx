@@ -2,10 +2,10 @@ import { useState } from "react";
 import { ChevronDown } from "lucide-react";
 import type { AttentionItem, Company } from "@paperclipai/shared";
 import { cn } from "../host/util";
-import { attentionAgeMinutes, compareAttention, formatAgeMinutes, groupAttentionByKind } from "../lib/plica";
+import { attentionAgeMinutes, compareAttention, formatAgeMinutes, groupAttentionByGroup } from "../lib/plica";
 import { PlicaAttentionCard } from "./PlicaAttentionCard";
 import { PlicaAttentionLedgerRow } from "./PlicaAttentionLedgerRow";
-import { PlicaKindGlyph } from "./PlicaKindGlyph";
+import { PlicaGroupGlyph } from "./PlicaKindGlyph";
 
 /**
  * Attention folded by kind, so a pane's height tracks how many *kinds* are
@@ -27,7 +27,7 @@ export function PlicaAttentionDigest({
 }) {
   const [openKind, setOpenKind] = useState<string | null>(null);
   const critical = items.filter((item) => item.severity === "critical").sort(compareAttention);
-  const groups = groupAttentionByKind(items.filter((item) => item.severity !== "critical"));
+  const groups = groupAttentionByGroup(items.filter((item) => item.severity !== "critical"));
 
   return (
     <div className="space-y-1.5">
@@ -53,8 +53,8 @@ export function PlicaAttentionDigest({
                   onClick={() => setOpenKind(isOpen ? null : group.kind)}
                   className="flex w-full items-center gap-2 rounded px-1.5 py-1 text-left text-[length:var(--plica-fs-body,14px)] leading-[1.45] hover:bg-muted/40"
                 >
-                  <PlicaKindGlyph
-                    kind={group.kind}
+                  <PlicaGroupGlyph
+                    group={group.kind}
                     className={group.worst === "high" ? "text-amber-700 dark:text-amber-300" : "text-muted-foreground"}
                   />
                   <span className="shrink-0 font-medium capitalize">{group.label}</span>

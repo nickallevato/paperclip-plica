@@ -153,7 +153,7 @@ describe("PlicaSignalCard / PlicaMatrixRow", () => {
     vi.clearAllMocks();
   });
 
-  it("shows the company, a live total that excludes dismissed items, and per-kind counts", async () => {
+  it("shows the company, a live total that excludes dismissed items, and per-group counts", async () => {
     render(container, "signal");
     await flush();
 
@@ -170,12 +170,12 @@ describe("PlicaSignalCard / PlicaMatrixRow", () => {
     });
   });
 
-  it("disables kinds with nothing in them so the eye skips them", async () => {
+  it("disables groups with nothing in them so the eye skips them", async () => {
     render(container, "signal");
     await flush();
 
     await vi.waitFor(() => {
-      const empty = container.querySelector('button[title="Access: 0"]') as HTMLButtonElement | null;
+      const empty = container.querySelector('button[title="Budget: 0"]') as HTMLButtonElement | null;
       expect(empty).not.toBeNull();
       expect(empty?.disabled).toBe(true);
     });

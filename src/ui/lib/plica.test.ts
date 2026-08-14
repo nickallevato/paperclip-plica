@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { ATTENTION_SOURCE_KINDS } from "@paperclipai/shared";
 import type {
   Approval,
   AttentionFeed,
@@ -9,13 +10,14 @@ import type {
   Issue,
 } from "@paperclipai/shared";
 import {
-  PLICA_ATTENTION_KINDS,
+  PLICA_ATTENTION_GROUPS,
   PLICA_LAYOUT_CLASSES,
   PLICA_TOKEN_DEFAULTS,
   aggregateTokenState,
   attentionAgeMinutes,
   attentionDetailText,
-  attentionKindSummary,
+  attentionGroupFor,
+  attentionGroupSummary,
   bucketAttentionByAge,
   compareAttention,
   currentMonthRange,
@@ -32,7 +34,7 @@ import {
   formatCents,
   formatCountdown,
   formatTokens,
-  groupAttentionByKind,
+  groupAttentionByGroup,
   healthLabel,
   intervalLabel,
   issueStatusLabel,
@@ -669,64 +671,6 @@ describe("worstSeverity", () => {
   });
 });
 
-describe("attentionKindSummary", () => {
-  const feed = (items: Array<{ kind: string; severity: string; dismissed?: boolean }>): AttentionFeed =>
-    ({
-      companyId: "c1",
-      generatedAt: "",
-      totalCount: items.length,
-      countsBySourceKind: {},
-      items: items.map((item, index) => ({
-        id: `att-${index}`,
-        companyId: "c1",
-        sourceKind: item.kind,
-        severity: item.severity,
-        rank: index,
-        whyNow: "",
-        dismissal: item.dismissed ? { dismissedAt: "2026-07-28T00:00:00Z" } : null,
-        subject: { kind: "issue", id: `i${index}`, companyId: "c1", title: null, identifier: null, status: null, href: null },
-      })),
-    }) as never;
-
-  it("returns a cell per known kind even when the feed is missing", () => {
-    const summary = attentionKindSummary(undefined);
-    expect(summary.total).toBe(0);
-    expect(summary.cells).toHaveLength(PLICA_ATTENTION_KINDS.length);
-    expect(summary.cells.every((cell) => cell.count === 0 && cell.worst === null)).toBe(true);
-  });
-
-  it("counts per kind and reports each cell's worst severity", () => {
-    const summary = attentionKindSummary(
-      feed([
-        { kind: "failed_run", severity: "high" },
-        { kind: "failed_run", severity: "critical" },
-        { kind: "approval", severity: "medium" },
-      ]),
-    );
-    const failed = summary.cells.find((cell) => cell.kind === "failed_run");
-    const approval = summary.cells.find((cell) => cell.kind === "approval");
-    expect(failed).toMatchObject({ count: 2, worst: "critical" });
-    expect(approval).toMatchObject({ count: 1, worst: "medium" });
-    expect(summary.total).toBe(3);
-  });
-
-  it("excludes dismissed items, matching what the panes below show", () => {
-    const summary = attentionKindSummary(
-      feed([
-        { kind: "approval", severity: "critical", dismissed: true },
-        { kind: "approval", severity: "low" },
-      ]),
-    );
-    expect(summary.cells.find((cell) => cell.kind === "approval")).toMatchObject({ count: 1, worst: "low" });
-    expect(summary.total).toBe(1);
-  });
-
-  it("counts an unknown kind toward the total without inventing a cell", () => {
-    const summary = attentionKindSummary(feed([{ kind: "something_new", severity: "high" }]));
-    expect(summary.total).toBe(1);
-    expect(summary.cells.every((cell) => cell.count === 0)).toBe(true);
-  });
-});
 
 describe("sumAgentTokens", () => {
   it("returns 0 for missing or empty rows", () => {
@@ -927,33 +871,6 @@ describe("compareAttention", () => {
   });
 });
 
-describe("groupAttentionByKind", () => {
-  const item = (id: string, kind: string, severity = "medium") =>
-    ({ id, sourceKind: kind, severity, activityAt: null }) as never;
-
-  it("groups in the bar's kind order so a company reads the same everywhere", () => {
-    const groups = groupAttentionByKind([
-      item("a", "approval"),
-      item("b", "failed_run"),
-      item("c", "blocker_attention"),
-    ]);
-    expect(groups.map((g) => g.kind)).toEqual(["blocker_attention", "failed_run", "approval"]);
-  });
-
-  it("reports each group's worst severity and drops empty kinds", () => {
-    const groups = groupAttentionByKind([item("a", "approval", "high"), item("b", "approval", "low")]);
-    expect(groups).toHaveLength(1);
-    expect(groups[0]).toMatchObject({ kind: "approval", worst: "high" });
-    expect(groups[0].items).toHaveLength(2);
-  });
-
-  it("keeps an unknown kind under its own name rather than dropping it", () => {
-    const groups = groupAttentionByKind([item("a", "something_new")]);
-    expect(groups.map((g) => ({ kind: g.kind, label: g.label }))).toEqual([
-      { kind: "something_new", label: "something new" },
-    ]);
-  });
-});
 
 describe("attentionAgeMinutes", () => {
   const now = Date.UTC(2026, 7, 14, 12);
@@ -1152,5 +1069,87 @@ describe("formatCountdown", () => {
   it("says now for anything already due", () => {
     expect(formatCountdown(at(0), now)).toBe("now");
     expect(formatCountdown(at(-5), now)).toBe("now");
+  });
+});
+
+describe("attentionGroupSummary", () => {
+  const feed = (kinds: Array<[string, string]>): AttentionFeed =>
+    ({
+      items: kinds.map(([kind, severity], index) => ({
+        id: `a${index}`,
+        sourceKind: kind,
+        severity,
+        dismissal: null,
+      })),
+    }) as never;
+
+  it("collapses eleven source kinds into six response groups", () => {
+    expect(PLICA_ATTENTION_GROUPS).toHaveLength(6);
+    const covered = PLICA_ATTENTION_GROUPS.flatMap((group) => group.kinds);
+    // every kind lands in exactly one group
+    expect(new Set(covered).size).toBe(covered.length);
+  });
+
+  it("counts kinds that ask for the same response together", () => {
+    const summary = attentionGroupSummary(
+      feed([
+        ["blocker_attention", "high"],
+        ["recovery_action", "critical"],
+        ["approval", "medium"],
+        ["decision", "low"],
+        ["join_request", "low"],
+      ]),
+    );
+    const blocked = summary.cells.find((cell) => cell.key === "blocked");
+    const approve = summary.cells.find((cell) => cell.key === "approve");
+    expect(blocked).toMatchObject({ count: 2, worst: "critical" });
+    expect(approve).toMatchObject({ count: 3, worst: "medium" });
+    expect(summary.total).toBe(5);
+  });
+
+  it("still counts an ungrouped kind toward the total without inventing a cell", () => {
+    const summary = attentionGroupSummary(feed([["something_new", "high"]]));
+    expect(summary.total).toBe(1);
+    expect(summary.cells).toHaveLength(6);
+    expect(summary.cells.every((cell) => cell.count === 0)).toBe(true);
+  });
+});
+
+describe("attentionGroupFor", () => {
+  it("maps a kind to the response it asks for", () => {
+    expect(attentionGroupFor("failed_run")?.key).toBe("failed");
+    expect(attentionGroupFor("agent_error_alert")?.key).toBe("failed");
+    expect(attentionGroupFor("join_request")?.key).toBe("approve");
+    expect(attentionGroupFor("nonsense")).toBeUndefined();
+  });
+});
+
+describe("groupAttentionByGroup", () => {
+  const item = (id: string, kind: string, severity = "medium") =>
+    ({ id, sourceKind: kind, severity, activityAt: null }) as never;
+
+  it("folds a pane to at most six rows", () => {
+    const groups = groupAttentionByGroup([
+      item("a", "blocker_attention"),
+      item("b", "recovery_action"),
+      item("c", "review"),
+      item("d", "productivity_review"),
+    ]);
+    expect(groups.map((g) => g.label)).toEqual(["Blocked", "Review"]);
+    expect(groups[0].items).toHaveLength(2);
+  });
+
+  it("keeps an ungrouped kind visible on its own row rather than losing it", () => {
+    const groups = groupAttentionByGroup([item("a", "approval"), item("b", "something_new")]);
+    expect(groups.map((g) => g.label)).toEqual(["Approve", "something new"]);
+  });
+});
+
+describe("attention group coverage", () => {
+  it("gives every canonical source kind exactly one group", () => {
+    const grouped = PLICA_ATTENTION_GROUPS.flatMap((group) => group.kinds);
+    // Nothing may fall through the six cells: an uncovered kind would count
+    // toward a company's total while being invisible in every bar mode.
+    expect([...ATTENTION_SOURCE_KINDS].sort()).toEqual([...grouped].sort());
   });
 });
