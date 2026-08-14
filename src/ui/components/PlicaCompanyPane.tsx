@@ -27,6 +27,7 @@ import {
   healthLabel,
   selectCeo,
   selectProjectChips,
+  type PlicaRowMode,
 } from "../lib/plica";
 import { PlicaApprovalsSection } from "./PlicaApprovalsSection";
 import { PlicaAttentionSection } from "./PlicaAttentionSection";
@@ -54,6 +55,7 @@ export function PlicaCompanyPane({
   pulse = false,
   onToggleCollapse,
   onTogglePin,
+  rowMode,
 }: {
   company: Company;
   data: PlicaCompanyData;
@@ -62,6 +64,8 @@ export function PlicaCompanyPane({
   onToggleCollapse?: () => void;
   /** Pins the company up into the bar, hoisting it out of the wall. */
   onTogglePin?: () => void;
+  /** How attention items render inside this pane. */
+  rowMode?: PlicaRowMode;
 }) {
   // Tri-state: null = automatic (show whenever approvals are pending — the
   // wall should let you approve without an extra click); true/false = the
@@ -227,6 +231,7 @@ export function PlicaCompanyPane({
           attention={data.attention}
           company={company}
           hideApprovals={approvalsShown && data.approvals.length > 0}
+          rowMode={rowMode}
         />
 
         <PlicaRunsStrip runs={data.liveRuns} issues={data.issues} company={company} onActed={data.invalidate} />

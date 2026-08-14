@@ -801,3 +801,71 @@ export function aggregateTokenState(
   const crit = members.reduce((sum, member) => sum + thresholdsFor(settings, member.id).crit, 0);
   return { total, state: total > crit ? "crit" : total > warn ? "warn" : "ok", known };
 }
+
+/**
+ * How the panes render attention items.
+ *
+ * "card" is the original: the model's prose leads at line-clamp-2 with a meta
+ * line beneath, so a row is two or three lines depending on what was written
+ * and no two panes line up. The other two fix that by leading with the stable
+ * noun — identifier and subject title — and demoting prose.
+ */
+export type PlicaRowMode = "card" | "ledger" | "digest";
+
+export const PLICA_ROWS_STORAGE_KEY = "plica.rows";
+
+const PLICA_ROW_MODES: ReadonlyArray<PlicaRowMode> = ["card", "ledger", "digest"];
+
+export function normalizeRowMode(value: string | null | undefined): PlicaRowMode {
+  return PLICA_ROW_MODES.includes(value as PlicaRowMode) ? (value as PlicaRowMode) : "ledger";
+}
+
+const SEVERITY_ORDER: Record<AttentionSeverity, number> = { critical: 0, high: 1, medium: 2, low: 3 };
+
+/** Worst first, then oldest first within a severity. */
+export function compareAttention(a: AttentionItem, b: AttentionItem): number {
+  const bySeverity = SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity];
+  if (bySeverity !== 0) return bySeverity;
+  return (a.activityAt ? new Date(a.activityAt).getTime() : 0) - (b.activityAt ? new Date(b.activityAt).getTime() : 0);
+}
+
+export interface PlicaAttentionGroup {
+  kind: AttentionItem["sourceKind"];
+  label: string;
+  items: AttentionItem[];
+  worst: AttentionSeverity | null;
+}
+
+/**
+ * Group items by kind for the digest, in the bar's kind order so a company
+ * reads the same way whichever surface you meet it on. Unknown kinds are kept
+ * under their own raw name rather than dropped.
+ */
+export function groupAttentionByKind(items: ReadonlyArray<AttentionItem>): PlicaAttentionGroup[] {
+  const groups: PlicaAttentionGroup[] = [];
+  const seen = new Set<string>();
+  for (const { kind, label } of PLICA_ATTENTION_KINDS) {
+    const inKind = items.filter((item) => item.sourceKind === kind);
+    seen.add(kind);
+    if (inKind.length) groups.push({ kind, label, items: [...inKind].sort(compareAttention), worst: worstSeverity(inKind) });
+  }
+  for (const item of items) {
+    if (seen.has(item.sourceKind)) continue;
+    seen.add(item.sourceKind);
+    const inKind = items.filter((other) => other.sourceKind === item.sourceKind);
+    groups.push({
+      kind: item.sourceKind,
+      label: item.sourceKind.replace(/_/g, " "),
+      items: [...inKind].sort(compareAttention),
+      worst: worstSeverity(inKind),
+    });
+  }
+  return groups;
+}
+
+/** Minutes since an item last moved, or null when it carries no timestamp. */
+export function attentionAgeMinutes(item: Pick<AttentionItem, "activityAt">, nowMs: number): number | null {
+  if (!item.activityAt) return null;
+  const mins = Math.round((nowMs - new Date(item.activityAt).getTime()) / 60_000);
+  return Number.isFinite(mins) && mins >= 0 ? mins : null;
+}

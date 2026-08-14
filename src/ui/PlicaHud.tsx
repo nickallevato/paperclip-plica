@@ -26,11 +26,13 @@ import {
   PLICA_BAR_STORAGE_KEY,
   PLICA_COLLAPSED_STORAGE_KEY,
   PLICA_PINNED_STORAGE_KEY,
+  PLICA_ROWS_STORAGE_KEY,
   PLICA_SORT_STORAGE_KEY,
   PLICA_TOKEN_THRESHOLDS_STORAGE_KEY,
   normalizeBarMode,
   normalizeCollapsedIds,
   normalizePinnedIds,
+  normalizeRowMode,
   normalizeSortMode,
   normalizeTokenSettings,
   thresholdsFor,
@@ -43,6 +45,7 @@ import {
   type PlicaBarMode,
   type PlicaCompanyStats,
   type PlicaLayoutMode,
+  type PlicaRowMode,
   type PlicaViewMode,
 } from "./lib/plica";
 import { queryKeys } from "./host/util";
@@ -57,6 +60,12 @@ const LAYOUT_MODES: Array<{ mode: PlicaLayoutMode; label: string }> = [
 const VIEW_MODES: Array<{ mode: PlicaViewMode; label: string }> = [
   { mode: "wall", label: "Wall" },
   { mode: "triage", label: "Triage" },
+];
+
+const ROW_MODES: Array<{ mode: PlicaRowMode; label: string }> = [
+  { mode: "ledger", label: "Ledger" },
+  { mode: "digest", label: "Digest" },
+  { mode: "card", label: "Cards" },
 ];
 
 const BAR_MODES: Array<{ mode: PlicaBarMode; label: string }> = [
@@ -109,6 +118,17 @@ export function PlicaHud() {
       typeof localStorage === "undefined" ? null : localStorage.getItem(PLICA_TOKEN_THRESHOLDS_STORAGE_KEY),
     ),
   );
+  const [rowMode, setRowMode] = useState<PlicaRowMode>(() =>
+    normalizeRowMode(typeof localStorage === "undefined" ? null : localStorage.getItem(PLICA_ROWS_STORAGE_KEY)),
+  );
+  const selectRowMode = (mode: PlicaRowMode) => {
+    setRowMode(mode);
+    try {
+      localStorage.setItem(PLICA_ROWS_STORAGE_KEY, mode);
+    } catch {
+      // storage unavailable (private mode) — row mode still applies for this session
+    }
+  };
   const [barMode, setBarMode] = useState<PlicaBarMode>(() =>
     normalizeBarMode(typeof localStorage === "undefined" ? null : localStorage.getItem(PLICA_BAR_STORAGE_KEY)),
   );
@@ -390,6 +410,22 @@ export function PlicaHud() {
             </button>
           ))}
         </div>
+        <div role="group" aria-label="Attention rows" className="flex items-center rounded-md border p-0.5">
+          {ROW_MODES.map(({ mode, label }) => (
+            <button
+              key={mode}
+              type="button"
+              aria-pressed={rowMode === mode}
+              onClick={() => selectRowMode(mode)}
+              className={cn(
+                "rounded px-2 py-0.5 text-[length:var(--plica-fs-micro,11px)] leading-[1.45]",
+                rowMode === mode ? "bg-muted font-medium" : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
         <div role="group" aria-label="Pane order" className="flex items-center rounded-md border p-0.5">
           {(["manual", "hot"] as const).map((mode) => (
             <button
@@ -637,6 +673,7 @@ export function PlicaHud() {
                 alertsEnabled={alertsEnabled}
                 onToggleCollapse={() => toggleCollapsed(company.id)}
                 onTogglePin={() => togglePinned(company.id)}
+                rowMode={rowMode}
               />
             ))}
         </div>

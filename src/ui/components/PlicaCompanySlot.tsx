@@ -10,6 +10,7 @@ import {
   PLICA_TOKEN_DEFAULTS,
   deriveCompanyStats,
   type PlicaCompanyStats,
+  type PlicaRowMode,
   type PlicaSlotPresentation,
   type PlicaTokenThresholds,
 } from "../lib/plica";
@@ -41,6 +42,7 @@ export function PlicaCompanySlot({
   onTogglePin,
   onStats,
   tokenThresholds,
+  rowMode,
 }: {
   company: Company;
   view: PlicaSlotPresentation;
@@ -61,6 +63,8 @@ export function PlicaCompanySlot({
   onStats?: (companyId: string, stats: PlicaCompanyStats) => void;
   /** Only needed by the presentations that colour a token count. */
   tokenThresholds?: PlicaTokenThresholds;
+  /** How attention items render inside the pane presentation. */
+  rowMode?: PlicaRowMode;
 }) {
   const data = usePlicaCompanyData(company.id);
   const ceoOverdue = deriveCeoHeartbeat(selectCeo(data.agents), Date.now()).state === "overdue";
@@ -141,6 +145,7 @@ export function PlicaCompanySlot({
       pulse={pulse}
       onToggleCollapse={onToggleCollapse}
       onTogglePin={onTogglePin}
+      rowMode={rowMode}
     />
   );
 }

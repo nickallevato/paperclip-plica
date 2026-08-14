@@ -13,8 +13,10 @@ import {
   PLICA_LAYOUT_CLASSES,
   PLICA_TOKEN_DEFAULTS,
   aggregateTokenState,
+  attentionAgeMinutes,
   attentionDetailText,
   attentionKindSummary,
+  compareAttention,
   currentMonthRange,
   deriveActionable,
   deriveBriefingLine,
@@ -26,6 +28,7 @@ import {
   formatAgeMinutes,
   formatCents,
   formatTokens,
+  groupAttentionByKind,
   healthLabel,
   intervalLabel,
   issueStatusLabel,
@@ -33,6 +36,7 @@ import {
   normalizeCollapsedIds,
   normalizeLayoutMode,
   normalizePinnedIds,
+  normalizeRowMode,
   normalizeSortMode,
   normalizeTokenSettings,
   normalizeViewMode,
@@ -882,5 +886,78 @@ describe("formatAgeMinutes", () => {
     expect(formatAgeMinutes(18)).toBe("18m");
     expect(formatAgeMinutes(240)).toBe("4h");
     expect(formatAgeMinutes(2880)).toBe("2d");
+  });
+});
+
+describe("normalizeRowMode", () => {
+  it("defaults to ledger, the mode that fixes the ragged rows", () => {
+    expect(normalizeRowMode(null)).toBe("ledger");
+    expect(normalizeRowMode("nonsense")).toBe("ledger");
+  });
+
+  it("accepts each known mode", () => {
+    expect(normalizeRowMode("card")).toBe("card");
+    expect(normalizeRowMode("digest")).toBe("digest");
+    expect(normalizeRowMode("ledger")).toBe("ledger");
+  });
+});
+
+describe("compareAttention", () => {
+  const item = (severity: string, minsAgo: number) =>
+    ({ severity, activityAt: new Date(Date.UTC(2026, 7, 14, 12) - minsAgo * 60_000).toISOString() }) as never;
+
+  it("puts worse severities first", () => {
+    const sorted = [item("medium", 1), item("critical", 999), item("high", 1)].sort(compareAttention);
+    expect(sorted.map((i: { severity: string }) => i.severity)).toEqual(["critical", "high", "medium"]);
+  });
+
+  it("puts the oldest first within a severity", () => {
+    const sorted = [item("high", 10), item("high", 500), item("high", 100)].sort(compareAttention);
+    expect(sorted.map((i: { activityAt: string }) => i.activityAt)).toEqual([
+      new Date(Date.UTC(2026, 7, 14, 12) - 500 * 60_000).toISOString(),
+      new Date(Date.UTC(2026, 7, 14, 12) - 100 * 60_000).toISOString(),
+      new Date(Date.UTC(2026, 7, 14, 12) - 10 * 60_000).toISOString(),
+    ]);
+  });
+});
+
+describe("groupAttentionByKind", () => {
+  const item = (id: string, kind: string, severity = "medium") =>
+    ({ id, sourceKind: kind, severity, activityAt: null }) as never;
+
+  it("groups in the bar's kind order so a company reads the same everywhere", () => {
+    const groups = groupAttentionByKind([
+      item("a", "approval"),
+      item("b", "failed_run"),
+      item("c", "blocker_attention"),
+    ]);
+    expect(groups.map((g) => g.kind)).toEqual(["blocker_attention", "failed_run", "approval"]);
+  });
+
+  it("reports each group's worst severity and drops empty kinds", () => {
+    const groups = groupAttentionByKind([item("a", "approval", "high"), item("b", "approval", "low")]);
+    expect(groups).toHaveLength(1);
+    expect(groups[0]).toMatchObject({ kind: "approval", worst: "high" });
+    expect(groups[0].items).toHaveLength(2);
+  });
+
+  it("keeps an unknown kind under its own name rather than dropping it", () => {
+    const groups = groupAttentionByKind([item("a", "something_new")]);
+    expect(groups.map((g) => ({ kind: g.kind, label: g.label }))).toEqual([
+      { kind: "something_new", label: "something new" },
+    ]);
+  });
+});
+
+describe("attentionAgeMinutes", () => {
+  const now = Date.UTC(2026, 7, 14, 12);
+  it("returns null when an item carries no timestamp", () => {
+    expect(attentionAgeMinutes({ activityAt: null }, now)).toBeNull();
+  });
+  it("returns whole minutes since the item last moved", () => {
+    expect(attentionAgeMinutes({ activityAt: new Date(now - 90 * 60_000).toISOString() }, now)).toBe(90);
+  });
+  it("rejects a future timestamp rather than reporting a negative age", () => {
+    expect(attentionAgeMinutes({ activityAt: new Date(now + 60_000).toISOString() }, now)).toBeNull();
   });
 });

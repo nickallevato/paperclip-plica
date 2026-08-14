@@ -2,13 +2,17 @@ import { AlertTriangle } from "lucide-react";
 import type { AttentionFeed, Company } from "@paperclipai/shared";
 import { Badge } from "../host/ui-kit";
 import { PlicaAttentionCard } from "./PlicaAttentionCard";
+import { PlicaAttentionDigest } from "./PlicaAttentionDigest";
+import { PlicaAttentionLedgerRow } from "./PlicaAttentionLedgerRow";
 import { PlicaLink } from "./PlicaLink";
+import { compareAttention, type PlicaRowMode } from "../lib/plica";
 
 export function PlicaAttentionSection({
   attention,
   company,
   max = 4,
   hideApprovals = false,
+  rowMode = "card",
 }: {
   attention: AttentionFeed | undefined;
   company: Company;
@@ -16,6 +20,8 @@ export function PlicaAttentionSection({
   /** While the approvals section is showing the same items, drop
    * approval-sourced entries here so nothing is listed twice. */
   hideApprovals?: boolean;
+  /** How each item renders — see PlicaRowMode. */
+  rowMode?: PlicaRowMode;
 }) {
   const filtered = (attention?.items ?? []).filter(
     (item) => !item.dismissal && !(hideApprovals && item.sourceKind === "approval"),
@@ -23,8 +29,12 @@ export function PlicaAttentionSection({
   // A quiet pane stays quiet: no header, no badge, no "nothing here" filler —
   // the health dot and chits already say all clear.
   if (filtered.length === 0) return null;
-  const items = filtered.slice(0, max);
+  // Digest folds by kind, so it is not bounded by `max` — its height already
+  // tracks the number of live kinds rather than the number of items.
+  const sorted = [...filtered].sort(compareAttention);
+  const items = rowMode === "digest" ? sorted : sorted.slice(0, max);
   const overflow = filtered.length - items.length;
+  const nowMs = Date.now();
 
   return (
     <div>
@@ -35,10 +45,17 @@ export function PlicaAttentionSection({
           {filtered.length}
         </Badge>
       </div>
-      <ul className="space-y-1.5">
-        {items.map((item) => (
-          <PlicaAttentionCard key={item.id} item={item} company={company} />
-        ))}
+      {rowMode === "digest" ? (
+        <PlicaAttentionDigest items={items} company={company} nowMs={nowMs} />
+      ) : (
+      <ul className={rowMode === "ledger" ? "space-y-0.5" : "space-y-1.5"}>
+        {items.map((item) =>
+          rowMode === "ledger" ? (
+            <PlicaAttentionLedgerRow key={item.id} item={item} company={company} nowMs={nowMs} />
+          ) : (
+            <PlicaAttentionCard key={item.id} item={item} company={company} />
+          ),
+        )}
         {overflow > 0 && (
           <li>
             {/* /decisions renders the same attention feed this section reads —
@@ -53,6 +70,7 @@ export function PlicaAttentionSection({
           </li>
         )}
       </ul>
+      )}
     </div>
   );
 }
