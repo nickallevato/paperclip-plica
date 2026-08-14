@@ -41,7 +41,7 @@ export function PlicaAttentionSection({
       <div className="mb-1 flex items-center gap-1.5 text-[length:var(--plica-fs-body,14px)] leading-[1.45] font-medium text-muted-foreground">
         <AlertTriangle className="h-3 w-3" />
         Needs attention
-        <Badge variant="outline" className="h-4 rounded-full px-1.5 text-[length:var(--plica-fs-micro,11px)] leading-[1.45] tabular-nums">
+        <Badge variant="outline" className="min-h-4 rounded-full px-1.5 text-[length:var(--plica-fs-micro,11px)] leading-[1.45] tabular-nums">
           {filtered.length}
         </Badge>
       </div>

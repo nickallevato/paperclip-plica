@@ -64,7 +64,7 @@ export function PlicaMatrixRow({
           <span
             title={`${company.name} · ${cell.label}: ${cell.count}`}
             className={cn(
-              "inline-flex h-4 w-full min-w-5 items-center justify-center rounded text-[10px] font-semibold tabular-nums",
+              "inline-flex min-h-4 w-full min-w-5 items-center justify-center rounded text-[length:var(--plica-fs-micro,11px)] leading-[1.45] font-semibold tabular-nums",
               cell.count === 0
                 ? "border border-dashed border-border/60 text-transparent"
                 : cell.worst

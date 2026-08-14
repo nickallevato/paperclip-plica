@@ -500,7 +500,7 @@ export function PlicaHud() {
               <table className="w-full border-collapse text-[length:var(--plica-fs-body,14px)] leading-[1.45]">
                 <thead>
                   <tr>
-                    <th className="py-1 pl-2 text-left text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    <th className="py-1 pl-2 text-left text-[length:var(--plica-fs-micro,11px)] leading-[1.45] font-semibold uppercase tracking-wide text-muted-foreground">
                       Company
                     </th>
                     {(barMode === "matrix"
@@ -510,7 +510,7 @@ export function PlicaHud() {
                       <th
                         key={key}
                         className={cn(
-                          "py-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground",
+                          "py-1 text-[length:var(--plica-fs-micro,11px)] leading-[1.45] font-semibold uppercase tracking-wide text-muted-foreground",
                           barMode === "matrix" ? "px-0.5 text-center" : "px-2 text-right",
                         )}
                       >

@@ -120,7 +120,7 @@ export function PlicaCompanyPane({
               data-actionable-count
               title={`${actionable.count} item${actionable.count === 1 ? "" : "s"} need${actionable.count === 1 ? "s" : ""} you`}
               className={cn(
-                "inline-flex h-4 min-w-4 shrink-0 items-center justify-center rounded-full px-1 text-[length:var(--plica-fs-micro,11px)] leading-[1.45] font-semibold tabular-nums text-white",
+                "inline-flex min-h-4 min-w-4 shrink-0 items-center justify-center rounded-full px-1 text-[length:var(--plica-fs-micro,11px)] leading-[1.45] font-semibold tabular-nums text-white",
                 actionable.criticalOrHigh ? "bg-red-600" : "bg-amber-600",
               )}
             >

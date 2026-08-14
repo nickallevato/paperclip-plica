@@ -91,7 +91,7 @@ export function PlicaScoreboardRow({
       </td>
       <td className="px-2 py-1 text-right tabular-nums">
         {stats.running}
-        <span className="text-[length:var(--plica-fs-micro,11px)] text-muted-foreground">/{stats.active}</span>
+        <span className="text-[length:var(--plica-fs-micro,11px)] leading-[1.45] text-muted-foreground">/{stats.active}</span>
       </td>
       <Cell value={stats.tasks} faint={stats.tasks === 0} />
       <Cell value={stats.needs} tone={stats.needs > 0 ? "warn" : undefined} faint={stats.needs === 0} />

@@ -62,7 +62,7 @@ function split(
   return live.map((entry, index) => (
     <span key={entry.company.id}>
       {index > 0 && " · "}
-      {entry.company.issuePrefix} <b className="font-semibold text-foreground">{format(entry.value)}</b>
+      {entry.company.issuePrefix} <b className="font-semibold tabular-nums text-foreground">{format(entry.value)}</b>
     </span>
   ));
 }

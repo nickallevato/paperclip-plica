@@ -162,7 +162,7 @@ export function PlicaTokenSettingsPanel({
           >
             <span aria-hidden className="h-2 w-2 self-center rounded-sm bg-amber-500" />
             Warn above
-            <output className="ml-auto text-[length:var(--plica-fs-body,14px)] font-semibold tabular-nums normal-case tracking-normal text-foreground">
+            <output className="ml-auto text-[length:var(--plica-fs-body,14px)] leading-[1.45] font-semibold tabular-nums normal-case tracking-normal text-foreground">
               {formatTokens(editing.warn)}
             </output>
           </label>
@@ -184,7 +184,7 @@ export function PlicaTokenSettingsPanel({
           >
             <span aria-hidden className="h-2 w-2 self-center rounded-sm bg-red-500" />
             Critical above
-            <output className="ml-auto text-[length:var(--plica-fs-body,14px)] font-semibold tabular-nums normal-case tracking-normal text-foreground">
+            <output className="ml-auto text-[length:var(--plica-fs-body,14px)] leading-[1.45] font-semibold tabular-nums normal-case tracking-normal text-foreground">
               {formatTokens(editing.crit)}
             </output>
           </label>
@@ -234,7 +234,7 @@ export function PlicaTokenSettingsPanel({
               ),
             )}
           </div>
-          <div className="flex justify-between text-[10px] tabular-nums text-muted-foreground">
+          <div className="flex justify-between text-[length:var(--plica-fs-micro,11px)] leading-[1.45] tabular-nums text-muted-foreground">
             <span>0</span>
             <span>{formatTokens(SCALE_MAX / 2)}</span>
             <span>{formatTokens(SCALE_MAX)}</span>
