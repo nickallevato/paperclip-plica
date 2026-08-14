@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useQueries, useQuery } from "@tanstack/react-query";
-import { Bell, BellOff, FoldVertical, Layers, Maximize, Minimize, Pin, TriangleAlert, UnfoldVertical } from "lucide-react";
+import { Bell, BellOff, FoldVertical, Layers, Maximize, Minimize, Pin, Settings, TriangleAlert, UnfoldVertical } from "lucide-react";
 import type { DashboardSummary } from "@paperclipai/shared";
 import { authApi } from "./host/api";
 import { companiesListQueryOptions } from "./host/companies-query";
@@ -11,6 +11,7 @@ import { PlicaBriefing } from "./components/PlicaBriefing";
 import { PlicaCompanySlot } from "./components/PlicaCompanySlot";
 import { PlicaDockedTile } from "./components/PlicaDockedTile";
 import { PlicaFeed } from "./components/PlicaFeed";
+import { PlicaTokenSettingsPanel } from "./components/PlicaTokenSettings";
 import { PLICA_SCOREBOARD_COLUMNS } from "./components/PlicaScoreboardRow";
 import { PlicaTote } from "./components/PlicaTote";
 import { cn } from "./host/util";
@@ -116,11 +117,20 @@ export function PlicaHud() {
   const handleStats = useCallback((companyId: string, stats: PlicaCompanyStats) => {
     setStatsByCompany((current) => ({ ...current, [companyId]: stats }));
   }, []);
-  const [tokenSettings] = useState(() =>
+  const [tokenSettings, setTokenSettings] = useState(() =>
     normalizeTokenSettings(
       typeof localStorage === "undefined" ? null : localStorage.getItem(PLICA_TOKEN_THRESHOLDS_STORAGE_KEY),
     ),
   );
+  const [tokenSettingsOpen, setTokenSettingsOpen] = useState(false);
+  const persistTokenSettings = (next: typeof tokenSettings) => {
+    setTokenSettings(next);
+    try {
+      localStorage.setItem(PLICA_TOKEN_THRESHOLDS_STORAGE_KEY, JSON.stringify(next));
+    } catch {
+      // storage unavailable (private mode) — thresholds still apply for this session
+    }
+  };
   const [rowMode, setRowMode] = useState<PlicaRowMode>(() =>
     normalizeRowMode(typeof localStorage === "undefined" ? null : localStorage.getItem(PLICA_ROWS_STORAGE_KEY)),
   );
@@ -493,6 +503,19 @@ export function PlicaHud() {
           )}
           <button
             type="button"
+            aria-pressed={tokenSettingsOpen}
+            aria-label="Token thresholds"
+            title="Token thresholds"
+            onClick={() => setTokenSettingsOpen((open) => !open)}
+            className={cn(
+              "rounded-md border p-1",
+              tokenSettingsOpen ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground",
+            )}
+          >
+            <Settings className="h-3.5 w-3.5" />
+          </button>
+          <button
+            type="button"
             aria-pressed={alertsEnabled}
             aria-label={alertsEnabled ? "Disable alerts" : "Enable alerts"}
             onClick={toggleAlerts}
@@ -513,6 +536,16 @@ export function PlicaHud() {
           </button>
         </div>
       </div>
+
+      {tokenSettingsOpen && companies.length > 0 && (
+        <PlicaTokenSettingsPanel
+          companies={companies}
+          statsById={statsByCompany}
+          settings={tokenSettings}
+          onChange={persistTokenSettings}
+          onClose={() => setTokenSettingsOpen(false)}
+        />
+      )}
 
       {companies.length > 0 && (
         <div data-plica-bar className="space-y-1.5">
