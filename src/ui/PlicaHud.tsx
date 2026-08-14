@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useQueries, useQuery } from "@tanstack/react-query";
-import { Bell, BellOff, FoldVertical, Layers, Maximize, Minimize, Pin, Settings, TriangleAlert, UnfoldVertical } from "lucide-react";
+import { Bell, BellOff, FoldVertical, Layers, LayoutGrid, Maximize, Minimize, Pin, Settings, TriangleAlert, UnfoldVertical } from "lucide-react";
 import type { DashboardSummary } from "@paperclipai/shared";
 import { authApi } from "./host/api";
 import { companiesListQueryOptions } from "./host/companies-query";
@@ -387,74 +387,6 @@ export function PlicaHud() {
           <h1 className="text-[length:var(--plica-fs-title,20px)] leading-[1.3] font-semibold tracking-tight">Plica</h1>
           <span className="text-[length:var(--plica-fs-body,14px)] leading-[1.45] text-muted-foreground">all companies</span>
         </div>
-        <div
-          role="group"
-          aria-label="Layout columns"
-          className="flex items-center rounded-md border p-0.5"
-        >
-          {LAYOUT_MODES.map(({ mode, label }) => (
-            <button
-              key={mode}
-              type="button"
-              aria-pressed={layout === mode}
-              onClick={() => selectLayout(mode)}
-              className={cn(
-                "rounded px-2 py-0.5 text-[length:var(--plica-fs-micro,11px)] leading-[1.45]",
-                layout === mode ? "bg-muted font-medium" : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-        <div role="group" aria-label="View mode" className="flex items-center rounded-md border p-0.5">
-          {VIEW_MODES.map(({ mode, label }) => (
-            <button
-              key={mode}
-              type="button"
-              aria-pressed={view === mode}
-              onClick={() => selectView(mode)}
-              className={cn(
-                "rounded px-2 py-0.5 text-[length:var(--plica-fs-micro,11px)] leading-[1.45]",
-                view === mode ? "bg-muted font-medium" : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-        <div role="group" aria-label="Attention rows" className="flex items-center rounded-md border p-0.5">
-          {ROW_MODES.map(({ mode, label }) => (
-            <button
-              key={mode}
-              type="button"
-              aria-pressed={rowMode === mode}
-              onClick={() => selectRowMode(mode)}
-              className={cn(
-                "rounded px-2 py-0.5 text-[length:var(--plica-fs-micro,11px)] leading-[1.45]",
-                rowMode === mode ? "bg-muted font-medium" : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-        <div role="group" aria-label="Pane order" className="flex items-center rounded-md border p-0.5">
-          {(["manual", "hot"] as const).map((mode) => (
-            <button
-              key={mode}
-              type="button"
-              aria-pressed={sortMode === mode}
-              onClick={() => selectSortMode(mode)}
-              className={cn(
-                "rounded px-2 py-0.5 text-[length:var(--plica-fs-micro,11px)] leading-[1.45]",
-                sortMode === mode ? "bg-muted font-medium" : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              {mode === "manual" ? "Manual" : "Hot first"}
-            </button>
-          ))}
-        </div>
         <div className="ml-auto flex items-center gap-3 text-[length:var(--plica-fs-body,14px)] leading-[1.45] text-muted-foreground">
           <span className="tabular-nums">{totalRunning} running</span>
           {totalApprovals > 0 ? (
@@ -473,33 +405,6 @@ export function PlicaHud() {
             <span className="inline-flex items-center gap-1 text-amber-600 dark:text-amber-400">
               <TriangleAlert className="h-3.5 w-3.5" /> polling degraded
             </span>
-          )}
-          {view === "wall" && (
-            <>
-              <button
-                type="button"
-                aria-label="Dock all companies"
-                title="Dock all companies"
-                disabled={
-                  workspaceCompanies.length === 0 ||
-                  workspaceCompanies.every((company) => collapsedIds.includes(company.id))
-                }
-                onClick={() => setCollapsedAll(workspaceCompanies.map((company) => company.id))}
-                className="rounded-md border p-1 text-muted-foreground hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
-              >
-                <FoldVertical className="h-3.5 w-3.5" />
-              </button>
-              <button
-                type="button"
-                aria-label="Undock all companies"
-                title="Undock all companies"
-                disabled={collapsedIds.length === 0}
-                onClick={() => setCollapsedAll([])}
-                className="rounded-md border p-1 text-muted-foreground hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
-              >
-                <UnfoldVertical className="h-3.5 w-3.5" />
-              </button>
-            </>
           )}
           <button
             type="button"
@@ -668,6 +573,110 @@ export function PlicaHud() {
           )}
         </div>
       )}
+
+      <div className="space-y-1.5">
+        <div className="flex flex-wrap items-center gap-2">
+          <LayoutGrid className="h-3.5 w-3.5 text-muted-foreground" />
+          <span className="text-[length:var(--plica-fs-micro,11px)] leading-[1.45] font-semibold uppercase tracking-wide text-muted-foreground">
+            Workspace
+          </span>
+          <div
+            role="group"
+            aria-label="Layout columns"
+            className="flex items-center rounded-md border p-0.5"
+          >
+            {LAYOUT_MODES.map(({ mode, label }) => (
+              <button
+                key={mode}
+                type="button"
+                aria-pressed={layout === mode}
+                onClick={() => selectLayout(mode)}
+                className={cn(
+                  "rounded px-2 py-0.5 text-[length:var(--plica-fs-micro,11px)] leading-[1.45]",
+                  layout === mode ? "bg-muted font-medium" : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <div role="group" aria-label="View mode" className="flex items-center rounded-md border p-0.5">
+            {VIEW_MODES.map(({ mode, label }) => (
+              <button
+                key={mode}
+                type="button"
+                aria-pressed={view === mode}
+                onClick={() => selectView(mode)}
+                className={cn(
+                  "rounded px-2 py-0.5 text-[length:var(--plica-fs-micro,11px)] leading-[1.45]",
+                  view === mode ? "bg-muted font-medium" : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <div role="group" aria-label="Attention rows" className="flex items-center rounded-md border p-0.5">
+            {ROW_MODES.map(({ mode, label }) => (
+              <button
+                key={mode}
+                type="button"
+                aria-pressed={rowMode === mode}
+                onClick={() => selectRowMode(mode)}
+                className={cn(
+                  "rounded px-2 py-0.5 text-[length:var(--plica-fs-micro,11px)] leading-[1.45]",
+                  rowMode === mode ? "bg-muted font-medium" : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <div role="group" aria-label="Pane order" className="flex items-center rounded-md border p-0.5">
+            {(["manual", "hot"] as const).map((mode) => (
+              <button
+                key={mode}
+                type="button"
+                aria-pressed={sortMode === mode}
+                onClick={() => selectSortMode(mode)}
+                className={cn(
+                  "rounded px-2 py-0.5 text-[length:var(--plica-fs-micro,11px)] leading-[1.45]",
+                  sortMode === mode ? "bg-muted font-medium" : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {mode === "manual" ? "Manual" : "Hot first"}
+              </button>
+            ))}
+          </div>
+          {view === "wall" && (
+            <>
+            <button
+              type="button"
+              aria-label="Dock all companies"
+              title="Dock all companies"
+              disabled={
+                workspaceCompanies.length === 0 ||
+                workspaceCompanies.every((company) => collapsedIds.includes(company.id))
+              }
+              onClick={() => setCollapsedAll(workspaceCompanies.map((company) => company.id))}
+              className="rounded-md border p-1 text-muted-foreground hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
+            >
+              <FoldVertical className="h-3.5 w-3.5" />
+            </button>
+            <button
+              type="button"
+              aria-label="Undock all companies"
+              title="Undock all companies"
+              disabled={collapsedIds.length === 0}
+              onClick={() => setCollapsedAll([])}
+              className="rounded-md border p-1 text-muted-foreground hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
+            >
+              <UnfoldVertical className="h-3.5 w-3.5" />
+            </button>
+            </>
+          )}
+        </div>
+      </div>
 
       {showBriefing && lastVisit && companies.length > 0 && (
         <PlicaBriefing companies={companies} since={lastVisit} onDismiss={() => setBriefingDismissed(true)} />
