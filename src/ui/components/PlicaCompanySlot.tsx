@@ -15,6 +15,7 @@ import {
   type PlicaTokenThresholds,
 } from "../lib/plica";
 import { PlicaCompanyPane } from "./PlicaCompanyPane";
+import { PlicaAnalyticPane } from "./PlicaAnalyticPane";
 import { PlicaMatrixRow } from "./PlicaMatrixRow";
 import { PlicaScoreboardRow } from "./PlicaScoreboardRow";
 import { PlicaSignalCard } from "./PlicaSignalCard";
@@ -135,6 +136,17 @@ export function PlicaCompanySlot({
   // Tote renders from the page's collected stats, so the slot exists only to
   // keep this company polling and reporting.
   if (view === "tote") return null;
+  if (view === "analytic") {
+    return (
+      <PlicaAnalyticPane
+        company={company}
+        data={data}
+        stats={stats}
+        thresholds={tokenThresholds ?? PLICA_TOKEN_DEFAULTS}
+        onTogglePin={onTogglePin}
+      />
+    );
+  }
   if (view === "triage") {
     return <PlicaTriageSection company={company} data={data} open={triageOpen} onToggle={onTriageToggle} />;
   }

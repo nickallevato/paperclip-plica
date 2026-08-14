@@ -16,6 +16,7 @@ import {
   attentionAgeMinutes,
   attentionDetailText,
   attentionKindSummary,
+  bucketAttentionByAge,
   compareAttention,
   currentMonthRange,
   deriveActionable,
@@ -25,6 +26,7 @@ import {
   derivePaneHealth,
   deriveTriageSummary,
   detectAlertEdges,
+  filterFeed,
   formatAgeMinutes,
   formatCents,
   formatTokens,
@@ -32,6 +34,7 @@ import {
   healthLabel,
   intervalLabel,
   issueStatusLabel,
+  mergeAttentionFeed,
   normalizeBarMode,
   normalizeCollapsedIds,
   normalizeLayoutMode,
@@ -959,5 +962,84 @@ describe("attentionAgeMinutes", () => {
   });
   it("rejects a future timestamp rather than reporting a negative age", () => {
     expect(attentionAgeMinutes({ activityAt: new Date(now + 60_000).toISOString() }, now)).toBeNull();
+  });
+});
+
+describe("mergeAttentionFeed", () => {
+  const at = (mins: number) => new Date(Date.UTC(2026, 7, 14, 12) - mins * 60_000).toISOString();
+  const item = (id: string, minsAgo: number | null, dismissed = false) =>
+    ({ id, severity: "medium", activityAt: minsAgo === null ? null : at(minsAgo), dismissal: dismissed ? {} : null }) as never;
+
+  it("interleaves companies newest first", () => {
+    const merged = mergeAttentionFeed([
+      { company: { id: "a" }, items: [item("a1", 100), item("a2", 5)] },
+      { company: { id: "b" }, items: [item("b1", 50)] },
+    ]);
+    expect(merged.map((row) => row.item.id)).toEqual(["a2", "b1", "a1"]);
+  });
+
+  it("drops dismissed items and tolerates a company with no feed yet", () => {
+    const merged = mergeAttentionFeed([
+      { company: { id: "a" }, items: [item("a1", 1, true), item("a2", 2)] },
+      { company: { id: "b" }, items: undefined },
+    ]);
+    expect(merged.map((row) => row.item.id)).toEqual(["a2"]);
+  });
+
+  it("sorts timestamp-less items last rather than letting them lead the stream", () => {
+    const merged = mergeAttentionFeed([
+      { company: { id: "a" }, items: [item("none", null), item("recent", 1)] },
+    ]);
+    expect(merged.map((row) => row.item.id)).toEqual(["recent", "none"]);
+  });
+});
+
+describe("filterFeed", () => {
+  const now = Date.UTC(2026, 7, 14, 12);
+  const at = (mins: number) => new Date(now - mins * 60_000).toISOString();
+  const rows = [
+    { company: { id: "a" }, item: { severity: "critical", activityAt: at(5) } },
+    { company: { id: "a" }, item: { severity: "medium", activityAt: at(500) } },
+    { company: { id: "b" }, item: { severity: "high", activityAt: at(600) } },
+  ] as never;
+
+  it("keeps everything by default", () => {
+    expect(filterFeed(rows, "all", now - 60 * 60_000)).toHaveLength(3);
+  });
+
+  it("urgent keeps critical and high only", () => {
+    expect(filterFeed(rows, "urgent", null).map((r: { item: { severity: string } }) => r.item.severity)).toEqual([
+      "critical",
+      "high",
+    ]);
+  });
+
+  it("unseen keeps only what moved since the last visit", () => {
+    expect(filterFeed(rows, "unseen", now - 60 * 60_000)).toHaveLength(1);
+  });
+
+  it("unseen falls back to everything when there is no last visit to compare against", () => {
+    expect(filterFeed(rows, "unseen", null)).toHaveLength(3);
+  });
+});
+
+describe("bucketAttentionByAge", () => {
+  const now = Date.UTC(2026, 7, 14, 12);
+  const at = (mins: number) => ({ activityAt: new Date(now - mins * 60_000).toISOString() });
+
+  it("splits items across the four buckets by age", () => {
+    const buckets = bucketAttentionByAge([at(10), at(90), at(300), at(2000), at(2500)], now);
+    expect(buckets.map((b) => b.count)).toEqual([1, 1, 1, 2]);
+    expect(buckets.map((b) => b.label)).toEqual(["<1h", "1–4h", "4–12h", ">12h"]);
+  });
+
+  it("flags the oldest bucket only when something is actually in it", () => {
+    expect(bucketAttentionByAge([at(10)], now).some((b) => b.stale)).toBe(false);
+    expect(bucketAttentionByAge([at(5000)], now).some((b) => b.stale)).toBe(true);
+  });
+
+  it("ignores timestamp-less items rather than inventing or hiding neglect", () => {
+    const buckets = bucketAttentionByAge([{ activityAt: null }, at(30)], now);
+    expect(buckets.reduce((sum, b) => sum + b.count, 0)).toBe(1);
   });
 });

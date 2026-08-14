@@ -165,12 +165,14 @@ export function intervalLabel(intervalSec: number | null): string | null {
   return `every ${intervalSec}s`;
 }
 
-export type PlicaViewMode = "wall" | "triage";
+export type PlicaViewMode = "wall" | "triage" | "feed" | "analytic";
 
 export const PLICA_VIEW_STORAGE_KEY = "plica.view";
 
+const PLICA_VIEW_MODES: ReadonlyArray<PlicaViewMode> = ["wall", "triage", "feed", "analytic"];
+
 export function normalizeViewMode(value: string | null | undefined): PlicaViewMode {
-  return value === "triage" ? "triage" : "wall";
+  return PLICA_VIEW_MODES.includes(value as PlicaViewMode) ? (value as PlicaViewMode) : "wall";
 }
 
 export const PLICA_ALERTS_STORAGE_KEY = "plica.alerts";
@@ -864,8 +866,80 @@ export function groupAttentionByKind(items: ReadonlyArray<AttentionItem>): Plica
 }
 
 /** Minutes since an item last moved, or null when it carries no timestamp. */
-export function attentionAgeMinutes(item: Pick<AttentionItem, "activityAt">, nowMs: number): number | null {
+export function attentionAgeMinutes(item: { activityAt: string | null }, nowMs: number): number | null {
   if (!item.activityAt) return null;
   const mins = Math.round((nowMs - new Date(item.activityAt).getTime()) / 60_000);
   return Number.isFinite(mins) && mins >= 0 ? mins : null;
+}
+
+/** Which slice of the merged feed is showing. */
+export type PlicaFeedFilter = "all" | "unseen" | "urgent";
+
+/**
+ * Merge every company's attention into one stream, newest first.
+ *
+ * The only cross-company ordering in Plica: a fresh blocker at one company
+ * outranks a stale one at another, which no side-by-side arrangement of panes
+ * can express because each pane only sorts against itself.
+ */
+export function mergeAttentionFeed<T extends { id: string }>(
+  entries: ReadonlyArray<{ company: T; items: ReadonlyArray<AttentionItem> | undefined }>,
+): Array<{ company: T; item: AttentionItem }> {
+  const merged: Array<{ company: T; item: AttentionItem }> = [];
+  for (const { company, items } of entries) {
+    for (const item of items ?? []) {
+      if (!item.dismissal) merged.push({ company, item });
+    }
+  }
+  // Newest first; items with no timestamp sort last rather than pretending to
+  // be from 1970 and dominating the top of the stream.
+  return merged.sort((a, b) => {
+    const at = a.item.activityAt ? new Date(a.item.activityAt).getTime() : Number.NEGATIVE_INFINITY;
+    const bt = b.item.activityAt ? new Date(b.item.activityAt).getTime() : Number.NEGATIVE_INFINITY;
+    return bt - at;
+  });
+}
+
+export function filterFeed<T>(
+  rows: ReadonlyArray<{ company: T; item: AttentionItem }>,
+  filter: PlicaFeedFilter,
+  sinceMs: number | null,
+): Array<{ company: T; item: AttentionItem }> {
+  if (filter === "urgent") return rows.filter((row) => row.item.severity === "critical" || row.item.severity === "high");
+  if (filter === "unseen") {
+    if (sinceMs === null) return [...rows];
+    return rows.filter((row) => Boolean(row.item.activityAt) && new Date(row.item.activityAt).getTime() > sinceMs);
+  }
+  return [...rows];
+}
+
+/**
+ * How long attention has been sitting, in buckets.
+ *
+ * Every other surface ranks by severity, so a medium item nobody has touched
+ * in two days sits below a high one from ten minutes ago forever. This is the
+ * only place neglect is visible, which is why the oldest bucket is the one
+ * that earns a colour.
+ */
+export const PLICA_AGE_BUCKETS: ReadonlyArray<{ label: string; maxMins: number }> = [
+  { label: "<1h", maxMins: 60 },
+  { label: "1–4h", maxMins: 240 },
+  { label: "4–12h", maxMins: 720 },
+  { label: ">12h", maxMins: Number.POSITIVE_INFINITY },
+];
+
+export function bucketAttentionByAge(
+  items: ReadonlyArray<{ activityAt: string | null }>,
+  nowMs: number,
+): Array<{ label: string; count: number; stale: boolean }> {
+  return PLICA_AGE_BUCKETS.map((bucket, index) => {
+    const floor = index === 0 ? 0 : PLICA_AGE_BUCKETS[index - 1].maxMins;
+    const count = items.filter((item) => {
+      const mins = attentionAgeMinutes(item, nowMs);
+      // Items with no timestamp have no age to bucket; counting them as fresh
+      // would understate neglect and as ancient would invent it.
+      return mins !== null && mins >= floor && mins < bucket.maxMins;
+    }).length;
+    return { label: bucket.label, count, stale: index === PLICA_AGE_BUCKETS.length - 1 && count > 0 };
+  });
 }

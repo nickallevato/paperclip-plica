@@ -10,6 +10,7 @@ import { dashboardApi } from "./host/api";
 import { PlicaBriefing } from "./components/PlicaBriefing";
 import { PlicaCompanySlot } from "./components/PlicaCompanySlot";
 import { PlicaDockedTile } from "./components/PlicaDockedTile";
+import { PlicaFeed } from "./components/PlicaFeed";
 import { PLICA_SCOREBOARD_COLUMNS } from "./components/PlicaScoreboardRow";
 import { PlicaTote } from "./components/PlicaTote";
 import { cn } from "./host/util";
@@ -60,6 +61,8 @@ const LAYOUT_MODES: Array<{ mode: PlicaLayoutMode; label: string }> = [
 const VIEW_MODES: Array<{ mode: PlicaViewMode; label: string }> = [
   { mode: "wall", label: "Wall" },
   { mode: "triage", label: "Triage" },
+  { mode: "feed", label: "Feed" },
+  { mode: "analytic", label: "Analytic" },
 ];
 
 const ROW_MODES: Array<{ mode: PlicaRowMode; label: string }> = [
@@ -641,7 +644,7 @@ export function PlicaHud() {
         <p className="text-[length:var(--plica-fs-body,14px)] leading-[1.45] text-muted-foreground">Loading companies…</p>
       ) : companies.length === 0 ? (
         <p className="text-[length:var(--plica-fs-body,14px)] leading-[1.45] text-muted-foreground">No companies to show.</p>
-      ) : view === "wall" ? (
+      ) : view === "wall" || view === "analytic" ? (
         <>
         {collapsedIds.length > 0 && (
           <div data-docked className="flex flex-wrap items-center gap-1.5">
@@ -668,8 +671,10 @@ export function PlicaHud() {
               <PlicaCompanySlot
                 key={company.id}
                 company={company}
-                view="wall"
+                view={view === "analytic" ? "analytic" : "wall"}
                 onActionable={handleActionable}
+                onStats={handleStats}
+                tokenThresholds={thresholdsFor(tokenSettings, company.id)}
                 alertsEnabled={alertsEnabled}
                 onToggleCollapse={() => toggleCollapsed(company.id)}
                 onTogglePin={() => togglePinned(company.id)}
@@ -678,6 +683,8 @@ export function PlicaHud() {
             ))}
         </div>
         </>
+      ) : view === "feed" ? (
+        <PlicaFeed companies={companies} since={lastVisit} />
       ) : (
         <div data-view="triage" className="divide-y overflow-hidden rounded-lg border">
           {orderedTriageCompanies
