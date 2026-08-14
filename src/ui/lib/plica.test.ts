@@ -48,6 +48,7 @@ import {
   partitionHotFirst,
   relativeTimeLabel,
   selectCeo,
+  selectFeedCompanies,
   selectProjectChips,
   shouldShowBriefing,
   sparklineDays,
@@ -1041,5 +1042,32 @@ describe("bucketAttentionByAge", () => {
   it("ignores timestamp-less items rather than inventing or hiding neglect", () => {
     const buckets = bucketAttentionByAge([{ activityAt: null }, at(30)], now);
     expect(buckets.reduce((sum, b) => sum + b.count, 0)).toBe(1);
+  });
+});
+
+describe("selectFeedCompanies", () => {
+  const companies = [{ id: "pinned" }, { id: "wall" }, { id: "docked" }, { id: "both" }];
+  const zones = { pinnedIds: ["pinned", "both"], collapsedIds: ["docked", "both"] };
+
+  it("active leaves out what you deliberately docked", () => {
+    expect(selectFeedCompanies(companies, zones, "active").map((c) => c.id)).toEqual(["pinned", "wall", "both"]);
+  });
+
+  it("pinned narrows to what you are watching", () => {
+    expect(selectFeedCompanies(companies, zones, "pinned").map((c) => c.id)).toEqual(["pinned", "both"]);
+  });
+
+  it("all includes the docked ones again", () => {
+    expect(selectFeedCompanies(companies, zones, "all").map((c) => c.id)).toEqual([
+      "pinned",
+      "wall",
+      "docked",
+      "both",
+    ]);
+  });
+
+  it("treats pinning as the stronger statement when a company carries both marks", () => {
+    // "both" is pinned and holds a stale collapsed id; pinning wins
+    expect(selectFeedCompanies(companies, zones, "active").map((c) => c.id)).toContain("both");
   });
 });

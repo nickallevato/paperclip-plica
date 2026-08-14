@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { Pin } from "lucide-react";
 import { useQueries } from "@tanstack/react-query";
 import type { AttentionFeed, Company } from "@paperclipai/shared";
 import { attentionApi } from "../host/api";
@@ -11,7 +12,9 @@ import {
   formatAgeMinutes,
   mergeAttentionFeed,
   plicaRefetchInterval,
+  selectFeedCompanies,
   type PlicaFeedFilter,
+  type PlicaFeedScope,
 } from "../lib/plica";
 import { PlicaIssueHover } from "./PlicaIssueHover";
 import { PlicaKindGlyph } from "./PlicaKindGlyph";
@@ -35,11 +38,38 @@ const FILTERS: Array<{ filter: PlicaFeedFilter; label: string }> = [
  * into this view costs nothing when those panes were already mounted — React
  * Query serves the shared keys.
  */
-export function PlicaFeed({ companies, since }: { companies: Company[]; since: string | null }) {
+const SCOPES: Array<{ scope: PlicaFeedScope; label: string; hint: string }> = [
+  { scope: "active", label: "Active", hint: "Pinned and on the wall — excludes docked" },
+  { scope: "pinned", label: "Pinned", hint: "Only what you are watching in the bar" },
+  { scope: "all", label: "All", hint: "Every company, docked ones included" },
+];
+
+export function PlicaFeed({
+  companies,
+  pinnedIds,
+  collapsedIds,
+  since,
+}: {
+  companies: Company[];
+  pinnedIds: string[];
+  collapsedIds: string[];
+  since: string | null;
+}) {
   const [filter, setFilter] = useState<PlicaFeedFilter>("all");
+  const [scope, setScope] = useState<PlicaFeedScope>("active");
+
+  // Docking a company is a decision to stop looking at it; a merged stream
+  // that ignored that would put it straight back in front of you.
+  const scoped = useMemo(
+    () => selectFeedCompanies(companies, { pinnedIds, collapsedIds }, scope),
+    [companies, pinnedIds, collapsedIds, scope],
+  );
+  const dockedCount = companies.filter(
+    (company) => collapsedIds.includes(company.id) && !pinnedIds.includes(company.id),
+  ).length;
 
   const results = useQueries({
-    queries: companies.map((company) => ({
+    queries: scoped.map((company) => ({
       queryKey: queryKeys.plica.attention(company.id),
       queryFn: () => attentionApi.list(company.id),
       refetchInterval: plicaRefetchInterval,
@@ -49,7 +79,7 @@ export function PlicaFeed({ companies, since }: { companies: Company[]; since: s
 
   const loading = results.some((result) => result.isLoading);
   const rows = mergeAttentionFeed(
-    companies.map((company, index) => ({
+    scoped.map((company, index) => ({
       company,
       items: (results[index]?.data as AttentionFeed | undefined)?.items,
     })),
@@ -86,14 +116,37 @@ export function PlicaFeed({ companies, since }: { companies: Company[]; since: s
             </button>
           ))}
         </div>
+        <div role="group" aria-label="Feed scope" className="flex items-center rounded-md border p-0.5">
+          {SCOPES.map(({ scope: value, label, hint }) => (
+            <button
+              key={value}
+              type="button"
+              aria-pressed={scope === value}
+              title={hint}
+              onClick={() => setScope(value)}
+              className={cn(
+                "rounded px-2 py-0.5 text-[length:var(--plica-fs-micro,11px)] leading-[1.45]",
+                scope === value ? "bg-muted font-medium" : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
         <span className="ml-auto text-[length:var(--plica-fs-micro,11px)] leading-[1.45] tabular-nums text-muted-foreground">
-          {rows.length} open · {fresh} new · {urgent} critical or high
+          {scoped.length} of {companies.length} companies
+          {scope === "active" && dockedCount > 0 ? ` · ${dockedCount} docked hidden` : ""} · {rows.length} open ·{" "}
+          {fresh} new · {urgent} critical or high
         </span>
       </div>
 
       {loading && rows.length === 0 ? (
         <p className="px-3 py-4 text-[length:var(--plica-fs-body,14px)] leading-[1.45] text-muted-foreground">
           Loading…
+        </p>
+      ) : scoped.length === 0 ? (
+        <p className="px-3 py-4 text-[length:var(--plica-fs-micro,11px)] leading-[1.45] text-muted-foreground">
+          {scope === "pinned" ? "Nothing is pinned yet." : "No companies in this scope."}
         </p>
       ) : shown.length === 0 ? (
         <p className="px-3 py-4 text-[length:var(--plica-fs-micro,11px)] leading-[1.45] text-muted-foreground">
@@ -123,8 +176,11 @@ export function PlicaFeed({ companies, since }: { companies: Company[]; since: s
                   brandColor={company.brandColor}
                   className="size-4 shrink-0 rounded text-[7px]"
                 />
-                <span className="w-28 shrink-0 truncate text-[length:var(--plica-fs-micro,11px)] leading-[1.45] text-muted-foreground">
-                  {company.name}
+                <span className="flex w-28 shrink-0 items-center gap-1 truncate text-[length:var(--plica-fs-micro,11px)] leading-[1.45] text-muted-foreground">
+                  {pinnedIds.includes(company.id) && (
+                    <Pin aria-label="Pinned" className="h-2.5 w-2.5 shrink-0 text-amber-600 dark:text-amber-400" />
+                  )}
+                  <span className="truncate">{company.name}</span>
                 </span>
                 <PlicaKindGlyph
                   kind={item.sourceKind}

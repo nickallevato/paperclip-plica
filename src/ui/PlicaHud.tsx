@@ -726,7 +726,12 @@ export function PlicaHud() {
         </div>
         </>
       ) : view === "feed" ? (
-        <PlicaFeed companies={companies} since={lastVisit} />
+        <PlicaFeed
+          companies={companies}
+          pinnedIds={pinnedIds}
+          collapsedIds={collapsedIds}
+          since={lastVisit}
+        />
       ) : (
         <div data-view="triage" className="divide-y overflow-hidden rounded-lg border">
           {orderedTriageCompanies

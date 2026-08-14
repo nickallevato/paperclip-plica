@@ -943,3 +943,28 @@ export function bucketAttentionByAge(
     return { label: bucket.label, count, stale: index === PLICA_AGE_BUCKETS.length - 1 && count > 0 };
   });
 }
+
+/**
+ * Which companies the merged feed draws from.
+ *
+ * The three zones mean different things and the feed has to respect that:
+ * pinned is what you are watching, the wall is what you are working through,
+ * and docked is what you deliberately set aside. Folding all three together
+ * puts items you chose to stop looking at back in front of you.
+ */
+export type PlicaFeedScope = "active" | "pinned" | "all";
+
+export function selectFeedCompanies<T extends { id: string }>(
+  companies: ReadonlyArray<T>,
+  zones: { pinnedIds: ReadonlyArray<string>; collapsedIds: ReadonlyArray<string> },
+  scope: PlicaFeedScope,
+): T[] {
+  if (scope === "pinned") return companies.filter((company) => zones.pinnedIds.includes(company.id));
+  if (scope === "all") return [...companies];
+  // "active": everything you have not put away. A pinned company is never
+  // docked from the feed's point of view even if it also carries a stale
+  // collapsed id, because pinning is the stronger, more recent statement.
+  return companies.filter(
+    (company) => zones.pinnedIds.includes(company.id) || !zones.collapsedIds.includes(company.id),
+  );
+}
