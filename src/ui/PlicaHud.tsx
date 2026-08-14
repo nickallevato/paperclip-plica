@@ -95,22 +95,30 @@ export function PlicaHud() {
       void rootRef.current?.requestFullscreen();
     }
   };
-  // Kiosk mode scales Plica's type via CSS variables — pane text uses
-  // text-[length:var(--plica-fs-*,<default>)], so a TV across the room gets
-  // ~1.3x sizes while the desk view keeps today's density. Set on the
-  // document root (not the HUD div) so portaled hover cards inherit too;
-  // nothing outside Plica reads these vars.
+  // Plica's type scale. Both modes are declared here, not just kiosk: every
+  // size is written as text-[length:var(--plica-fs-*,<default>)], and while the
+  // vars went unset at the desk each call site fell back to whatever default it
+  // happened to carry — which had drifted apart (micro was 10px in some panes
+  // and 11px in others, stat 13px vs 14px). Declaring both modes keeps one
+  // value per role. Desk tracks the host app (micro = --text-micro, body =
+  // text-sm, stat = text-base) so Plica doesn't read a step smaller than the
+  // rest of Paperclip; kiosk is ~1.3x for a TV across the room. Line-height
+  // rides along on the utility as a unitless ratio, so it scales with the size
+  // rather than needing a second set of vars. Set on the document root (not the
+  // HUD div) so portaled hover cards inherit too; nothing outside Plica reads
+  // these vars.
   useEffect(() => {
     const style = document.documentElement.style;
-    if (isKiosk) {
-      style.setProperty("--plica-fs-micro", "13px");
-      style.setProperty("--plica-fs-body", "15px");
-      style.setProperty("--plica-fs-stat", "17px");
+    const scale = isKiosk
+      ? { micro: "14px", body: "18px", stat: "21px", title: "26px" }
+      : { micro: "11px", body: "14px", stat: "16px", title: "20px" };
+    for (const [role, size] of Object.entries(scale)) {
+      style.setProperty(`--plica-fs-${role}`, size);
     }
     return () => {
-      style.removeProperty("--plica-fs-micro");
-      style.removeProperty("--plica-fs-body");
-      style.removeProperty("--plica-fs-stat");
+      for (const role of Object.keys(scale)) {
+        style.removeProperty(`--plica-fs-${role}`);
+      }
     };
   }, [isKiosk]);
 
@@ -271,13 +279,13 @@ export function PlicaHud() {
   return (
     <div
       ref={rootRef}
-      className={cn("space-y-4", isKiosk && "plica-kiosk bg-background p-4 leading-relaxed")}
+      className={cn("space-y-4", isKiosk && "plica-kiosk bg-background p-4")}
     >
       <div className="flex flex-wrap items-center gap-3">
         <div className="flex items-center gap-2">
           <Layers className="h-5 w-5 text-muted-foreground" />
-          <h1 className="text-xl font-semibold tracking-tight">Plica</h1>
-          <span className="text-sm text-muted-foreground">all companies</span>
+          <h1 className="text-[length:var(--plica-fs-title,20px)] leading-[1.3] font-semibold tracking-tight">Plica</h1>
+          <span className="text-[length:var(--plica-fs-body,14px)] leading-[1.45] text-muted-foreground">all companies</span>
         </div>
         <div
           role="group"
@@ -291,7 +299,7 @@ export function PlicaHud() {
               aria-pressed={layout === mode}
               onClick={() => selectLayout(mode)}
               className={cn(
-                "rounded px-2 py-0.5 text-xs",
+                "rounded px-2 py-0.5 text-[length:var(--plica-fs-micro,11px)] leading-[1.45]",
                 layout === mode ? "bg-muted font-medium" : "text-muted-foreground hover:text-foreground",
               )}
             >
@@ -307,7 +315,7 @@ export function PlicaHud() {
               aria-pressed={view === mode}
               onClick={() => selectView(mode)}
               className={cn(
-                "rounded px-2 py-0.5 text-xs",
+                "rounded px-2 py-0.5 text-[length:var(--plica-fs-micro,11px)] leading-[1.45]",
                 view === mode ? "bg-muted font-medium" : "text-muted-foreground hover:text-foreground",
               )}
             >
@@ -323,7 +331,7 @@ export function PlicaHud() {
               aria-pressed={sortMode === mode}
               onClick={() => selectSortMode(mode)}
               className={cn(
-                "rounded px-2 py-0.5 text-xs",
+                "rounded px-2 py-0.5 text-[length:var(--plica-fs-micro,11px)] leading-[1.45]",
                 sortMode === mode ? "bg-muted font-medium" : "text-muted-foreground hover:text-foreground",
               )}
             >
@@ -331,14 +339,14 @@ export function PlicaHud() {
             </button>
           ))}
         </div>
-        <div className="ml-auto flex items-center gap-3 text-sm text-muted-foreground">
+        <div className="ml-auto flex items-center gap-3 text-[length:var(--plica-fs-body,14px)] leading-[1.45] text-muted-foreground">
           <span className="tabular-nums">{totalRunning} running</span>
           {totalApprovals > 0 ? (
             <button
               type="button"
               onClick={() => selectView("triage")}
               title="Show triage view"
-              className="rounded-full border border-amber-500/40 bg-amber-500/15 px-2 py-0.5 text-xs tabular-nums text-amber-700 hover:bg-amber-500/25 dark:text-amber-300"
+              className="rounded-full border border-amber-500/40 bg-amber-500/15 px-2 py-0.5 text-[length:var(--plica-fs-micro,11px)] leading-[1.45] tabular-nums text-amber-700 hover:bg-amber-500/25 dark:text-amber-300"
             >
               {totalApprovals} approval{totalApprovals === 1 ? "" : "s"} pending
             </button>
@@ -402,14 +410,14 @@ export function PlicaHud() {
       )}
 
       {companiesQuery.isLoading ? (
-        <p className="text-sm text-muted-foreground">Loading companies…</p>
+        <p className="text-[length:var(--plica-fs-body,14px)] leading-[1.45] text-muted-foreground">Loading companies…</p>
       ) : companies.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No companies to show.</p>
+        <p className="text-[length:var(--plica-fs-body,14px)] leading-[1.45] text-muted-foreground">No companies to show.</p>
       ) : view === "wall" ? (
         <>
         {collapsedIds.length > 0 && (
           <div data-docked className="flex flex-wrap items-center gap-1.5">
-            <span className="text-[10px] uppercase tracking-wide text-muted-foreground">Docked</span>
+            <span className="text-[length:var(--plica-fs-micro,11px)] leading-[1.45] uppercase tracking-wide text-muted-foreground">Docked</span>
             {companies
               .filter((company) => collapsedIds.includes(company.id))
               .map((company) => (

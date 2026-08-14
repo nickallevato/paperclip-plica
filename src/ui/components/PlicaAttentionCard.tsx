@@ -69,10 +69,10 @@ export function PlicaAttentionCard({ item, company }: { item: AttentionItem; com
         )}
       />
       <div className="min-w-0 flex-1">
-        <p className="line-clamp-2 text-[length:var(--plica-fs-body,0.75rem)] leading-snug">{primary}</p>
-        <p className="mt-0.5 flex items-center gap-1.5 text-[length:var(--plica-fs-body,0.75rem)] text-muted-foreground">
+        <p className="line-clamp-2 text-[length:var(--plica-fs-body,14px)] leading-[1.45]">{primary}</p>
+        <p className="mt-0.5 flex items-center gap-1.5 text-[length:var(--plica-fs-body,14px)] leading-[1.45] text-muted-foreground">
           {item.severity === "critical" && (
-            <span className="shrink-0 rounded-sm bg-red-600 px-1 text-[length:var(--plica-fs-micro,10px)] font-semibold uppercase leading-4 text-white">
+            <span className="shrink-0 rounded-sm bg-red-600 px-1 text-[length:var(--plica-fs-micro,11px)] leading-[1.45] font-semibold uppercase text-white">
               crit
             </span>
           )}

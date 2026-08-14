@@ -54,7 +54,7 @@ function LiveDot() {
 export function PlicaRunsStrip({ runs, issues, company, onActed }: PlicaRunsStripProps) {
   const active = runs.filter(isRunActive);
   if (active.length === 0) {
-    return <p className="text-[length:var(--plica-fs-micro,11px)] italic text-muted-foreground">idle — no agents running</p>;
+    return <p className="text-[length:var(--plica-fs-micro,11px)] leading-[1.45] italic text-muted-foreground">idle — no agents running</p>;
   }
   const issueById = new Map(issues.map((issue) => [issue.id, issue]));
   const visible = active.slice(0, MAX_VISIBLE);
@@ -68,7 +68,7 @@ export function PlicaRunsStrip({ runs, issues, company, onActed }: PlicaRunsStri
           <span className="line-clamp-2 text-muted-foreground leading-snug">{narration}</span>
         );
         return (
-          <li key={run.id} className="rounded-md border bg-muted/20 px-2 py-1 text-[length:var(--plica-fs-body,0.75rem)]">
+          <li key={run.id} className="rounded-md border bg-muted/20 px-2 py-1 text-[length:var(--plica-fs-body,14px)] leading-[1.45]">
             <span className="flex items-center gap-2">
               {run.status === "running" ? (
                 <LiveDot />
@@ -111,7 +111,7 @@ export function PlicaRunsStrip({ runs, issues, company, onActed }: PlicaRunsStri
           <PlicaLink
             to={`/${company.issuePrefix}/agents/all`}
             companyId={company.id}
-            className="text-[length:var(--plica-fs-micro,11px)] text-muted-foreground hover:text-foreground"
+            className="text-[length:var(--plica-fs-micro,11px)] leading-[1.45] text-muted-foreground hover:text-foreground"
           >
             +{overflow} more run{overflow === 1 ? "" : "s"} →
           </PlicaLink>

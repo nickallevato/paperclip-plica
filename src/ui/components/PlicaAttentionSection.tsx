@@ -28,10 +28,10 @@ export function PlicaAttentionSection({
 
   return (
     <div>
-      <div className="mb-1 flex items-center gap-1.5 text-[length:var(--plica-fs-body,0.75rem)] font-medium text-muted-foreground">
+      <div className="mb-1 flex items-center gap-1.5 text-[length:var(--plica-fs-body,14px)] leading-[1.45] font-medium text-muted-foreground">
         <AlertTriangle className="h-3 w-3" />
         Needs attention
-        <Badge variant="outline" className="h-4 rounded-full px-1.5 text-[length:var(--plica-fs-micro,10px)] tabular-nums">
+        <Badge variant="outline" className="h-4 rounded-full px-1.5 text-[length:var(--plica-fs-micro,11px)] leading-[1.45] tabular-nums">
           {filtered.length}
         </Badge>
       </div>
@@ -46,7 +46,7 @@ export function PlicaAttentionSection({
             <PlicaLink
               to={`/${company.issuePrefix}/decisions`}
               companyId={company.id}
-              className="text-[length:var(--plica-fs-body,0.75rem)] text-muted-foreground hover:text-foreground"
+              className="text-[length:var(--plica-fs-body,14px)] leading-[1.45] text-muted-foreground hover:text-foreground"
             >
               +{overflow} more →
             </PlicaLink>

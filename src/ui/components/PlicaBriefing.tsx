@@ -66,7 +66,7 @@ export function PlicaBriefing({ companies, since, onDismiss }: PlicaBriefingProp
   return (
     <div
       data-testid="plica-briefing"
-      className={cn("flex flex-col gap-1.5 rounded-md border bg-muted/30 px-3 py-2 text-sm")}
+      className={cn("flex flex-col gap-1.5 rounded-md border bg-muted/30 px-3 py-2 text-[length:var(--plica-fs-body,14px)] leading-[1.45]")}
     >
       <div className="flex items-center gap-2">
         <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
@@ -74,20 +74,20 @@ export function PlicaBriefing({ companies, since, onDismiss }: PlicaBriefingProp
         <Button
           size="sm"
           variant="ghost"
-          className="ml-auto h-6 px-2 text-[length:var(--plica-fs-body,0.75rem)] text-muted-foreground hover:text-foreground"
+          className="ml-auto h-6 px-2 text-[length:var(--plica-fs-body,14px)] leading-[1.45] text-muted-foreground hover:text-foreground"
           onClick={onDismiss}
         >
           <X className="mr-1 h-3 w-3" /> Dismiss
         </Button>
       </div>
       {isLoading ? (
-        <p className="text-[length:var(--plica-fs-body,0.75rem)] text-muted-foreground">Compiling briefing…</p>
+        <p className="text-[length:var(--plica-fs-body,14px)] leading-[1.45] text-muted-foreground">Compiling briefing…</p>
       ) : lines.length === 0 ? (
-        <p className="text-[length:var(--plica-fs-body,0.75rem)] text-muted-foreground">All quiet since {relative}.</p>
+        <p className="text-[length:var(--plica-fs-body,14px)] leading-[1.45] text-muted-foreground">All quiet since {relative}.</p>
       ) : (
         <ul className="flex flex-col gap-0.5">
           {lines.map(({ company, text }) => (
-            <li key={company.id} className="text-[length:var(--plica-fs-body,0.75rem)] text-muted-foreground">
+            <li key={company.id} className="text-[length:var(--plica-fs-body,14px)] leading-[1.45] text-muted-foreground">
               <span className="font-medium text-foreground">{company.name}:</span> {text}
             </li>
           ))}

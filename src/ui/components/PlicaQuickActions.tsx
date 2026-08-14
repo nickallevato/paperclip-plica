@@ -62,7 +62,7 @@ export function PlicaQuickActions({ issueId, issueStatus, onActed }: PlicaQuickA
     <span className="inline-flex items-center gap-1">
       <Popover open={commentOpen} onOpenChange={setCommentOpen}>
         <PopoverTrigger asChild>
-          <Button size="sm" variant="ghost" className="h-6 px-1.5 text-[length:var(--plica-fs-body,0.75rem)]">
+          <Button size="sm" variant="ghost" className="h-6 px-1.5 text-[length:var(--plica-fs-body,14px)] leading-[1.45]">
             <MessageSquarePlus className="mr-1 h-3 w-3" /> Comment
           </Button>
         </PopoverTrigger>
@@ -84,7 +84,7 @@ export function PlicaQuickActions({ issueId, issueStatus, onActed }: PlicaQuickA
       {issueStatus !== undefined && (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button size="sm" variant="ghost" className="h-6 px-1.5 text-[length:var(--plica-fs-body,0.75rem)]">
+            <Button size="sm" variant="ghost" className="h-6 px-1.5 text-[length:var(--plica-fs-body,14px)] leading-[1.45]">
               {issueStatusLabel(issueStatus)}
             </Button>
           </DropdownMenuTrigger>

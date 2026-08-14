@@ -73,7 +73,7 @@ export function PlicaApprovalRow({ approval, company, onActed }: PlicaApprovalRo
   );
 
   return (
-    <li className="rounded-md text-[length:var(--plica-fs-body,0.75rem)]">
+    <li className="rounded-md text-[length:var(--plica-fs-body,14px)] leading-[1.45]">
       <div className="flex items-center gap-1.5">
         <PlicaHoverPopover
           open={previewOpen}
@@ -116,7 +116,7 @@ export function PlicaApprovalRow({ approval, company, onActed }: PlicaApprovalRo
         <Button
           size="sm"
           variant="secondary"
-          className="h-6 px-1.5 text-[length:var(--plica-fs-body,0.75rem)]"
+          className="h-6 px-1.5 text-[length:var(--plica-fs-body,14px)] leading-[1.45]"
           disabled={busy}
           aria-label="Approve"
           onClick={() => approve.mutate()}
@@ -126,7 +126,7 @@ export function PlicaApprovalRow({ approval, company, onActed }: PlicaApprovalRo
         <Button
           size="sm"
           variant="ghost"
-          className="h-6 px-1.5 text-[length:var(--plica-fs-body,0.75rem)] text-red-600 dark:text-red-400"
+          className="h-6 px-1.5 text-[length:var(--plica-fs-body,14px)] leading-[1.45] text-red-600 dark:text-red-400"
           disabled={busy}
           aria-label="Reject"
           onClick={() => reject.mutate()}
@@ -154,13 +154,13 @@ export function PlicaApprovalRow({ approval, company, onActed }: PlicaApprovalRo
             onChange={(event) => setNote(event.target.value)}
             placeholder="Decision note (optional)…"
             rows={2}
-            className="text-[length:var(--plica-fs-body,0.75rem)]"
+            className="text-[length:var(--plica-fs-body,14px)] leading-[1.45]"
           />
           <div className="flex justify-end gap-1.5">
             <Button
               size="sm"
               variant="secondary"
-              className="h-6 px-1.5 text-[length:var(--plica-fs-body,0.75rem)]"
+              className="h-6 px-1.5 text-[length:var(--plica-fs-body,14px)] leading-[1.45]"
               disabled={busy}
               onClick={() => approve.mutate()}
             >
@@ -169,7 +169,7 @@ export function PlicaApprovalRow({ approval, company, onActed }: PlicaApprovalRo
             <Button
               size="sm"
               variant="ghost"
-              className="h-6 px-1.5 text-[length:var(--plica-fs-body,0.75rem)] text-red-600 dark:text-red-400"
+              className="h-6 px-1.5 text-[length:var(--plica-fs-body,14px)] leading-[1.45] text-red-600 dark:text-red-400"
               disabled={busy}
               onClick={() => reject.mutate()}
             >

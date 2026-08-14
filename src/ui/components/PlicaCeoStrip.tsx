@@ -35,7 +35,7 @@ export function PlicaCeoStrip({
   // it reads as part of the pane's masthead ("who's in charge"), with the
   // vitals grid below as the only boxed row.
   return (
-    <div className="-mt-1 flex items-center gap-2 text-[length:var(--plica-fs-body,0.75rem)] text-muted-foreground">
+    <div className="-mt-1 flex items-center gap-2 text-[length:var(--plica-fs-body,14px)] leading-[1.45] text-muted-foreground">
       <PlicaLink to={`/${company.issuePrefix}/agents/${ceo.urlKey ?? ceo.id}`} companyId={company.id} className="flex min-w-0 flex-1 items-center gap-1.5 hover:text-foreground">
         <Crown className="h-3 w-3 shrink-0" />
         <span className="truncate font-medium text-foreground/80">{ceo.name}</span>

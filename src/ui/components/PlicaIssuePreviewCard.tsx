@@ -72,7 +72,7 @@ export function PlicaHoverPopover({
           onOpenAutoFocus={(event) => event.preventDefault()}
           onMouseEnter={show}
           onMouseLeave={hide}
-          className="w-80 max-w-[90vw] p-2.5 text-[length:var(--plica-fs-body,0.75rem)]"
+          className="w-80 max-w-[90vw] p-2.5 text-[length:var(--plica-fs-body,14px)] leading-[1.45]"
         >
           {content}
         </PopoverContent>
@@ -86,7 +86,7 @@ export function PlicaIssuePreviewBody({ issue }: { issue: Issue }) {
   return (
     <div className="min-w-0">
       <div className="flex items-center gap-1.5">
-        <span className="shrink-0 font-mono text-[length:var(--plica-fs-micro,10px)] text-muted-foreground">
+        <span className="shrink-0 font-mono text-[length:var(--plica-fs-micro,11px)] leading-[1.45] text-muted-foreground">
           {issue.identifier ?? issue.id.slice(0, 8)}
         </span>
         <span className="truncate font-medium">{issue.title}</span>
@@ -95,11 +95,11 @@ export function PlicaIssuePreviewBody({ issue }: { issue: Issue }) {
         </span>
       </div>
       {issue.description ? (
-        <p className="mt-1 line-clamp-5 whitespace-pre-wrap text-[length:var(--plica-fs-micro,11px)] leading-snug text-muted-foreground">
+        <p className="mt-1 line-clamp-5 whitespace-pre-wrap text-[length:var(--plica-fs-micro,11px)] leading-[1.45] text-muted-foreground">
           {issue.description.length > 500 ? `${issue.description.slice(0, 500)}…` : issue.description}
         </p>
       ) : (
-        <p className="mt-1 text-[length:var(--plica-fs-micro,11px)] text-muted-foreground">No description.</p>
+        <p className="mt-1 text-[length:var(--plica-fs-micro,11px)] leading-[1.45] text-muted-foreground">No description.</p>
       )}
     </div>
   );

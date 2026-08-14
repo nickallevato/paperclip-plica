@@ -18,10 +18,10 @@ export function PlicaApprovalsSection({ approvals, company, open, onActed }: {
 
   return (
     <div>
-      <div className="mb-1 flex items-center gap-1.5 text-[length:var(--plica-fs-body,0.75rem)] font-medium text-muted-foreground">
+      <div className="mb-1 flex items-center gap-1.5 text-[length:var(--plica-fs-body,14px)] leading-[1.45] font-medium text-muted-foreground">
         <SquareCheckBig className="h-3 w-3" />
         Approvals
-        <Badge variant="outline" className="h-4 rounded-full px-1.5 text-[length:var(--plica-fs-micro,10px)] tabular-nums">
+        <Badge variant="outline" className="h-4 rounded-full px-1.5 text-[length:var(--plica-fs-micro,11px)] leading-[1.45] tabular-nums">
           {approvals.length}
         </Badge>
       </div>
@@ -34,7 +34,7 @@ export function PlicaApprovalsSection({ approvals, company, open, onActed }: {
             <PlicaLink
               to={`/${company.issuePrefix}/approvals`}
               companyId={company.id}
-              className="text-[length:var(--plica-fs-body,0.75rem)] text-muted-foreground hover:text-foreground"
+              className="text-[length:var(--plica-fs-body,14px)] leading-[1.45] text-muted-foreground hover:text-foreground"
             >
               +{overflow} more →
             </PlicaLink>

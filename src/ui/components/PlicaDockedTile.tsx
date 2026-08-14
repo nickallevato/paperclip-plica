@@ -32,7 +32,7 @@ export function PlicaDockedTile({ company, onExpand }: { company: Company; onExp
       onClick={onExpand}
       title={`Expand ${company.name} — ${healthLabel(health, summary.data)}`}
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-full border py-1 pl-1.5 pr-2 text-[length:var(--plica-fs-body,0.75rem)]",
+        "inline-flex items-center gap-1.5 rounded-full border py-1 pl-1.5 pr-2 text-[length:var(--plica-fs-body,14px)] leading-[1.45]",
         health === "red"
           ? "border-red-500/40 bg-red-500/10 hover:bg-red-500/20"
           : "bg-muted/20 hover:bg-muted/40",
@@ -49,7 +49,7 @@ export function PlicaDockedTile({ company, onExpand }: { company: Company; onExp
         <span
           data-docked-count
           className={cn(
-            "inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[length:var(--plica-fs-micro,10px)] font-semibold tabular-nums text-white",
+            "inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[length:var(--plica-fs-micro,11px)] leading-[1.45] font-semibold tabular-nums text-white",
             health === "red" ? "bg-red-600" : "bg-amber-600",
           )}
         >

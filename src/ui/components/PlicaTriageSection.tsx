@@ -72,8 +72,8 @@ export function PlicaTriageSection({
           brandColor={company.brandColor}
           className="size-5 shrink-0 rounded-md text-[8px]"
         />
-        <h2 className="truncate text-[length:var(--plica-fs-stat,0.875rem)] font-semibold">{company.name}</h2>
-        <span className="ml-auto flex shrink-0 items-center gap-1.5 text-[length:var(--plica-fs-body,0.75rem)]">
+        <h2 className="truncate text-[length:var(--plica-fs-stat,16px)] leading-[1.25] font-semibold">{company.name}</h2>
+        <span className="ml-auto flex shrink-0 items-center gap-1.5 text-[length:var(--plica-fs-body,14px)] leading-[1.45]">
           {data.unavailable ? (
             <span className={TONE_CLASSES.critical}>unreachable</span>
           ) : isClear ? (
@@ -92,9 +92,9 @@ export function PlicaTriageSection({
       {open && (
         <div className="space-y-0.5 px-3 pb-3 pl-[52px]">
           {data.unavailable ? (
-            <p className="text-[length:var(--plica-fs-body,0.75rem)] text-muted-foreground">This company's data could not be loaded. It will retry automatically.</p>
+            <p className="text-[length:var(--plica-fs-body,14px)] leading-[1.45] text-muted-foreground">This company's data could not be loaded. It will retry automatically.</p>
           ) : isClear ? (
-            <p className="text-[length:var(--plica-fs-body,0.75rem)] text-muted-foreground">Nothing actionable — all clear.</p>
+            <p className="text-[length:var(--plica-fs-body,14px)] leading-[1.45] text-muted-foreground">Nothing actionable — all clear.</p>
           ) : (
             <>
               {data.approvals.map((approval) => (
@@ -111,7 +111,7 @@ export function PlicaTriageSection({
               )}
               {ceoOverdue && ceo && (
                 <TriageItem kind="beat">
-                  <span className="min-w-0 flex-1 truncate text-[length:var(--plica-fs-body,0.75rem)]">
+                  <span className="min-w-0 flex-1 truncate text-[length:var(--plica-fs-body,14px)] leading-[1.45]">
                     <span className="font-medium">{ceo.name}</span>
                     <span className="text-muted-foreground"> — heartbeat overdue</span>
                   </span>
@@ -129,7 +129,7 @@ export function PlicaTriageSection({
 function TriageItem({ kind, children }: { kind: string; children: React.ReactNode }) {
   return (
     <div className="flex items-center gap-2 py-0.5">
-      <span className="w-14 shrink-0 text-[length:var(--plica-fs-micro,10px)] uppercase tracking-wide text-muted-foreground">{kind}</span>
+      <span className="w-14 shrink-0 text-[length:var(--plica-fs-micro,11px)] leading-[1.45] uppercase tracking-wide text-muted-foreground">{kind}</span>
       {children}
     </div>
   );

@@ -99,7 +99,7 @@ export function PlicaCompanyPane({
             brandColor={company.brandColor}
             className="size-5 shrink-0 rounded-md text-[8px]"
           />
-          <CardTitle className="truncate text-[length:var(--plica-fs-stat,0.875rem)]">{company.name}</CardTitle>
+          <CardTitle className="truncate text-[length:var(--plica-fs-stat,16px)] leading-[1.25]">{company.name}</CardTitle>
           <span
             data-health={health}
             role="img"
@@ -112,7 +112,7 @@ export function PlicaCompanyPane({
               data-actionable-count
               title={`${actionable.count} item${actionable.count === 1 ? "" : "s"} need${actionable.count === 1 ? "s" : ""} you`}
               className={cn(
-                "inline-flex h-4 min-w-4 shrink-0 items-center justify-center rounded-full px-1 text-[length:var(--plica-fs-micro,10px)] font-semibold tabular-nums text-white",
+                "inline-flex h-4 min-w-4 shrink-0 items-center justify-center rounded-full px-1 text-[length:var(--plica-fs-micro,11px)] leading-[1.45] font-semibold tabular-nums text-white",
                 actionable.criticalOrHigh ? "bg-red-600" : "bg-amber-600",
               )}
             >
@@ -133,33 +133,33 @@ export function PlicaCompanyPane({
               <ChevronsDownUp className="h-3.5 w-3.5" />
             </button>
           )}
-          <PlicaLink to={mainUiHref(company, "/dashboard")} companyId={company.id} className="inline-flex items-center gap-1 text-[length:var(--plica-fs-body,0.75rem)] text-muted-foreground hover:text-foreground">
+          <PlicaLink to={mainUiHref(company, "/dashboard")} companyId={company.id} className="inline-flex items-center gap-1 text-[length:var(--plica-fs-body,14px)] leading-[1.45] text-muted-foreground hover:text-foreground">
             Open <ExternalLink className="h-3 w-3" />
           </PlicaLink>
         </div>
       </CardHeader>
 
       {data.unavailable && (
-        <div className="mx-4 rounded-md border border-red-500/40 bg-red-500/10 px-2 py-1 text-[length:var(--plica-fs-body,0.75rem)] text-red-700 dark:text-red-300">
+        <div className="mx-4 rounded-md border border-red-500/40 bg-red-500/10 px-2 py-1 text-[length:var(--plica-fs-body,14px)] leading-[1.45] text-red-700 dark:text-red-300">
           Unreachable — no data yet
         </div>
       )}
 
       {!data.unavailable && data.staleSince !== null && (
-        <div className="mx-4 rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-1 text-[length:var(--plica-fs-body,0.75rem)] text-amber-700 dark:text-amber-300">
+        <div className="mx-4 rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-1 text-[length:var(--plica-fs-body,14px)] leading-[1.45] text-amber-700 dark:text-amber-300">
           Stale since {new Date(data.staleSince).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
         </div>
       )}
 
       {data.unavailable ? (
         <CardContent className="flex flex-1 items-start px-4">
-          <p className="text-[length:var(--plica-fs-body,0.75rem)] text-muted-foreground">
+          <p className="text-[length:var(--plica-fs-body,14px)] leading-[1.45] text-muted-foreground">
             This company's data could not be loaded. It will retry automatically.
           </p>
         </CardContent>
       ) : isFirstLoad ? (
         <CardContent className="flex flex-1 items-start px-4">
-          <p className="text-[length:var(--plica-fs-body,0.75rem)] text-muted-foreground">Loading…</p>
+          <p className="text-[length:var(--plica-fs-body,14px)] leading-[1.45] text-muted-foreground">Loading…</p>
         </CardContent>
       ) : (
       <CardContent className="flex flex-1 flex-col gap-3 px-4">
@@ -231,7 +231,7 @@ export function PlicaCompanyPane({
               </PlicaLink>
             ))}
             {overflow > 0 && (
-              <PlicaLink to={mainUiHref(company, "/projects")} companyId={company.id} className="text-[length:var(--plica-fs-body,0.75rem)] text-muted-foreground hover:text-foreground">
+              <PlicaLink to={mainUiHref(company, "/projects")} companyId={company.id} className="text-[length:var(--plica-fs-body,14px)] leading-[1.45] text-muted-foreground hover:text-foreground">
                 +{overflow} more
               </PlicaLink>
             )}
@@ -258,7 +258,7 @@ export function PlicaCompanyPane({
               companyId={company.id}
               alarming
             />
-            <PlicaLink to={mainUiHref(company, "/issues")} companyId={company.id} className="text-[length:var(--plica-fs-body,0.75rem)] text-muted-foreground hover:text-foreground">
+            <PlicaLink to={mainUiHref(company, "/issues")} companyId={company.id} className="text-[length:var(--plica-fs-body,14px)] leading-[1.45] text-muted-foreground hover:text-foreground">
               All issues →
             </PlicaLink>
           </div>
@@ -287,7 +287,7 @@ function FooterBadge({
   alarming?: boolean;
 }) {
   return (
-    <PlicaLink to={href} companyId={companyId} className={cn( "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[length:var(--plica-fs-body,0.75rem)] tabular-nums", count > 0
+    <PlicaLink to={href} companyId={companyId} className={cn( "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[length:var(--plica-fs-body,14px)] leading-[1.45] tabular-nums", count > 0
           ? alarming
             ? "border-amber-500/40 bg-amber-500/10 text-amber-700 hover:bg-amber-500/20 dark:text-amber-300"
             : "border-border text-foreground hover:bg-muted/40"
@@ -342,10 +342,10 @@ function PaneStat({
           className={cn(
             "min-w-0 truncate tabular-nums",
             hot
-              ? "text-[length:var(--plica-fs-stat,13px)] font-semibold text-amber-700 dark:text-amber-300"
+              ? "text-[length:var(--plica-fs-stat,16px)] leading-[1.25] font-semibold text-amber-700 dark:text-amber-300"
               : ghost
-                ? "text-[length:var(--plica-fs-micro,11px)] text-muted-foreground"
-                : "text-[length:var(--plica-fs-stat,13px)] font-semibold",
+                ? "text-[length:var(--plica-fs-micro,11px)] leading-[1.45] text-muted-foreground"
+                : "text-[length:var(--plica-fs-stat,16px)] leading-[1.25] font-semibold",
           )}
         >
           {value}
@@ -359,7 +359,7 @@ function PaneStat({
           />
         )}
       </span>
-      <span className="text-[length:var(--plica-fs-micro,10px)] uppercase tracking-wide text-muted-foreground">{microLabel}</span>
+      <span className="text-[length:var(--plica-fs-micro,11px)] leading-[1.45] uppercase tracking-wide text-muted-foreground">{microLabel}</span>
     </>
   );
   if (onClick) {
