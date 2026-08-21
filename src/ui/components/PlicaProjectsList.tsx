@@ -65,9 +65,7 @@ export function PlicaProjectsList({
                   </PlicaLink>
                   <span className={cn(MICRO, "shrink-0 tabular-nums text-muted-foreground")}>
                     {entry.open} open
-                    {entry.blocked > 0 && (
-                      <span className="text-amber-700 dark:text-amber-300"> · {entry.blocked} blocked</span>
-                    )}
+                    {entry.blocked > 0 && <span> · {entry.blocked} blocked</span>}
                   </span>
                   {due && (
                     <span
@@ -83,13 +81,13 @@ export function PlicaProjectsList({
                   )}
                 </div>
                 <div
-                  className="ml-[30px] flex h-1 overflow-hidden rounded-full bg-muted"
+                  className="ml-[30px] flex h-1 overflow-hidden rounded-full bg-muted/60"
                   role="img"
                   aria-label={`${entry.inProgress} in progress, ${entry.blocked} blocked, of ${entry.open} open`}
                   title={`${entry.inProgress} in progress · ${entry.blocked} blocked · ${entry.open} open`}
                 >
-                  <span className="bg-emerald-500" style={{ width: `${moving}%` }} />
-                  <span className="bg-amber-500" style={{ width: `${stuck}%` }} />
+                  <span className="bg-emerald-500/45 dark:bg-emerald-400/35" style={{ width: `${moving}%` }} />
+                  <span className="bg-amber-500/45 dark:bg-amber-400/35" style={{ width: `${stuck}%` }} />
                 </div>
               </li>
             );
