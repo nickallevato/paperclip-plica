@@ -4,11 +4,20 @@ import type { LiveRunForIssue } from "../host/api";
 import { CompanyPatternIcon, HoverCard, HoverCardContent, HoverCardTrigger, IssueStatusBadge } from "../host/ui-kit";
 import { cn } from "../host/util";
 import type { PlicaLiveEntry } from "../lib/queue";
-import { elapsedLabel, runNarration } from "../lib/runs";
+import { elapsedLabel, humanStatus, isStartingUp, runNarration } from "../lib/runs";
 import { LiveDot } from "./LiveDot";
 import { PlicaLink } from "./PlicaLink";
 
 const MICRO = "text-[length:var(--plica-fs-micro,11px)] leading-[1.45]";
+
+/** Markdown emphasis/headings/code marks read as noise in a four-line excerpt. */
+function plainText(markdown: string): string {
+  return markdown
+    .replace(/```[\s\S]*?```/g, " ")
+    .replace(/[*_`#>]+/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
 const BODY = "text-[length:var(--plica-fs-body,14px)] leading-[1.45]";
 
 function Avatar({ company }: { company: Company }) {
@@ -28,10 +37,8 @@ function Avatar({ company }: { company: Company }) {
  * fallback. No tool names or runtime plumbing.
  */
 function RunDetail({ run, issue, company }: { run: LiveRunForIssue; issue: Issue | undefined; company: Company }) {
-  const said = run.lastAssistantSnippet?.trim() || null;
-  const status = run.currentStatusMessage?.trim() || null;
-  const next = run.nextAction?.trim() || null;
-  const summary = said ?? status ?? next;
+  const summary = humanStatus(run) ?? run.nextAction?.trim() ?? null;
+  const startingUp = !summary && isStartingUp(run);
   return (
     <div className={cn("flex flex-col gap-2", BODY)}>
       <div className="flex items-start gap-2">
@@ -43,10 +50,11 @@ function RunDetail({ run, issue, company }: { run: LiveRunForIssue; issue: Issue
       </div>
       {summary ? (
         <p className="whitespace-pre-line">{summary}</p>
-      ) : issue?.description?.trim() ? (
-        <p className="line-clamp-4 text-muted-foreground">{issue.description.trim()}</p>
       ) : (
-        <p className="italic text-muted-foreground">working — nothing reported yet</p>
+        <>
+          <p className="italic text-muted-foreground">{startingUp ? "starting up — nothing to report yet" : "working — nothing reported yet"}</p>
+          {issue?.description?.trim() && <p className="line-clamp-4 text-muted-foreground">{plainText(issue.description)}</p>}
+        </>
       )}
       <p className={cn("text-muted-foreground", MICRO)}>
         {run.agentName} · {company.name} · {elapsedLabel(run)}
