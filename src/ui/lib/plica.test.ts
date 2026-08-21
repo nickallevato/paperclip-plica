@@ -18,7 +18,10 @@ import {
   attentionAgeMinutes,
   attentionDetailText,
   attentionGroupFor,
+  attentionActionLabel,
+  attentionAskText,
   attentionGroupSummary,
+  attentionHeadline,
   attentionIssueId,
   attentionRowTitle,
   attentionSpecificText,
@@ -280,6 +283,45 @@ describe("pruneClosedIssueAttention", () => {
     expect(pruneClosedIssueAttention(untouched, issues)).toBe(untouched);
     expect(pruneClosedIssueAttention(untouched, [])).toBe(untouched);
     expect(pruneClosedIssueAttention(undefined, issues)).toBeUndefined();
+  });
+});
+
+describe("attention headline / ask / action", () => {
+  const interaction = (kind: string, title: string, detail: Record<string, unknown> | null): AttentionItem =>
+    ({
+      id: "x",
+      companyId: "c1",
+      sourceKind: "issue_thread_interaction",
+      severity: "medium",
+      rank: 0,
+      whyNow: "",
+      dismissal: null,
+      subject: { kind: "interaction", id: "int", companyId: "c1", title, identifier: null, status: "pending", href: null, metadata: { kind, issueId: "i-1" } },
+      detail,
+    }) as never;
+  const issue = { title: "Fall class registration" } as Issue;
+
+  it("prefers the issue title over a generic interaction label, but keeps a specific one", () => {
+    expect(attentionHeadline(interaction("ask_user_questions", "Questions need answers", null), issue)).toBe("Fall class registration");
+    expect(attentionHeadline(interaction("ask_user_questions", "Questions need answers", null), null)).toBe("Questions need answers");
+    expect(attentionHeadline(interaction("ask_user_questions", "Robin — pick a class", null), issue)).toBe("Robin — pick a class");
+  });
+
+  it("surfaces the question, the prompt, or the blocker as the ask line", () => {
+    expect(attentionAskText(interaction("ask_user_questions", "t", { kind: "questions", questionCount: 3, firstQuestionText: "Which class?" }), "t")).toBe("3 questions · Which class?");
+    expect(attentionAskText(interaction("ask_user_questions", "t", { kind: "questions", questionCount: 1, firstQuestionText: "Which class?" }), "t")).toBe("Which class?");
+    expect(attentionAskText(interaction("request_confirmation", "t", { kind: "confirmation", promptExcerpt: "Ship it?" }), "t")).toBe("Ship it?");
+    expect(attentionAskText(interaction("request_confirmation", "Ship it?", { kind: "confirmation", promptExcerpt: "Ship it?" }), "Ship it?")).toBeNull();
+    expect(attentionAskText(interaction("x", "t", { kind: "blocker", blockingIssue: { identifier: "ACM-3", title: "CPA sign-off" } }), "t")).toBe("blocked by ACM-3 CPA sign-off");
+    expect(attentionAskText(interaction("x", "t", null), "t")).toBeNull();
+  });
+
+  it("labels the link with the verb the interaction wants", () => {
+    expect(attentionActionLabel(interaction("ask_user_questions", "t", null))).toBe("Answer");
+    expect(attentionActionLabel(interaction("request_confirmation", "t", null))).toBe("Confirm");
+    expect(attentionActionLabel(interaction("suggest_tasks", "t", null))).toBe("Decide");
+    expect(attentionActionLabel(interaction("something_new", "t", null))).toBe("Reply");
+    expect(attentionActionLabel({ ...interaction("x", "t", null), sourceKind: "blocker_attention" })).toBe("Open");
   });
 });
 

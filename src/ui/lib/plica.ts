@@ -1165,6 +1165,83 @@ export function attentionSpecificText(detail: AttentionItem["detail"]): string |
  * to the specific question or excerpt the item carries; and only then to
  * whyNow, which is written as an explanation rather than a name.
  */
+/**
+ * The server titles a thread interaction with whatever the agent supplied,
+ * falling back to a generic label per kind. These are those fallbacks: a row
+ * wearing one says nothing about *what* needs answering, so callers that
+ * know the issue prefer its title instead.
+ */
+const GENERIC_INTERACTION_TITLES = new Set([
+  "Confirmation requested",
+  "Selection confirmation requested",
+  "Questions need answers",
+  "Suggested tasks need a decision",
+  "Item verdicts need a decision",
+  "Interaction needs a decision",
+]);
+
+export function isGenericInteractionTitle(title: string | null | undefined): boolean {
+  return !!title && GENERIC_INTERACTION_TITLES.has(title.trim());
+}
+
+/**
+ * Headline for a queue row: the subject's own title unless it is one of the
+ * generic interaction labels and we know the issue, in which case the issue
+ * title says far more about what is being asked.
+ */
+export function attentionHeadline(item: AttentionItem, issue: Pick<Issue, "title"> | null | undefined): string {
+  const subjectTitle = item.subject.title?.trim();
+  if (subjectTitle && !(issue && isGenericInteractionTitle(subjectTitle))) return subjectTitle;
+  if (issue?.title?.trim()) return issue.title.trim();
+  return attentionRowTitle(item);
+}
+
+/**
+ * The ask itself, as a second line under the headline: the first question
+ * (with a count when there are more), the confirmation prompt, the blocking
+ * issue, the failure reason. Null when the detail adds nothing a reader
+ * would not get from the headline.
+ */
+export function attentionAskText(item: AttentionItem, headline: string): string | null {
+  const detail = item.detail;
+  if (!detail) return null;
+  let text: string | null;
+  if (detail.kind === "questions") {
+    const first = attentionSpecificText(detail);
+    const count = detail.questionCount > 1 ? `${detail.questionCount} questions · ` : "";
+    text = first ? `${count}${first}` : detail.questionCount > 0 ? `${detail.questionCount} question${detail.questionCount === 1 ? "" : "s"} awaiting answers` : null;
+  } else if (detail.kind === "blocker") {
+    const blocker = attentionSpecificText(detail);
+    text = blocker ? `blocked by ${detail.blockingIssue?.identifier ? `${detail.blockingIssue.identifier} ` : ""}${blocker}` : null;
+  } else {
+    text = attentionSpecificText(detail);
+  }
+  if (!text) return null;
+  return text.trim() === headline.trim() ? null : text;
+}
+
+/**
+ * What the row's link does, in the verb the interaction actually wants —
+ * "Answer" for questions, "Confirm" for a confirmation — rather than a
+ * one-size "Reply". The link still opens the thread; nothing resolves inline.
+ */
+export function attentionActionLabel(item: AttentionItem): string {
+  if (item.sourceKind !== "issue_thread_interaction") return "Open";
+  const kind = item.subject.metadata?.kind;
+  switch (kind) {
+    case "ask_user_questions":
+      return "Answer";
+    case "request_confirmation":
+    case "request_checkbox_confirmation":
+      return "Confirm";
+    case "suggest_tasks":
+    case "request_item_verdicts":
+      return "Decide";
+    default:
+      return "Reply";
+  }
+}
+
 export function attentionRowTitle(item: AttentionItem): string {
   const subjectTitle = item.subject.title?.trim();
   if (subjectTitle) return subjectTitle;

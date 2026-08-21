@@ -112,6 +112,7 @@ export function PlicaBoardPage({
           attention: data.attention,
           agents: data.agents,
           routines: data.routines,
+          issues: data.issues,
           nowMs,
         }),
       ),

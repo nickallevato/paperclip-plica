@@ -10,6 +10,7 @@ import type {
 import type { LiveRunForIssue } from "../host/api";
 import {
   PLICA_ROUTINE_OVERDUE_GRACE_MS,
+  attentionIssueId,
   deriveCeoHeartbeat,
   selectCeo,
   type PlicaCeoHeartbeat,
@@ -48,7 +49,12 @@ interface PlicaQueueItemBase {
 
 export type PlicaQueueItem =
   | (PlicaQueueItemBase & { kind: "approval"; approval: Approval; requestedBy: string | null })
-  | (PlicaQueueItemBase & { kind: "attention"; item: AttentionItem })
+  | (PlicaQueueItemBase & {
+      kind: "attention";
+      item: AttentionItem;
+      /** The issue the item is about, when it is about one we hold. */
+      issue: Issue | null;
+    })
   | (PlicaQueueItemBase & { kind: "heartbeat"; ceo: Agent; beat: PlicaCeoHeartbeat })
   | (PlicaQueueItemBase & { kind: "routine"; routine: RoutineListItem; reason: "overdue" | "failed" });
 
@@ -79,10 +85,13 @@ export function deriveQueueItems(input: {
   attention: AttentionFeed | undefined;
   agents: ReadonlyArray<Agent>;
   routines: ReadonlyArray<RoutineListItem>;
+  /** Optional; lets attention rows name the issue behind a thread interaction. */
+  issues?: ReadonlyArray<Issue>;
   nowMs: number;
 }): PlicaQueueItem[] {
   const items: PlicaQueueItem[] = [];
   const agentName = new Map(input.agents.map((agent) => [agent.id, agent.name]));
+  const issueById = new Map((input.issues ?? []).map((issue) => [issue.id, issue]));
 
   for (const approval of input.approvals) {
     items.push({
@@ -111,6 +120,10 @@ export function deriveQueueItems(input: {
       rank,
       atMs: epochMs(item.activityAt),
       item,
+      issue: (() => {
+        const issueId = attentionIssueId(item);
+        return issueId ? (issueById.get(issueId) ?? null) : null;
+      })(),
     });
   }
 

@@ -45,6 +45,24 @@ function buildItems() {
             detail: null,
           },
           {
+            id: "ask",
+            severity: "medium",
+            sourceKind: "issue_thread_interaction",
+            activityAt: at(30),
+            dismissal: null,
+            subject: {
+              kind: "interaction",
+              id: "int-1",
+              title: "Questions need answers",
+              identifier: null,
+              status: "pending",
+              href: "/ACM/issues/ACM-77#interaction-int-1",
+              metadata: { kind: "ask_user_questions", issueId: "i-77" },
+            },
+            whyNow: "Questions need answers on an issue thread.",
+            detail: { kind: "questions", questionCount: 3, firstQuestionText: "Which class do you select for Robin?", images: [] },
+          },
+          {
             id: "low",
             severity: "low",
             sourceKind: "review",
@@ -58,6 +76,7 @@ function buildItems() {
       } as never,
       agents: [],
       routines: [],
+      issues: [{ id: "i-77", identifier: "ACM-77", title: "Fall class registration", status: "in_review" }] as never,
       nowMs: NOW,
     }),
     ...deriveQueueItems({
@@ -137,7 +156,7 @@ describe("PlicaQueue", () => {
     expect(container.querySelector('[aria-label="Approve"]')).not.toBeNull();
     expect(container.querySelector('[aria-label="Nudge Atlas"]')).not.toBeNull();
     // Later is folded: the low item is counted, not listed.
-    expect(container.textContent).toContain("1 low-priority notice");
+    expect(container.textContent).toContain("2 low-priority notices");
     expect(container.querySelector('[data-queue-item="attention:low"]')).toBeNull();
     // header: 3 urgent, oldest is the 130m-old heartbeat
     expect(container.textContent).toContain("oldest 2h");
@@ -154,6 +173,23 @@ describe("PlicaQueue", () => {
     });
     expect(container.querySelector('[data-queue-item="attention:low"]')).not.toBeNull();
     expect(container.textContent).toContain("Tidy the README");
+    act(() => root.unmount());
+  });
+
+  it("names the issue behind a thread interaction and shows the ask itself", async () => {
+    const root = render();
+    await act(async () => {
+      (container.querySelector('[data-queue-group="later"] button[aria-expanded]') as HTMLButtonElement).dispatchEvent(
+        new MouseEvent("click", { bubbles: true }),
+      );
+    });
+    const row = container.querySelector('[data-queue-item="attention:ask"]') as HTMLElement;
+    expect(row.textContent).toContain("ACM-77");
+    expect(row.textContent).toContain("Fall class registration");
+    expect(row.textContent).not.toContain("Questions need answers");
+    expect(row.querySelector("[data-queue-ask]")?.textContent).toBe("3 questions · Which class do you select for Robin?");
+    expect(row.textContent).toContain("questions");
+    expect(row.querySelector('[aria-label="Answer"], a')?.textContent).toContain("Answer");
     act(() => root.unmount());
   });
 

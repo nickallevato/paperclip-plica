@@ -4,8 +4,9 @@ import type { Company } from "@paperclipai/shared";
 import { Button, CompanyPatternIcon } from "../host/ui-kit";
 import { cn, toCompanyRelativePath } from "../host/util";
 import {
-  attentionDetailText,
-  attentionRowTitle,
+  attentionActionLabel,
+  attentionAskText,
+  attentionHeadline,
   formatAgeMinutes,
   intervalLabel,
   issueStatusLabel,
@@ -39,7 +40,18 @@ const KIND_LABELS: Partial<Record<string, string>> = {
   productivity_review: "review",
 };
 
-function kindLabel(kind: string): string {
+const INTERACTION_LABELS: Partial<Record<string, string>> = {
+  ask_user_questions: "questions",
+  request_confirmation: "confirmation",
+  request_checkbox_confirmation: "confirmation",
+  suggest_tasks: "suggested tasks",
+  request_item_verdicts: "verdicts",
+};
+
+function kindLabel(kind: string, interactionKind?: unknown): string {
+  if (kind === "issue_thread_interaction" && typeof interactionKind === "string") {
+    return INTERACTION_LABELS[interactionKind] ?? KIND_LABELS[kind] ?? kind;
+  }
   return KIND_LABELS[kind] ?? kind.replace(/_/g, " ");
 }
 
@@ -123,6 +135,8 @@ export function PlicaQueueItemRow({
   let meta: ReactNode;
   let actions: ReactNode;
   let hoverIssueId: string | null = null;
+  /** The question / prompt itself, when the item carries one. */
+  let ask: string | null = null;
 
   switch (item.kind) {
     case "approval": {
@@ -151,22 +165,21 @@ export function PlicaQueueItemRow({
     }
     case "attention": {
       const subject = item.item.subject;
-      identifier = subject.identifier;
-      title = attentionRowTitle(item.item);
-      if (subject.kind === "issue") hoverIssueId = subject.id;
-      const prose = attentionDetailText(item.item.detail) ?? item.item.whyNow;
+      identifier = subject.identifier ?? item.issue?.identifier ?? null;
+      title = attentionHeadline(item.item, item.issue);
+      ask = attentionAskText(item.item, title);
+      hoverIssueId = subject.kind === "issue" ? subject.id : (item.issue?.id ?? null);
       meta = (
         <>
           <PlicaKindGlyph kind={item.item.sourceKind} />
-          <span className="truncate" title={prose}>
-            {kindLabel(item.item.sourceKind)}
+          <span className="truncate" title={item.item.whyNow}>
+            {kindLabel(item.item.sourceKind, item.item.subject.metadata?.kind)}
             {item.item.originAgentName ? ` · ${item.item.originAgentName}` : ""}
-            {prose && prose !== title ? ` · ${prose}` : ""}
           </span>
         </>
       );
       const href = subject.href ? `/${company.issuePrefix}${toCompanyRelativePath(subject.href)}` : `/${company.issuePrefix}/decisions`;
-      actions = <OpenLink to={href} companyId={company.id} label={item.item.sourceKind === "issue_thread_interaction" ? "Reply" : "Open"} />;
+      actions = <OpenLink to={href} companyId={company.id} label={attentionActionLabel(item.item)} />;
       break;
     }
     case "heartbeat": {
@@ -211,6 +224,11 @@ export function PlicaQueueItemRow({
           {title}
         </span>
       </div>
+      {ask && (
+        <p data-queue-ask className={cn("line-clamp-2 text-muted-foreground", BODY)} title={ask}>
+          {ask}
+        </p>
+      )}
       <div
         className={cn(
           "flex min-w-0 items-center gap-1.5 text-muted-foreground",
