@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Check, Loader2, X } from "lucide-react";
 import type {
@@ -11,57 +11,13 @@ import { issuesApi } from "../host/api";
 import { useToastActions } from "../host/shims";
 import { Button, Dialog, DialogContent, DialogTrigger, Popover, PopoverContent, PopoverTrigger, Textarea } from "../host/ui-kit";
 import { cn } from "../host/util";
+import { clearDraft, draftKeyFor, loadDraft, useDraftSaver } from "../lib/drafts";
 import { attentionIssueId } from "../lib/plica";
 
 const MICRO = "text-[length:var(--plica-fs-micro,11px)] leading-[1.45]";
 const BODY = "text-[length:var(--plica-fs-body,14px)] leading-[1.45]";
 
-/**
- * Drafts survive closing the popover or the tab, the way the host's comment
- * composers do: localStorage, debounced, cleared on send. Keyed per
- * interaction, so a half-answered question set comes back as you left it.
- */
-export const PLICA_DRAFT_DEBOUNCE_MS = 800;
-export const draftKeyFor = (interactionId: string) => `plica.interactionDraft.${interactionId}`;
-
-export function loadDraft<T>(key: string): T | null {
-  try {
-    const raw = localStorage.getItem(key);
-    return raw ? (JSON.parse(raw) as T) : null;
-  } catch {
-    return null;
-  }
-}
-
-export function saveDraft(key: string, value: unknown, empty: boolean) {
-  try {
-    if (empty) localStorage.removeItem(key);
-    else localStorage.setItem(key, JSON.stringify(value));
-  } catch {
-    // storage disabled or full — drafts are a convenience, never an error
-  }
-}
-
-export function clearDraft(key: string) {
-  try {
-    localStorage.removeItem(key);
-  } catch {
-    // ignore
-  }
-}
-
-/** Debounced write of `value` under `key`; skips the initial mount so loading a draft never re-saves it. */
-function useDraftSaver(key: string, value: unknown, empty: boolean) {
-  const first = useRef(true);
-  useEffect(() => {
-    if (first.current) {
-      first.current = false;
-      return;
-    }
-    const timer = setTimeout(() => saveDraft(key, value, empty), PLICA_DRAFT_DEBOUNCE_MS);
-    return () => clearTimeout(timer);
-  }, [key, value, empty]);
-}
+export { PLICA_DRAFT_DEBOUNCE_MS, clearDraft, draftKeyFor, loadDraft, saveDraft } from "../lib/drafts";
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : "Please try again.";

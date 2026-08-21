@@ -18,13 +18,18 @@ vi.mock("../host/shims", async (importOriginal) => ({
   useToastActions: () => ({ pushToast: toastSpy }),
 }));
 
-// Radix Popover portals don't open under jsdom without pointer-event
+// Radix Dialog portals don't open under jsdom without pointer-event
 // polyfills; mock with pass-through elements (mirrors PlicaQuickActions.test.tsx).
 vi.mock("../host/ui-kit", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../host/ui-kit")>()),
-  Popover: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  PopoverTrigger: ({ children }: { children: ReactNode }) => <>{children}</>,
-  PopoverContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  Dialog: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  DialogTrigger: ({ children }: { children: ReactNode }) => <>{children}</>,
+  DialogContent: ({ children, title }: { children: ReactNode; title: ReactNode }) => (
+    <div>
+      <h2>{title}</h2>
+      {children}
+    </div>
+  ),
 }));
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -77,6 +82,7 @@ describe("PlicaCeoNudge", () => {
   }
 
   beforeEach(() => {
+    localStorage.clear();
     container = document.createElement("div");
     document.body.appendChild(container);
     mockIssuesApi.create.mockResolvedValue({ id: "issue-1", identifier: "ACM-42" });
@@ -121,6 +127,25 @@ describe("PlicaCeoNudge", () => {
     const textareaAfter = container.querySelector("textarea") as HTMLTextAreaElement;
     expect(textareaAfter.value).toBe("");
 
+    act(() => root.unmount());
+  });
+
+  it("uses a typed title and chosen priority over the derived defaults", async () => {
+    const root = render();
+    await setTextareaValue(container.querySelector("textarea") as HTMLTextAreaElement, "please ship the deploy\nmore detail");
+    const titleInput = container.querySelector('input[aria-label="Task title"]') as HTMLInputElement;
+    expect(titleInput.placeholder).toBe("please ship the deploy");
+    await act(async () => {
+      const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")?.set;
+      setter?.call(titleInput, "Deploy today");
+      titleInput.dispatchEvent(new InputEvent("input", { bubbles: true }));
+    });
+    await clickButton(container, "Critical");
+    await clickButton(container, "Send");
+    await flush();
+    const [, payload] = mockIssuesApi.create.mock.calls[0];
+    expect(payload.title).toBe("Deploy today");
+    expect(payload.priority).toBe("critical");
     act(() => root.unmount());
   });
 
