@@ -50,12 +50,12 @@ export function PlicaRoutinesList({
                 <PlicaLink
                   to={`/${company.issuePrefix}/routines/${routine.id}`}
                   companyId={company.id}
-                  className="w-52 shrink-0 truncate font-medium hover:underline decoration-dotted underline-offset-2 [.plica-kiosk_&]:w-72"
+                  className="min-w-0 flex-1 truncate font-medium hover:underline decoration-dotted underline-offset-2"
                   title={`${routine.title} · ${company.name}`}
                 >
                   {routine.title}
                 </PlicaLink>
-                <span className="min-w-0 flex-1 truncate text-muted-foreground" title={label ?? undefined}>
+                <span className="max-w-[45%] shrink-0 truncate text-muted-foreground" title={label ?? undefined}>
                   {cadence}
                   {state === "failed" && <span className="text-red-600 dark:text-red-400"> · last run failed</span>}
                 </span>

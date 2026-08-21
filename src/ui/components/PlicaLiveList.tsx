@@ -51,7 +51,7 @@ export function PlicaLiveList({ entries, limit = 8 }: { entries: PlicaLiveEntry[
                 ) : (
                   <Loader2 className="h-3 w-3 shrink-0 animate-spin text-muted-foreground motion-reduce:animate-none" />
                 )}
-                <span className="w-44 shrink-0 truncate font-medium [.plica-kiosk_&]:w-60" title={`${run.agentName} · ${company.name}`}>
+                <span className="max-w-[40%] shrink-0 truncate font-medium" title={`${run.agentName} · ${company.name}`}>
                   {run.agentName}
                 </span>
                 <span className="min-w-0 flex-1">

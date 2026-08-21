@@ -37,9 +37,9 @@ function useNowMs(intervalMs = 30_000): number {
 }
 
 /**
- * Queue + Board: the action rail on the left, one ledger row per company on
- * the right, and the two cross-company lists (live runs, upcoming routines)
- * under the ledger. Each company still has exactly one PlicaCompanySlot —
+ * Queue + Board: the two cross-company lists (live runs, upcoming routines)
+ * stacked on the left, one ledger row per company on the right with the
+ * action rail under the ledger. Each company still has exactly one PlicaCompanySlot —
  * here it renders the board row and reports its data up, and the page
  * derives the rail and the lists from what it has been told.
  */
@@ -150,18 +150,10 @@ export function PlicaBoardPage({
 
   return (
     <div data-view="board" className="grid gap-4 lg:grid-cols-[minmax(300px,380px)_minmax(0,1fr)] xl:grid-cols-[420px_minmax(0,1fr)] [.plica-kiosk_&]:gap-6 [.plica-kiosk_&]:xl:grid-cols-[540px_minmax(0,1fr)]">
-      <PlicaQueue
-        groups={groups}
-        summary={summary}
-        grouping={grouping}
-        onGrouping={onGrouping}
-        companiesById={companiesById}
-        nowMs={nowMs}
-        onActed={(companyId) => dataByCompany[companyId]?.invalidate()}
-        footer={footer}
-        filterCompany={focusCompany}
-        onClearFilter={() => setFocusCompanyId(null)}
-      />
+      <div className="flex min-w-0 flex-col gap-4">
+        <PlicaLiveList entries={live} />
+        <PlicaRoutinesList items={routines.items} overflow={routines.overflow} nowMs={nowMs} />
+      </div>
 
       <div className="flex min-w-0 flex-col gap-4">
         <div className="overflow-x-auto rounded-lg border bg-card">
@@ -249,10 +241,18 @@ export function PlicaBoardPage({
           </table>
         </div>
 
-        <div className="grid gap-4 xl:grid-cols-2">
-          <PlicaLiveList entries={live} />
-          <PlicaRoutinesList items={routines.items} overflow={routines.overflow} nowMs={nowMs} />
-        </div>
+        <PlicaQueue
+          groups={groups}
+          summary={summary}
+          grouping={grouping}
+          onGrouping={onGrouping}
+          companiesById={companiesById}
+          nowMs={nowMs}
+          onActed={(companyId) => dataByCompany[companyId]?.invalidate()}
+          footer={footer}
+          filterCompany={focusCompany}
+          onClearFilter={() => setFocusCompanyId(null)}
+        />
       </div>
     </div>
   );
