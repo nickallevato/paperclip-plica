@@ -91,14 +91,17 @@ function hexToHue(hex: string): number {
 }
 
 /**
- * The hue the pattern icon uses for a company — brand colour when set,
- * otherwise the same name-seeded hue the icon draws with — as a CSS colour,
- * so edges and chips can match the avatar without a canvas.
+ * A company's accent as a CSS colour: the brand colour itself when one is set
+ * (a grey brand stays grey — it is not reduced to a hue), otherwise the same
+ * name-seeded hue the pattern icon draws with, so edges and chips match the
+ * avatar without a canvas.
  */
 export function companyAccentColor(companyName: string, brandColor?: string | null): string {
+  const hex = brandColor?.trim() ?? "";
+  if (/^#[0-9a-f]{6}$/i.test(hex)) return hex;
+  if (/^#[0-9a-f]{3}$/i.test(hex)) return `#${hex[1]}${hex[1]}${hex[2]}${hex[2]}${hex[3]}${hex[3]}`;
   const rand = mulberry32(hashString(companyName.trim().toLowerCase()));
-  const hue = brandColor && /^#[0-9a-f]{6}$/i.test(brandColor) ? hexToHue(brandColor) : Math.floor(rand() * 360);
-  return `hsl(${hue} 60% 50%)`;
+  return `hsl(${Math.floor(rand() * 360)} 60% 50%)`;
 }
 
 function makeCompanyPatternDataUrl(seed: string, brandColor?: string | null, logicalSize = 22, cellSize = 2): string {
