@@ -30,6 +30,7 @@ export {
 } from "./popover";
 export { Textarea } from "./textarea";
 export { Dialog, DialogContent, DialogTrigger } from "./dialog";
+export { HoverCard, HoverCardContent, HoverCardTrigger } from "./hover-card";
 export {
   DropdownMenu,
   DropdownMenuCheckboxItem,
