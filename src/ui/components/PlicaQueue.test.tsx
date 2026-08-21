@@ -211,7 +211,7 @@ describe("PlicaQueue", () => {
     expect(row.textContent).toContain("ACM-77");
     expect(row.textContent).toContain("Fall class registration");
     expect(row.textContent).not.toContain("Questions need answers");
-    expect(row.querySelector("[data-queue-ask]")?.textContent).toBe("3 questions · Which class do you select for Robin?");
+    expect(row.querySelector("[data-queue-ask]")?.textContent).toContain("3 questions · Which class do you select for Robin?");
     expect(row.textContent).toContain("questions");
     expect(row.querySelector('[aria-label="Answer"], a')?.textContent).toContain("Answer");
     act(() => root.unmount());

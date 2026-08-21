@@ -179,7 +179,7 @@ export function PlicaQueueItemRow({
           <PlicaKindGlyph kind={item.item.sourceKind} />
           <span className="truncate" title={item.item.whyNow}>
             {kindLabel(item.item.sourceKind, item.item.subject.metadata?.kind)}
-            {item.item.originAgentName ? ` · ${item.item.originAgentName}` : ""}
+            {item.item.originAgentName && !ask ? ` · ${item.item.originAgentName}` : ""}
           </span>
         </>
       );
@@ -248,15 +248,8 @@ export function PlicaQueueItemRow({
         </span>
       </div>
       {ask && (item.kind === "attention" ? <PlicaAskBlock item={item.item} text={ask} /> : (
-        <div data-queue-ask className={cn("mt-0.5 rounded-md border-l-2 border-muted-foreground/30 bg-muted/40 px-2 py-1 text-foreground/90", BODY)}>
-          <span className="line-clamp-3">{ask}</span>
-        </div>
+        <p data-queue-ask className={cn("line-clamp-2 text-muted-foreground", BODY)}>{ask}</p>
       ))}
-      {inline && (
-        <div data-queue-inline className="mt-1 flex flex-wrap items-center gap-1.5">
-          {inline}
-        </div>
-      )}
       <div
         className={cn(
           "flex min-w-0 items-center gap-1.5 text-muted-foreground",
@@ -265,10 +258,16 @@ export function PlicaQueueItemRow({
         )}
       >
         {meta}
+        {inline && (
+          <span data-queue-inline className="ml-auto flex shrink-0 items-center gap-1">
+            {inline}
+          </span>
+        )}
         <span
           data-age-tone={tone}
           className={cn(
-            "ml-auto shrink-0 tabular-nums",
+            "shrink-0 tabular-nums",
+            !inline && "ml-auto",
             tone === "stale" && "font-semibold text-red-600 dark:text-red-400",
             tone === "aging" && "font-medium text-amber-700 dark:text-amber-300",
           )}
