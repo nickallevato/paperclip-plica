@@ -33,7 +33,7 @@ function makeRun(overrides: Partial<LiveRunForIssue>): LiveRunForIssue {
     finishedAt: null,
     createdAt: new Date().toISOString(),
     agentId: "agent-1",
-    agentName: "Scribe",
+    agentName: "Quill",
     adapterType: "claude_local",
     issueId: "issue-1",
     ...overrides,
@@ -73,7 +73,7 @@ describe("PlicaRunsStrip", () => {
 
   it("shows the run's live narration instead of the static issue title", () => {
     render([makeRun({ currentStatusMessage: "Drafting the intro section" })]);
-    expect(container.textContent).toContain("Scribe");
+    expect(container.textContent).toContain("Quill");
     expect(container.textContent).toContain("Drafting the intro section");
     expect(container.textContent).not.toContain("Write the launch blog post");
   });

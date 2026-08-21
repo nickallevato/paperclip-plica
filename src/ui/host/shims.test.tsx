@@ -80,7 +80,7 @@ describe("host/shims", () => {
 
 describe("isSafeLocalPath", () => {
   it("allows root-relative paths and refuses anything that could leave the origin", () => {
-    expect(isSafeLocalPath("/LIOA/issues/LIOA-1#x")).toBe(true);
+    expect(isSafeLocalPath("/ACM/issues/ACM-1#x")).toBe(true);
     expect(isSafeLocalPath("/")).toBe(true);
     expect(isSafeLocalPath("//evil.example/x")).toBe(false);
     expect(isSafeLocalPath("/\\evil.example")).toBe(false);
