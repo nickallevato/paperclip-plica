@@ -93,6 +93,22 @@ describe("deriveQueueItems", () => {
     expect(items).toEqual([]);
   });
 
+  it("names the agent that requested an approval when it is known", () => {
+    const items = deriveQueueItems({
+      companyId: "c1",
+      approvals: [
+        { id: "a1", createdAt: new Date(at(1)), requestedByAgentId: "agent-ceo" },
+        { id: "a2", createdAt: new Date(at(1)), requestedByAgentId: "ghost" },
+        { id: "a3", createdAt: new Date(at(1)), requestedByAgentId: null },
+      ] as never,
+      attention: undefined,
+      agents: [ceo()],
+      routines: [],
+      nowMs: NOW,
+    });
+    expect(items.map((item) => (item.kind === "approval" ? item.requestedBy : "?"))).toEqual(["Atlas", null, null]);
+  });
+
   it("adds an overdue CEO heartbeat to Now, aged from the last beat", () => {
     const items = deriveQueueItems({
       companyId: "c1",

@@ -47,7 +47,7 @@ interface PlicaQueueItemBase {
 }
 
 export type PlicaQueueItem =
-  | (PlicaQueueItemBase & { kind: "approval"; approval: Approval })
+  | (PlicaQueueItemBase & { kind: "approval"; approval: Approval; requestedBy: string | null })
   | (PlicaQueueItemBase & { kind: "attention"; item: AttentionItem })
   | (PlicaQueueItemBase & { kind: "heartbeat"; ceo: Agent; beat: PlicaCeoHeartbeat })
   | (PlicaQueueItemBase & { kind: "routine"; routine: RoutineListItem; reason: "overdue" | "failed" });
@@ -82,6 +82,7 @@ export function deriveQueueItems(input: {
   nowMs: number;
 }): PlicaQueueItem[] {
   const items: PlicaQueueItem[] = [];
+  const agentName = new Map(input.agents.map((agent) => [agent.id, agent.name]));
 
   for (const approval of input.approvals) {
     items.push({
@@ -92,6 +93,7 @@ export function deriveQueueItems(input: {
       rank: 1,
       atMs: epochMs(approval.createdAt),
       approval,
+      requestedBy: approval.requestedByAgentId ? (agentName.get(approval.requestedByAgentId) ?? null) : null,
     });
   }
 

@@ -130,7 +130,7 @@ export function PlicaQueueItemRow({
       meta = (
         <>
           <Check className="h-3 w-3 shrink-0" />
-          approval · requested {relativeTimeLabel(new Date(item.approval.createdAt).toISOString(), nowMs)}
+          approval{item.requestedBy ? ` · ${item.requestedBy} asks` : ""} · {relativeTimeLabel(new Date(item.approval.createdAt).toISOString(), nowMs)}
         </>
       );
       actions = (

@@ -21,7 +21,7 @@ export function PlicaRoutinesList({
   nowMs: number;
 }) {
   return (
-    <section data-plica-routines className="flex flex-col gap-1.5 rounded-lg border bg-card px-3 py-2.5">
+    <section data-plica-routines className="flex flex-col gap-2 rounded-lg border bg-card px-3 py-3">
       <h3 className={`flex items-center gap-2 ${MICRO} font-semibold uppercase tracking-wide text-muted-foreground`}>
         <CalendarClock className="h-3 w-3" />
         Next up · routines
@@ -29,14 +29,14 @@ export function PlicaRoutinesList({
       {items.length === 0 ? (
         <p className={`${MICRO} italic text-muted-foreground`}>nothing scheduled</p>
       ) : (
-        <ul className="flex flex-col gap-1">
+        <ul className="flex flex-col gap-2">
           {items.map(({ company, routine, trigger, atMs, state }) => {
             const cadence = trigger.label?.trim() || trigger.cronExpression || trigger.kind;
             const atIso = new Date(atMs).toISOString();
             return (
               <li
                 key={`${company.id}:${routine.id}`}
-                className="flex items-center gap-2 text-[length:var(--plica-fs-body,14px)] leading-[1.45]"
+                className="flex items-center gap-2.5 py-0.5 text-[length:var(--plica-fs-body,14px)] leading-[1.45]"
               >
                 <CompanyPatternIcon
                   companyName={company.name}

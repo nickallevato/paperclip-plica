@@ -28,7 +28,7 @@ export function PlicaLiveList({ entries, limit = 8 }: { entries: PlicaLiveEntry[
   const visible = entries.slice(0, limit);
   const overflow = entries.length - visible.length;
   return (
-    <section data-plica-live className="flex flex-col gap-1.5 rounded-lg border bg-card px-3 py-2.5">
+    <section data-plica-live className="flex flex-col gap-2 rounded-lg border bg-card px-3 py-3">
       <h3 className={`flex items-center gap-2 ${MICRO} font-semibold uppercase tracking-wide text-muted-foreground`}>
         <LiveDot />
         Live now
@@ -37,14 +37,14 @@ export function PlicaLiveList({ entries, limit = 8 }: { entries: PlicaLiveEntry[
       {visible.length === 0 ? (
         <p className={`${MICRO} italic text-muted-foreground`}>idle — no agents running anywhere</p>
       ) : (
-        <ul className="flex flex-col gap-1">
+        <ul className="flex flex-col gap-2">
           {visible.map(({ company, run, issue }) => {
             const narration = runNarration(run, issue);
             const line = (
               <span className="block min-w-0 truncate text-muted-foreground">{narration}</span>
             );
             return (
-              <li key={run.id} className="flex items-center gap-2 text-[length:var(--plica-fs-body,14px)] leading-[1.45]">
+              <li key={run.id} className="flex items-center gap-2.5 py-0.5 text-[length:var(--plica-fs-body,14px)] leading-[1.45]">
                 <Avatar company={company} />
                 {run.status === "running" ? (
                   <LiveDot />
