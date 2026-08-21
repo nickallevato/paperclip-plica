@@ -1,14 +1,14 @@
 import { useState } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { Check, ChevronDown, ChevronRight, ExternalLink, X } from "lucide-react";
 import type { Approval, Company } from "@paperclipai/shared";
 import { approvalsApi } from "../host/api";
 import { Button } from "../host/ui-kit";
 import { Textarea } from "../host/ui-kit";
-import { useToastActions } from "../host/shims";
 import { PlicaLink } from "./PlicaLink";
 import { PlicaHoverPopover, PlicaIssuePreviewBody } from "./PlicaIssuePreviewCard";
 import { summarizePayloadEntries, relativeTimeLabel } from "../lib/plica";
+import { useApprovalDecision } from "./useApprovalDecision";
 
 interface PlicaApprovalRowProps {
   approval: Approval;
@@ -28,33 +28,10 @@ export function PlicaApprovalRow({ approval, company, onActed }: PlicaApprovalRo
     enabled: previewOpen,
     staleTime: 60_000,
   });
-  const { pushToast } = useToastActions();
-
-  const approve = useMutation({
-    mutationFn: () => approvalsApi.approve(approval.id, note.trim() ? note.trim() : undefined),
-    onSuccess: onActed,
-    onError: (mutationError) => {
-      pushToast({
-        title: "Approval failed",
-        body: mutationError instanceof Error ? mutationError.message : "Please try again.",
-        tone: "error",
-      });
-    },
-  });
-  const reject = useMutation({
-    mutationFn: () => approvalsApi.reject(approval.id, note.trim() ? note.trim() : undefined),
-    onSuccess: onActed,
-    onError: (mutationError) => {
-      pushToast({
-        title: "Rejection failed",
-        body: mutationError instanceof Error ? mutationError.message : "Please try again.",
-        tone: "error",
-      });
-    },
-  });
+  const decision = useApprovalDecision(approval, onActed);
 
   const entries = summarizePayloadEntries(approval.payload ?? {});
-  const busy = approve.isPending || reject.isPending;
+  const busy = decision.busy;
 
   const preview = (
     <div data-approval-preview>
@@ -119,7 +96,7 @@ export function PlicaApprovalRow({ approval, company, onActed }: PlicaApprovalRo
           className="h-6 px-1.5 text-[length:var(--plica-fs-body,14px)] leading-[1.45]"
           disabled={busy}
           aria-label="Approve"
-          onClick={() => approve.mutate()}
+          onClick={() => decision.approve(note)}
         >
           <Check className="mr-0.5 h-3 w-3" /> Approve
         </Button>
@@ -129,7 +106,7 @@ export function PlicaApprovalRow({ approval, company, onActed }: PlicaApprovalRo
           className="h-6 px-1.5 text-[length:var(--plica-fs-body,14px)] leading-[1.45] text-red-600 dark:text-red-400"
           disabled={busy}
           aria-label="Reject"
-          onClick={() => reject.mutate()}
+          onClick={() => decision.reject(note)}
         >
           <X className="mr-0.5 h-3 w-3" /> Reject
         </Button>
@@ -162,7 +139,7 @@ export function PlicaApprovalRow({ approval, company, onActed }: PlicaApprovalRo
               variant="secondary"
               className="h-6 px-1.5 text-[length:var(--plica-fs-body,14px)] leading-[1.45]"
               disabled={busy}
-              onClick={() => approve.mutate()}
+              onClick={() => decision.approve(note)}
             >
               <Check className="mr-0.5 h-3 w-3" /> Approve
             </Button>
@@ -171,7 +148,7 @@ export function PlicaApprovalRow({ approval, company, onActed }: PlicaApprovalRo
               variant="ghost"
               className="h-6 px-1.5 text-[length:var(--plica-fs-body,14px)] leading-[1.45] text-red-600 dark:text-red-400"
               disabled={busy}
-              onClick={() => reject.mutate()}
+              onClick={() => decision.reject(note)}
             >
               <X className="mr-0.5 h-3 w-3" /> Reject
             </Button>

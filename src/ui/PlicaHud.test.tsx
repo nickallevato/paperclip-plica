@@ -20,9 +20,14 @@ vi.mock("./host/shims", async (importOriginal) => ({
   useBreadcrumbs: () => ({ setBreadcrumbs: vi.fn() }),
 }));
 vi.mock("./components/PlicaCompanySlot", () => ({
-  PlicaCompanySlot: ({ company, view }: { company: { name: string }; view: string }) => (
-    <div data-view={view}>pane:{company.name}</div>
-  ),
+  PlicaCompanySlot: ({ company, view }: { company: { name: string }; view: string }) =>
+    view === "board" ? (
+      <tr data-slot-view={view}>
+        <td>pane:{company.name}</td>
+      </tr>
+    ) : (
+      <div data-view={view}>pane:{company.name}</div>
+    ),
 }));
 vi.mock("./components/PlicaBriefing", () => ({
   PlicaBriefing: ({ since }: { since: string }) => <div data-testid="briefing">briefing since {since}</div>,
@@ -47,7 +52,9 @@ describe("PlicaHud", () => {
   beforeEach(() => {
     container = document.createElement("div");
     document.body.appendChild(container);
-    localStorage.removeItem("plica.view");
+    // Most of these tests exercise the classic wall; the board (the default)
+    // has its own tests below.
+    localStorage.setItem("plica.view", "wall");
     localStorage.removeItem("plica.lastVisit");
     mockCompaniesApi.list.mockResolvedValue([
       { id: "c1", name: "Acme", status: "active", issuePrefix: "ACM" },
@@ -123,7 +130,7 @@ describe("PlicaHud", () => {
   });
 
   it("switches view modes, persists the choice, and renders a single-column triage list instead of a grid", async () => {
-    localStorage.removeItem("plica.view");
+    localStorage.setItem("plica.view", "wall");
     const queryClient = new QueryClient({
       defaultOptions: { queries: { retry: false } },
     });
@@ -362,6 +369,69 @@ describe("PlicaHud", () => {
     expect(JSON.parse(localStorage.getItem("plica.collapsed") ?? "[]")).toEqual([]);
 
     localStorage.removeItem("plica.collapsed");
+    act(() => root.unmount());
+  });
+
+  it("lands on the board by default: one slot row per company, the queue rail, and no classic toolbars", async () => {
+    localStorage.removeItem("plica.view");
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const root = createRoot(container);
+    act(() => {
+      root.render(
+        <QueryClientProvider client={queryClient}>
+          <MemoryRouter>
+            <PlicaHud />
+          </MemoryRouter>
+        </QueryClientProvider>,
+      );
+    });
+    await vi.waitFor(() => {
+      expect(container.querySelectorAll('[data-slot-view="board"]').length).toBe(2);
+    });
+    expect(container.querySelector('[data-view="board"]')).not.toBeNull();
+    expect(container.querySelector("[data-plica-queue]")).not.toBeNull();
+    expect(container.querySelector("[data-plica-bar]")).toBeNull();
+    expect(container.querySelector('[aria-label="Layout columns"]')).toBeNull();
+    expect(container.textContent).toContain("Needs you");
+    expect(container.textContent).toContain("2 companies");
+    act(() => root.unmount());
+  });
+
+  it("switches to the classic wall from the header and back, persisting the choice", async () => {
+    localStorage.removeItem("plica.view");
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const root = createRoot(container);
+    act(() => {
+      root.render(
+        <QueryClientProvider client={queryClient}>
+          <MemoryRouter>
+            <PlicaHud />
+          </MemoryRouter>
+        </QueryClientProvider>,
+      );
+    });
+    await vi.waitFor(() => {
+      expect(container.querySelector('[data-view="board"]')).not.toBeNull();
+    });
+    const classic = Array.from(container.querySelectorAll("button")).find((button) => button.textContent === "Classic");
+    expect(classic).not.toBeUndefined();
+    await act(async () => {
+      classic!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    await vi.waitFor(() => {
+      expect(container.querySelectorAll('[data-view="wall"]').length).toBeGreaterThan(0);
+    });
+    expect(container.querySelector('[data-view="board"]')).toBeNull();
+    expect(localStorage.getItem("plica.view")).toBe("wall");
+
+    const board = Array.from(container.querySelectorAll("button")).find((button) => button.textContent === "Board");
+    await act(async () => {
+      board!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    await vi.waitFor(() => {
+      expect(container.querySelector('[data-view="board"]')).not.toBeNull();
+    });
+    expect(localStorage.getItem("plica.view")).toBe("board");
     act(() => root.unmount());
   });
 });

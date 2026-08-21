@@ -221,12 +221,13 @@ describe("healthLabel", () => {
 });
 
 describe("view modes", () => {
-  it("normalizes stored values, defaulting to wall", () => {
+  it("normalizes stored values, defaulting to board", () => {
     expect(normalizeViewMode("triage")).toBe("triage");
     expect(normalizeViewMode("wall")).toBe("wall");
-    expect(normalizeViewMode("banana")).toBe("wall");
-    expect(normalizeViewMode(null)).toBe("wall");
-    expect(normalizeViewMode(undefined)).toBe("wall");
+    expect(normalizeViewMode("board")).toBe("board");
+    expect(normalizeViewMode("banana")).toBe("board");
+    expect(normalizeViewMode(null)).toBe("board");
+    expect(normalizeViewMode(undefined)).toBe("board");
   });
 });
 

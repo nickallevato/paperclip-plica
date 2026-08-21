@@ -16,12 +16,13 @@ import {
 } from "../lib/plica";
 import { PlicaCompanyPane } from "./PlicaCompanyPane";
 import { PlicaAnalyticPane } from "./PlicaAnalyticPane";
+import { PlicaBoardRow } from "./PlicaBoardRow";
 import { PlicaMatrixRow } from "./PlicaMatrixRow";
 import { PlicaScoreboardRow } from "./PlicaScoreboardRow";
 import { PlicaSignalCard } from "./PlicaSignalCard";
 import { PlicaTriageSection } from "./PlicaTriageSection";
 import { usePlicaAlerts } from "./usePlicaAlerts";
-import { usePlicaCompanyData } from "./usePlicaCompanyData";
+import { usePlicaCompanyData, type PlicaCompanyData } from "./usePlicaCompanyData";
 
 /**
  * Hoists the single usePlicaCompanyData(company.id) poll above both the
@@ -42,8 +43,10 @@ export function PlicaCompanySlot({
   onUnpin,
   onTogglePin,
   onStats,
+  onData,
   tokenThresholds,
   rowMode,
+  pinned = false,
 }: {
   company: Company;
   view: PlicaSlotPresentation;
@@ -62,8 +65,17 @@ export function PlicaCompanySlot({
    * companies side by side or add them together, which no single slot can do.
    */
   onStats?: (companyId: string, stats: PlicaCompanyStats) => void;
+  /**
+   * Reports the company's whole data bundle up. The board page derives the
+   * cross-company queue and lists from it — a presentation no single slot can
+   * render. Fires only when a query's data actually changes (react-query keeps
+   * references stable across polls), never on every render.
+   */
+  onData?: (companyId: string, data: PlicaCompanyData) => void;
   /** Only needed by the presentations that colour a token count. */
   tokenThresholds?: PlicaTokenThresholds;
+  /** Board: watched companies sort to the top. */
+  pinned?: boolean;
   /** How attention items render inside the pane presentation. */
   rowMode?: PlicaRowMode;
 }) {
@@ -118,6 +130,30 @@ export function PlicaCompanySlot({
     stats.routines, stats.routinesOverdue, stats.routinesFailing,
   ]);
 
+  useEffect(() => {
+    onData?.(company.id, data);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    company.id,
+    data.summary, data.liveRuns, data.projects, data.issues, data.agents, data.approvals,
+    data.badges, data.attention, data.routines, data.tokens, data.isLoading, data.unavailable, data.staleSince,
+  ]);
+
+  if (view === "board") {
+    return (
+      <PlicaBoardRow
+        company={company}
+        data={data}
+        stats={stats}
+        actionable={actionable}
+        thresholds={tokenThresholds ?? PLICA_TOKEN_DEFAULTS}
+        pulse={pulse}
+        pinned={pinned}
+        onTogglePin={onTogglePin}
+        nowMs={Date.now()}
+      />
+    );
+  }
   if (view === "signal") {
     return <PlicaSignalCard company={company} data={data} onUnpin={onUnpin} />;
   }

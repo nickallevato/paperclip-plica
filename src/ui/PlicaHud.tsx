@@ -19,6 +19,7 @@ import { companiesListQueryOptions } from "./host/companies-query";
 import { useBreadcrumbs } from "./host/shims";
 import { useCompanyOrder } from "./host/useCompanyOrder";
 import { dashboardApi } from "./host/api";
+import { PlicaBoardPage } from "./components/PlicaBoardPage";
 import { PlicaBriefing } from "./components/PlicaBriefing";
 import { PlicaCompanySlot } from "./components/PlicaCompanySlot";
 import { PlicaDockedTile } from "./components/PlicaDockedTile";
@@ -26,6 +27,12 @@ import { PlicaFeed } from "./components/PlicaFeed";
 import { PlicaTokenSettingsPanel } from "./components/PlicaTokenSettings";
 import { PLICA_SCOREBOARD_COLUMNS } from "./components/PlicaScoreboardRow";
 import { PlicaTote } from "./components/PlicaTote";
+import type { PlicaCompanyData } from "./components/usePlicaCompanyData";
+import {
+  PLICA_QUEUE_GROUPING_STORAGE_KEY,
+  normalizeQueueGrouping,
+  type PlicaQueueGrouping,
+} from "./lib/queue";
 import { cn } from "./host/util";
 import {
   PLICA_ALERTS_STORAGE_KEY,
@@ -73,6 +80,7 @@ const LAYOUT_MODES: Array<{ mode: PlicaLayoutMode; label: string }> = [
 ];
 
 const VIEW_MODES: Array<{ mode: PlicaViewMode; label: string }> = [
+  { mode: "board", label: "Board" },
   { mode: "wall", label: "Wall" },
   { mode: "triage", label: "Triage" },
   { mode: "feed", label: "Feed" },
@@ -145,6 +153,25 @@ export function PlicaHud() {
     },
     [],
   );
+  // The board page needs each company's full data bundle (queue items, live
+  // runs, routines), reported up by the slots the same way stats are.
+  const [dataByCompany, setDataByCompany] = useState<Record<string, PlicaCompanyData | undefined>>({});
+  const handleData = useCallback((companyId: string, data: PlicaCompanyData) => {
+    setDataByCompany((current) => (current[companyId] === data ? current : { ...current, [companyId]: data }));
+  }, []);
+  const [queueGrouping, setQueueGrouping] = useState<PlicaQueueGrouping>(() =>
+    normalizeQueueGrouping(
+      typeof localStorage === "undefined" ? null : localStorage.getItem(PLICA_QUEUE_GROUPING_STORAGE_KEY),
+    ),
+  );
+  const selectQueueGrouping = (grouping: PlicaQueueGrouping) => {
+    setQueueGrouping(grouping);
+    try {
+      localStorage.setItem(PLICA_QUEUE_GROUPING_STORAGE_KEY, grouping);
+    } catch {
+      // storage unavailable (private mode) — grouping still applies for this session
+    }
+  };
   const [tokenSettings, setTokenSettings] = useState(() =>
     normalizeTokenSettings(
       typeof localStorage === "undefined"
@@ -458,6 +485,10 @@ export function PlicaHud() {
     (sum, summary) => sum + summary.pendingApprovals,
     0,
   );
+  const totalSpendCents = loaded.reduce(
+    (sum, summary) => sum + (summary.costs?.monthSpendCents ?? 0),
+    0,
+  );
   const anyStale = summaries.some(
     (query) => query.isError && query.dataUpdatedAt > 0,
   );
@@ -492,6 +523,7 @@ export function PlicaHud() {
           </span>
         </div>
         <div className="ml-auto flex items-center gap-3 text-[length:var(--plica-fs-body,14px)] leading-[1.45] text-muted-foreground">
+          <span className="tabular-nums">{companies.length} compan{companies.length === 1 ? "y" : "ies"}</span>
           <span className="tabular-nums">{totalRunning} running</span>
           {totalApprovals > 0 ? (
             <button
@@ -505,11 +537,35 @@ export function PlicaHud() {
           ) : (
             <span className="tabular-nums">0 approvals pending</span>
           )}
+          {totalSpendCents > 0 && (
+            <span className="tabular-nums" title="Month-to-date spend across all companies">
+              ${(totalSpendCents / 100).toLocaleString(undefined, { maximumFractionDigits: 0 })} this month
+            </span>
+          )}
           {anyStale && (
             <span className="inline-flex items-center gap-1 text-amber-600 dark:text-amber-400">
               <TriangleAlert className="h-3.5 w-3.5" /> polling degraded
             </span>
           )}
+          <div role="group" aria-label="Page" className="flex items-center rounded-md border p-0.5">
+            {([["board", "Board"], ["wall", "Classic"]] as const).map(([mode, label]) => {
+              const active = mode === "board" ? view === "board" : view !== "board";
+              return (
+                <button
+                  key={mode}
+                  type="button"
+                  aria-pressed={active}
+                  onClick={() => selectView(mode)}
+                  className={cn(
+                    "rounded px-2 py-0.5 text-[length:var(--plica-fs-micro,11px)] leading-[1.45]",
+                    active ? "bg-muted font-medium text-foreground" : "text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
           <button
             type="button"
             aria-pressed={tokenSettingsOpen}
@@ -568,7 +624,7 @@ export function PlicaHud() {
         />
       )}
 
-      {companies.length > 0 && (
+      {view !== "board" && companies.length > 0 && (
         <div data-plica-bar className="space-y-1.5">
           <div className="flex items-center gap-2">
             <Pin className="h-3.5 w-3.5 text-muted-foreground" />
@@ -702,6 +758,7 @@ export function PlicaHud() {
         </div>
       )}
 
+      {view !== "board" && (
       <div className="space-y-1.5">
         <div className="flex flex-wrap items-center gap-2">
           <LayoutGrid className="h-3.5 w-3.5 text-muted-foreground" />
@@ -837,8 +894,9 @@ export function PlicaHud() {
           )}
         </div>
       </div>
+      )}
 
-      {showBriefing && lastVisit && companies.length > 0 && (
+      {view !== "board" && showBriefing && lastVisit && companies.length > 0 && (
         <PlicaBriefing
           companies={companies}
           since={lastVisit}
@@ -854,6 +912,33 @@ export function PlicaHud() {
         <p className="text-[length:var(--plica-fs-body,14px)] leading-[1.45] text-muted-foreground">
           No companies to show.
         </p>
+      ) : view === "board" ? (
+        <PlicaBoardPage
+          companies={[...pinnedCompanies, ...workspaceCompanies]}
+          pinnedIds={pinnedIds}
+          onTogglePin={togglePinned}
+          dataByCompany={dataByCompany}
+          statsByCompany={statsByCompany}
+          actionableByCompany={actionableByCompany}
+          tokenSettings={tokenSettings}
+          alertsEnabled={alertsEnabled}
+          onActionable={handleActionable}
+          onStats={handleStats}
+          onData={handleData}
+          sortMode={sortMode}
+          onSortMode={selectSortMode}
+          grouping={queueGrouping}
+          onGrouping={selectQueueGrouping}
+          footer={
+            showBriefing && lastVisit && companies.length > 0 ? (
+              <PlicaBriefing
+                companies={companies}
+                since={lastVisit}
+                onDismiss={() => setBriefingDismissed(true)}
+              />
+            ) : undefined
+          }
+        />
       ) : view === "wall" || view === "analytic" ? (
         <>
           {collapsedIds.length > 0 && (

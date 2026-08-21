@@ -7,11 +7,11 @@ import { PlicaQuickActions } from "./PlicaQuickActions";
 
 const MAX_VISIBLE = 3;
 
-function isRunActive(run: LiveRunForIssue): boolean {
+export function isRunActive(run: LiveRunForIssue): boolean {
   return run.status === "queued" || run.status === "running";
 }
 
-function elapsedLabel(run: LiveRunForIssue): string {
+export function elapsedLabel(run: LiveRunForIssue): string {
   const started = run.startedAt ?? run.createdAt;
   const minutes = Math.max(0, Math.round((Date.now() - new Date(started).getTime()) / 60_000));
   return minutes < 60 ? `${minutes}m` : `${Math.floor(minutes / 60)}h ${minutes % 60}m`;
@@ -22,7 +22,7 @@ function elapsedLabel(run: LiveRunForIssue): string {
  * currentStatusMessage / nextAction while running, so prefer that over the
  * static issue title — this is what makes the strip read as "live".
  */
-function runNarration(run: LiveRunForIssue, issue: Issue | undefined): string {
+export function runNarration(run: LiveRunForIssue, issue: Issue | undefined): string {
   return (
     run.currentStatusMessage?.trim() ||
     run.nextAction?.trim() ||
@@ -42,7 +42,7 @@ interface PlicaRunsStripProps {
 /** The app's canonical "live" indicator (matches the Agents page live-run
  * pill), with a slower halo — a wall of a dozen dots throbbing at full
  * tailwind-pulse speed drowns out the actual alert channel. */
-function LiveDot() {
+export function LiveDot() {
   return (
     <span data-live-dot className="relative flex h-2 w-2 shrink-0" aria-label="Agent live">
       <span className="absolute inline-flex h-full w-full animate-[pulse_3s_ease-in-out_infinite] rounded-full bg-blue-400 opacity-75 motion-reduce:animate-none" />

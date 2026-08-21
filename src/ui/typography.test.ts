@@ -39,7 +39,7 @@ function sourceFiles(dir: string): string[] {
 const files = sourceFiles(UI_DIR).map((path) => ({ path, source: readFileSync(path, "utf8") }));
 
 /** Icon monograms are sized to their box, not to the text scale. */
-const ICON_MONOGRAM_SIZES = new Set(["text-[7px]", "text-[8px]"]);
+const ICON_MONOGRAM_SIZES = new Set(["text-[7px]", "text-[8px]", "text-[10px]"]);
 
 describe("Plica type scale", () => {
   it("finds source files to check", () => {

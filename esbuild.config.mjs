@@ -31,6 +31,9 @@ const presets = createPluginBundlerPresets({ uiEntry: "src/ui/index.ts" });
 presets.esbuild.ui.minifyIdentifiers = true;
 presets.esbuild.ui.minifySyntax = true;
 presets.esbuild.ui.minifyWhitespace = false;
+// The compiled utility stylesheet is bundled as a string and injected at
+// runtime (src/ui/styles.ts) — the host loads no plugin CSS of its own.
+presets.esbuild.ui.loader = { ...(presets.esbuild.ui.loader ?? {}), ".css": "text" };
 const watch = process.argv.includes("--watch");
 
 const workerCtx = await esbuild.context(presets.esbuild.worker);

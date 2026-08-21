@@ -178,14 +178,16 @@ export function intervalLabel(intervalSec: number | null): string | null {
   return `every ${intervalSec}s`;
 }
 
-export type PlicaViewMode = "wall" | "triage" | "feed" | "analytic";
+export type PlicaViewMode = "board" | "wall" | "triage" | "feed" | "analytic";
 
 export const PLICA_VIEW_STORAGE_KEY = "plica.view";
 
-const PLICA_VIEW_MODES: ReadonlyArray<PlicaViewMode> = ["wall", "triage", "feed", "analytic"];
+const PLICA_VIEW_MODES: ReadonlyArray<PlicaViewMode> = ["board", "wall", "triage", "feed", "analytic"];
 
 export function normalizeViewMode(value: string | null | undefined): PlicaViewMode {
-  return PLICA_VIEW_MODES.includes(value as PlicaViewMode) ? (value as PlicaViewMode) : "wall";
+  // Board is the default: the queue-and-ledger page that replaced the wall as
+  // the landing view. The classic views stay reachable behind it.
+  return PLICA_VIEW_MODES.includes(value as PlicaViewMode) ? (value as PlicaViewMode) : "board";
 }
 
 export const PLICA_ALERTS_STORAGE_KEY = "plica.alerts";
@@ -1154,6 +1156,7 @@ export function viewSupports(view: PlicaViewMode): {
       return { layout: true, rows: true, order: true, docking: true };
     case "analytic":
       return { layout: true, rows: false, order: true, docking: false };
+    case "board":
     case "triage":
     case "feed":
     default:
