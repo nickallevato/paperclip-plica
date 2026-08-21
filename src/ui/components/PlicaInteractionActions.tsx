@@ -81,7 +81,16 @@ function verbLabel(item: AttentionItem, id: string, fallback: string): string {
  * form. Kinds with no inline form here render nothing — the caller keeps its
  * Open link for them.
  */
-export function PlicaInteractionActions({ item, onActed }: { item: AttentionItem; onActed: () => void }) {
+export function PlicaInteractionActions({
+  item,
+  headline,
+  onActed,
+}: {
+  item: AttentionItem;
+  /** The row's headline (issue title) — the dialog's title when the payload has none. */
+  headline?: string;
+  onActed: () => void;
+}) {
   const issueId = attentionIssueId(item);
   const kind = item.subject.metadata?.kind;
   if (!issueId || item.subject.kind !== "interaction") return null;
@@ -96,6 +105,7 @@ export function PlicaInteractionActions({ item, onActed }: { item: AttentionItem
         issueId={issueId}
         interactionId={interactionId}
         label={kind === "ask_user_questions" ? "Answer" : "Choose"}
+        headline={headline}
         onActed={onActed}
       />
     );
@@ -208,12 +218,14 @@ function InteractionFormPopover({
   issueId,
   interactionId,
   label,
+  headline,
   onActed,
 }: {
   item: AttentionItem;
   issueId: string;
   interactionId: string;
   label: string;
+  headline?: string;
   onActed: () => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -224,7 +236,7 @@ function InteractionFormPopover({
     staleTime: 10_000,
   });
   const interaction = interactions.data?.find((entry) => entry.id === interactionId);
-  const issueLabel = item.subject.title?.trim() || "Thread request";
+  const issueLabel = headline?.trim() || item.subject.title?.trim() || "Thread request";
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>

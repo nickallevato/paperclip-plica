@@ -184,7 +184,7 @@ export function PlicaQueueItemRow({
         </>
       );
       const href = subject.href ? `/${company.issuePrefix}${toCompanyRelativePath(subject.href)}` : `/${company.issuePrefix}/decisions`;
-      if (hasInlineInteraction(item.item)) inline = <PlicaInteractionActions item={item.item} onActed={onActed} />;
+      if (hasInlineInteraction(item.item)) inline = <PlicaInteractionActions item={item.item} headline={title} onActed={onActed} />;
       actions = inline ? (
         <PlicaLink
           to={href}
