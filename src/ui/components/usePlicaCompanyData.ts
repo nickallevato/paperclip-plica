@@ -130,7 +130,7 @@ export function usePlicaCompanyData(companyId: string): PlicaCompanyData {
     : null;
 
   // Attention items on closed issues are noise the server doesn't filter;
-  // pruned here, once, so the rail, the counts and the classic panes agree.
+  // pruned here, once, so the rail, the counts and the board rows agree.
   const attentionData = useMemo(
     () => pruneClosedIssueAttention(attention.data, issues.data ?? []),
     [attention.data, issues.data],

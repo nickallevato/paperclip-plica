@@ -3,7 +3,8 @@ import { Loader2 } from "lucide-react";
 import { CompanyPatternIcon } from "../host/ui-kit";
 import type { PlicaLiveEntry } from "../lib/queue";
 import { PlicaLink } from "./PlicaLink";
-import { LiveDot, elapsedLabel, runNarration } from "./PlicaRunsStrip";
+import { elapsedLabel, runNarration } from "../lib/runs";
+import { LiveDot } from "./LiveDot";
 
 const MICRO = "text-[length:var(--plica-fs-micro,11px)] leading-[1.45]";
 

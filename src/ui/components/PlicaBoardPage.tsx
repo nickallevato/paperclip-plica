@@ -214,7 +214,6 @@ export function PlicaBoardPage({
                 <PlicaCompanySlot
                   key={company.id}
                   company={company}
-                  view="board"
                   onActionable={onActionable}
                   onStats={onStats}
                   onData={onData}

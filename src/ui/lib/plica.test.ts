@@ -11,22 +11,13 @@ import type {
   Issue,
 } from "@paperclipai/shared";
 import {
-  PLICA_ATTENTION_GROUPS,
-  PLICA_LAYOUT_CLASSES,
   PLICA_TOKEN_DEFAULTS,
-  aggregateTokenState,
-  attentionAgeMinutes,
-  attentionDetailText,
-  attentionGroupFor,
   attentionActionLabel,
   attentionAskText,
-  attentionGroupSummary,
   attentionHeadline,
   attentionIssueId,
   attentionRowTitle,
   attentionSpecificText,
-  bucketAttentionByAge,
-  compareAttention,
   currentMonthRange,
   deriveActionable,
   deriveBriefingLine,
@@ -34,43 +25,28 @@ import {
   deriveCompanyStats,
   derivePaneHealth,
   deriveRoutineHealth,
-  deriveTriageSummary,
   detectAlertEdges,
-  filterFeed,
   formatAgeMinutes,
   formatCents,
   formatCountdown,
   formatTokens,
-  groupAttentionByGroup,
   healthLabel,
   intervalLabel,
   issueStatusLabel,
-  mergeAttentionFeed,
-  normalizeBarMode,
-  normalizeCollapsedIds,
-  normalizeLayoutMode,
   normalizePinnedIds,
-  normalizeRowMode,
   normalizeSortMode,
   normalizeTokenSettings,
-  normalizeViewMode,
   nudgeTitle,
-  orderTriageCompanies,
   pruneClosedIssueAttention,
   partitionHotFirst,
   relativeTimeLabel,
   selectCeo,
-  selectFeedCompanies,
-  selectProjectChips,
   shouldShowBriefing,
   sparklineDays,
   sumAgentTokens,
-  summarizePayloadEntries,
   thresholdsFor,
   tokenState,
   type PlicaAlertSnapshot,
-  viewSupports,
-  worstSeverity,
 } from "./plica";
 
 function summaryWith(overrides: {
@@ -110,35 +86,6 @@ describe("derivePaneHealth", () => {
   });
 });
 
-describe("selectProjectChips", () => {
-  const project = (id: string, updatedAt: string, status = "active") =>
-    ({ id, name: id, status, updatedAt: new Date(updatedAt), archivedAt: null }) as Project;
-  const issue = (projectId: string | null, status: string) =>
-    ({ id: `${projectId}-${status}-${Math.random().toString(36).slice(2)}`, projectId, status }) as Issue;
-
-  it("counts open issues per project, excluding done and cancelled", () => {
-    const { chips } = selectProjectChips(
-      [project("p1", "2026-07-01")],
-      [issue("p1", "todo"), issue("p1", "in_progress"), issue("p1", "done"), issue("p1", "cancelled"), issue(null, "todo")],
-    );
-    expect(chips).toHaveLength(1);
-    expect(chips[0].openCount).toBe(2);
-  });
-
-  it("keeps most recently updated projects with open work, reports overflow, skips archived and idle", () => {
-    const projects: Project[] = [
-      project("old", "2026-01-01"),
-      project("new", "2026-07-01"),
-      project("mid", "2026-04-01"),
-      project("idle", "2026-06-15"),
-      { ...project("gone", "2026-07-02"), archivedAt: new Date("2026-07-02") } as Project,
-    ];
-    const issues = [issue("old", "todo"), issue("new", "todo"), issue("mid", "in_progress"), issue("gone", "todo")];
-    const { chips, overflow } = selectProjectChips(projects, issues as never[], 2);
-    expect(chips.map((chip) => (chip.project as { id: string }).id)).toEqual(["new", "mid"]);
-    expect(overflow).toBe(1);
-  });
-});
 
 describe("formatCents", () => {
   it("formats cents as dollars", () => {
@@ -197,20 +144,6 @@ describe("selectCeo", () => {
   });
 });
 
-describe("layout modes", () => {
-  it("normalizes stored values, defaulting to auto", () => {
-    expect(normalizeLayoutMode("2")).toBe("2");
-    expect(normalizeLayoutMode("banana")).toBe("auto");
-    expect(normalizeLayoutMode(null)).toBe("auto");
-  });
-
-  it("treats fixed column counts as responsive caps, not forces", () => {
-    // A persisted "3" on a narrow window must fall back to fewer columns.
-    expect(PLICA_LAYOUT_CLASSES["3"]).not.toContain(" grid-cols-3");
-    expect(PLICA_LAYOUT_CLASSES["3"]).toContain("xl:grid-cols-3");
-    expect(PLICA_LAYOUT_CLASSES["2"]).toContain("sm:grid-cols-2");
-  });
-});
 
 describe("healthLabel", () => {
   it("names the reason, not just the color", () => {
@@ -226,16 +159,6 @@ describe("healthLabel", () => {
   });
 });
 
-describe("view modes", () => {
-  it("normalizes stored values, defaulting to board", () => {
-    expect(normalizeViewMode("triage")).toBe("triage");
-    expect(normalizeViewMode("wall")).toBe("wall");
-    expect(normalizeViewMode("board")).toBe("board");
-    expect(normalizeViewMode("banana")).toBe("board");
-    expect(normalizeViewMode(null)).toBe("board");
-    expect(normalizeViewMode(undefined)).toBe("board");
-  });
-});
 
 describe("pruneClosedIssueAttention", () => {
   const item = (id: string, subject: Record<string, unknown>): AttentionItem =>
@@ -382,30 +305,6 @@ describe("deriveActionable", () => {
   });
 });
 
-describe("orderTriageCompanies", () => {
-  const company = (id: string, name: string) => ({ id, name, issuePrefix: id.toUpperCase() }) as Company;
-
-  it("puts critical/high companies first, then orders by actionable count desc, then name asc", () => {
-    const entries = [
-      { company: company("b", "Beta"), actionable: { criticalOrHigh: false, count: 3 } },
-      { company: company("a", "Alpha"), actionable: { criticalOrHigh: true, count: 1 } },
-      { company: company("c", "Charlie"), actionable: { criticalOrHigh: false, count: 3 } },
-      { company: company("d", "Delta"), actionable: { criticalOrHigh: false, count: 0 } },
-    ];
-    const ordered = orderTriageCompanies(entries).map((entry) => entry.company.name);
-    expect(ordered).toEqual(["Alpha", "Beta", "Charlie", "Delta"]);
-  });
-
-  it("does not mutate the input array", () => {
-    const entries = [
-      { company: company("b", "Beta"), actionable: { criticalOrHigh: false, count: 1 } },
-      { company: company("a", "Alpha"), actionable: { criticalOrHigh: false, count: 2 } },
-    ];
-    const originalOrder = entries.map((entry) => entry.company.id);
-    orderTriageCompanies(entries);
-    expect(entries.map((entry) => entry.company.id)).toEqual(originalOrder);
-  });
-});
 
 describe("labels", () => {
   const NOW = new Date("2026-07-28T12:00:00Z").getTime();
@@ -418,41 +317,6 @@ describe("labels", () => {
   });
 });
 
-describe("summarizePayloadEntries", () => {
-  it("renders flat primitive entries as key/value pairs", () => {
-    expect(summarizePayloadEntries({ reason: "Need more tokens", amount: 500, ok: true })).toEqual([
-      { key: "reason", value: "Need more tokens" },
-      { key: "amount", value: "500" },
-      { key: "ok", value: "true" },
-    ]);
-  });
-
-  it("JSON.stringifies nested objects and arrays", () => {
-    expect(summarizePayloadEntries({ meta: { a: 1 }, tags: ["x", "y"] })).toEqual([
-      { key: "meta", value: JSON.stringify({ a: 1 }) },
-      { key: "tags", value: JSON.stringify(["x", "y"]) },
-    ]);
-  });
-
-  it("truncates values longer than maxLen (default 120)", () => {
-    const long = "a".repeat(200);
-    const [entry] = summarizePayloadEntries({ note: long });
-    expect(entry.value).toBe(long.slice(0, 120));
-    expect(entry.value.length).toBe(120);
-  });
-
-  it("respects a custom maxLen", () => {
-    const [entry] = summarizePayloadEntries({ note: "abcdefghij" }, 5);
-    expect(entry.value).toBe("abcde");
-  });
-
-  it("renders null/undefined values as their string form", () => {
-    expect(summarizePayloadEntries({ a: null, b: undefined })).toEqual([
-      { key: "a", value: "null" },
-      { key: "b", value: "undefined" },
-    ]);
-  });
-});
 
 describe("nudgeTitle", () => {
   it("uses the first line, trimmed", () => {
@@ -669,64 +533,8 @@ describe("pane ordering", () => {
   });
 });
 
-describe("deriveTriageSummary", () => {
-  const feed = (items: Array<{ sourceKind: string; dismissed?: boolean }>) =>
-    ({
-      items: items.map((item, index) => ({
-        id: `att-${index}`,
-        sourceKind: item.sourceKind,
-        dismissal: item.dismissed ? { dismissedAt: "x" } : null,
-      })),
-    }) as never;
 
-  it("summarizes blockers, approvals, failures, ceo, and other attention", () => {
-    const parts = deriveTriageSummary({
-      approvalCount: 1,
-      attention: feed([
-        { sourceKind: "blocker_attention" },
-        { sourceKind: "blocker_attention" },
-        { sourceKind: "failed_run" },
-        { sourceKind: "review" },
-        { sourceKind: "budget_alert", dismissed: true },
-      ]),
-      ceoOverdue: true,
-    });
-    expect(parts).toEqual([
-      { label: "2 blockers", tone: "critical" },
-      { label: "1 approval", tone: "warn" },
-      { label: "1 failed run", tone: "warn" },
-      { label: "CEO overdue", tone: "warn" },
-      { label: "1 attention item", tone: "muted" },
-    ]);
-  });
 
-  it("returns empty for a clear company", () => {
-    expect(deriveTriageSummary({ approvalCount: 0, attention: feed([]), ceoOverdue: false })).toEqual([]);
-  });
-});
-
-describe("attentionDetailText", () => {
-  it("renders questions, confirmations, blockers, and budget details", () => {
-    expect(attentionDetailText({ kind: "questions", questionCount: 3, firstQuestionText: "Which region?", images: [] } as never))
-      .toBe("3 questions — “Which region?”");
-    expect(attentionDetailText({ kind: "confirmation", promptExcerpt: "Delete staging DB?", isPlanTarget: false, images: [] } as never))
-      .toBe("Delete staging DB?");
-    expect(attentionDetailText({ kind: "blocker", blockingIssue: { id: "x", identifier: "AGE-9", title: "Key rotation" }, images: [] } as never))
-      .toBe("blocked by AGE-9 — Key rotation");
-    expect(attentionDetailText({ kind: "budget", observedPercent: 92, amountObserved: 4600, amountLimit: 5000, images: [] } as never))
-      .toBe("92% of budget used ($46.00 of $50.00)");
-    expect(attentionDetailText(null)).toBeNull();
-  });
-});
-
-describe("normalizeCollapsedIds", () => {
-  it("parses valid lists and tolerates junk", () => {
-    expect(normalizeCollapsedIds(JSON.stringify(["a", "b"]))).toEqual(["a", "b"]);
-    expect(normalizeCollapsedIds("not json")).toEqual([]);
-    expect(normalizeCollapsedIds(JSON.stringify({ a: 1 }))).toEqual([]);
-    expect(normalizeCollapsedIds(null)).toEqual([]);
-  });
-});
 
 describe("normalizePinnedIds", () => {
   it("round-trips a stored list", () => {
@@ -745,29 +553,7 @@ describe("normalizePinnedIds", () => {
   });
 });
 
-describe("normalizeBarMode", () => {
-  it("defaults to signal for anything unrecognized", () => {
-    expect(normalizeBarMode(null)).toBe("signal");
-    expect(normalizeBarMode("nonsense")).toBe("signal");
-    expect(normalizeBarMode("signal")).toBe("signal");
-  });
 
-  it("accepts matrix", () => {
-    expect(normalizeBarMode("matrix")).toBe("matrix");
-  });
-});
-
-describe("worstSeverity", () => {
-  it("returns null for an empty set", () => {
-    expect(worstSeverity([])).toBeNull();
-  });
-
-  it("ranks critical above high above medium above low", () => {
-    expect(worstSeverity([{ severity: "low" }, { severity: "high" }, { severity: "medium" }])).toBe("high");
-    expect(worstSeverity([{ severity: "high" }, { severity: "critical" }])).toBe("critical");
-    expect(worstSeverity([{ severity: "low" }, { severity: "medium" }])).toBe("medium");
-  });
-});
 
 
 describe("sumAgentTokens", () => {
@@ -845,27 +631,6 @@ describe("thresholdsFor", () => {
   });
 });
 
-describe("aggregateTokenState", () => {
-  const settings = { defaults: { warn: 100, crit: 200 }, overrides: {} };
-
-  it("judges the group against the sum of its members' own thresholds", () => {
-    // two members => warn 200, crit 400
-    expect(aggregateTokenState(settings, [{ id: "a", tokens: 90 }, { id: "b", tokens: 90 }]).state).toBe("ok");
-    expect(aggregateTokenState(settings, [{ id: "a", tokens: 150 }, { id: "b", tokens: 90 }]).state).toBe("warn");
-    expect(aggregateTokenState(settings, [{ id: "a", tokens: 300 }, { id: "b", tokens: 150 }]).state).toBe("crit");
-  });
-
-  it("respects overrides when summing the group's allowance", () => {
-    const withOverride = { defaults: { warn: 100, crit: 200 }, overrides: { b: { warn: 900, crit: 1000 } } };
-    // warn allowance is 100 + 900 = 1000, so 500 total stays ok
-    expect(aggregateTokenState(withOverride, [{ id: "a", tokens: 250 }, { id: "b", tokens: 250 }]).state).toBe("ok");
-  });
-
-  it("reports whether any member actually knew its token count", () => {
-    expect(aggregateTokenState(settings, [{ id: "a", tokens: undefined }]).known).toBe(false);
-    expect(aggregateTokenState(settings, [{ id: "a", tokens: 1 }]).known).toBe(true);
-  });
-});
 
 describe("currentMonthRange", () => {
   it("runs from the first of the month to today", () => {
@@ -937,157 +702,13 @@ describe("formatAgeMinutes", () => {
   });
 });
 
-describe("normalizeRowMode", () => {
-  it("defaults to ledger, the mode that fixes the ragged rows", () => {
-    expect(normalizeRowMode(null)).toBe("ledger");
-    expect(normalizeRowMode("nonsense")).toBe("ledger");
-  });
-
-  it("accepts each known mode", () => {
-    expect(normalizeRowMode("card")).toBe("card");
-    expect(normalizeRowMode("digest")).toBe("digest");
-    expect(normalizeRowMode("ledger")).toBe("ledger");
-  });
-});
-
-describe("compareAttention", () => {
-  const item = (severity: string, minsAgo: number) =>
-    ({ severity, activityAt: new Date(Date.UTC(2026, 7, 14, 12) - minsAgo * 60_000).toISOString() }) as never;
-
-  it("puts worse severities first", () => {
-    const sorted = [item("medium", 1), item("critical", 999), item("high", 1)].sort(compareAttention);
-    expect(sorted.map((i: { severity: string }) => i.severity)).toEqual(["critical", "high", "medium"]);
-  });
-
-  it("puts the oldest first within a severity", () => {
-    const sorted = [item("high", 10), item("high", 500), item("high", 100)].sort(compareAttention);
-    expect(sorted.map((i: { activityAt: string }) => i.activityAt)).toEqual([
-      new Date(Date.UTC(2026, 7, 14, 12) - 500 * 60_000).toISOString(),
-      new Date(Date.UTC(2026, 7, 14, 12) - 100 * 60_000).toISOString(),
-      new Date(Date.UTC(2026, 7, 14, 12) - 10 * 60_000).toISOString(),
-    ]);
-  });
-});
 
 
-describe("attentionAgeMinutes", () => {
-  const now = Date.UTC(2026, 7, 14, 12);
-  it("returns null when an item carries no timestamp", () => {
-    expect(attentionAgeMinutes({ activityAt: null }, now)).toBeNull();
-  });
-  it("returns whole minutes since the item last moved", () => {
-    expect(attentionAgeMinutes({ activityAt: new Date(now - 90 * 60_000).toISOString() }, now)).toBe(90);
-  });
-  it("rejects a future timestamp rather than reporting a negative age", () => {
-    expect(attentionAgeMinutes({ activityAt: new Date(now + 60_000).toISOString() }, now)).toBeNull();
-  });
-});
 
-describe("mergeAttentionFeed", () => {
-  const at = (mins: number) => new Date(Date.UTC(2026, 7, 14, 12) - mins * 60_000).toISOString();
-  const item = (id: string, minsAgo: number | null, dismissed = false) =>
-    ({ id, severity: "medium", activityAt: minsAgo === null ? null : at(minsAgo), dismissal: dismissed ? {} : null }) as never;
 
-  it("interleaves companies newest first", () => {
-    const merged = mergeAttentionFeed([
-      { company: { id: "a" }, items: [item("a1", 100), item("a2", 5)] },
-      { company: { id: "b" }, items: [item("b1", 50)] },
-    ]);
-    expect(merged.map((row) => row.item.id)).toEqual(["a2", "b1", "a1"]);
-  });
 
-  it("drops dismissed items and tolerates a company with no feed yet", () => {
-    const merged = mergeAttentionFeed([
-      { company: { id: "a" }, items: [item("a1", 1, true), item("a2", 2)] },
-      { company: { id: "b" }, items: undefined },
-    ]);
-    expect(merged.map((row) => row.item.id)).toEqual(["a2"]);
-  });
 
-  it("sorts timestamp-less items last rather than letting them lead the stream", () => {
-    const merged = mergeAttentionFeed([
-      { company: { id: "a" }, items: [item("none", null), item("recent", 1)] },
-    ]);
-    expect(merged.map((row) => row.item.id)).toEqual(["recent", "none"]);
-  });
-});
 
-describe("filterFeed", () => {
-  const now = Date.UTC(2026, 7, 14, 12);
-  const at = (mins: number) => new Date(now - mins * 60_000).toISOString();
-  const rows = [
-    { company: { id: "a" }, item: { severity: "critical", activityAt: at(5) } },
-    { company: { id: "a" }, item: { severity: "medium", activityAt: at(500) } },
-    { company: { id: "b" }, item: { severity: "high", activityAt: at(600) } },
-  ] as never;
-
-  it("keeps everything by default", () => {
-    expect(filterFeed(rows, "all", now - 60 * 60_000)).toHaveLength(3);
-  });
-
-  it("urgent keeps critical and high only", () => {
-    expect(filterFeed(rows, "urgent", null).map((r: { item: { severity: string } }) => r.item.severity)).toEqual([
-      "critical",
-      "high",
-    ]);
-  });
-
-  it("unseen keeps only what moved since the last visit", () => {
-    expect(filterFeed(rows, "unseen", now - 60 * 60_000)).toHaveLength(1);
-  });
-
-  it("unseen falls back to everything when there is no last visit to compare against", () => {
-    expect(filterFeed(rows, "unseen", null)).toHaveLength(3);
-  });
-});
-
-describe("bucketAttentionByAge", () => {
-  const now = Date.UTC(2026, 7, 14, 12);
-  const at = (mins: number) => ({ activityAt: new Date(now - mins * 60_000).toISOString() });
-
-  it("splits items across the four buckets by age", () => {
-    const buckets = bucketAttentionByAge([at(10), at(90), at(300), at(2000), at(2500)], now);
-    expect(buckets.map((b) => b.count)).toEqual([1, 1, 1, 2]);
-    expect(buckets.map((b) => b.label)).toEqual(["<1h", "1–4h", "4–12h", ">12h"]);
-  });
-
-  it("flags the oldest bucket only when something is actually in it", () => {
-    expect(bucketAttentionByAge([at(10)], now).some((b) => b.stale)).toBe(false);
-    expect(bucketAttentionByAge([at(5000)], now).some((b) => b.stale)).toBe(true);
-  });
-
-  it("ignores timestamp-less items rather than inventing or hiding neglect", () => {
-    const buckets = bucketAttentionByAge([{ activityAt: null }, at(30)], now);
-    expect(buckets.reduce((sum, b) => sum + b.count, 0)).toBe(1);
-  });
-});
-
-describe("selectFeedCompanies", () => {
-  const companies = [{ id: "pinned" }, { id: "wall" }, { id: "docked" }, { id: "both" }];
-  const zones = { pinnedIds: ["pinned", "both"], collapsedIds: ["docked", "both"] };
-
-  it("active leaves out what you deliberately docked", () => {
-    expect(selectFeedCompanies(companies, zones, "active").map((c) => c.id)).toEqual(["pinned", "wall", "both"]);
-  });
-
-  it("pinned narrows to what you are watching", () => {
-    expect(selectFeedCompanies(companies, zones, "pinned").map((c) => c.id)).toEqual(["pinned", "both"]);
-  });
-
-  it("all includes the docked ones again", () => {
-    expect(selectFeedCompanies(companies, zones, "all").map((c) => c.id)).toEqual([
-      "pinned",
-      "wall",
-      "docked",
-      "both",
-    ]);
-  });
-
-  it("treats pinning as the stronger statement when a company carries both marks", () => {
-    // "both" is pinned and holds a stale collapsed id; pinning wins
-    expect(selectFeedCompanies(companies, zones, "active").map((c) => c.id)).toContain("both");
-  });
-});
 
 describe("deriveRoutineHealth", () => {
   const now = Date.UTC(2026, 7, 14, 12);
@@ -1170,87 +791,9 @@ describe("formatCountdown", () => {
   });
 });
 
-describe("attentionGroupSummary", () => {
-  const feed = (kinds: Array<[string, string]>): AttentionFeed =>
-    ({
-      items: kinds.map(([kind, severity], index) => ({
-        id: `a${index}`,
-        sourceKind: kind,
-        severity,
-        dismissal: null,
-      })),
-    }) as never;
 
-  it("collapses eleven source kinds into six response groups", () => {
-    expect(PLICA_ATTENTION_GROUPS).toHaveLength(6);
-    const covered = PLICA_ATTENTION_GROUPS.flatMap((group) => group.kinds);
-    // every kind lands in exactly one group
-    expect(new Set(covered).size).toBe(covered.length);
-  });
 
-  it("counts kinds that ask for the same response together", () => {
-    const summary = attentionGroupSummary(
-      feed([
-        ["blocker_attention", "high"],
-        ["recovery_action", "critical"],
-        ["approval", "medium"],
-        ["decision", "low"],
-        ["join_request", "low"],
-      ]),
-    );
-    const blocked = summary.cells.find((cell) => cell.key === "blocked");
-    const approve = summary.cells.find((cell) => cell.key === "approve");
-    expect(blocked).toMatchObject({ count: 2, worst: "critical" });
-    expect(approve).toMatchObject({ count: 3, worst: "medium" });
-    expect(summary.total).toBe(5);
-  });
 
-  it("still counts an ungrouped kind toward the total without inventing a cell", () => {
-    const summary = attentionGroupSummary(feed([["something_new", "high"]]));
-    expect(summary.total).toBe(1);
-    expect(summary.cells).toHaveLength(6);
-    expect(summary.cells.every((cell) => cell.count === 0)).toBe(true);
-  });
-});
-
-describe("attentionGroupFor", () => {
-  it("maps a kind to the response it asks for", () => {
-    expect(attentionGroupFor("failed_run")?.key).toBe("failed");
-    expect(attentionGroupFor("agent_error_alert")?.key).toBe("failed");
-    expect(attentionGroupFor("join_request")?.key).toBe("approve");
-    expect(attentionGroupFor("nonsense")).toBeUndefined();
-  });
-});
-
-describe("groupAttentionByGroup", () => {
-  const item = (id: string, kind: string, severity = "medium") =>
-    ({ id, sourceKind: kind, severity, activityAt: null }) as never;
-
-  it("folds a pane to at most six rows", () => {
-    const groups = groupAttentionByGroup([
-      item("a", "blocker_attention"),
-      item("b", "recovery_action"),
-      item("c", "review"),
-      item("d", "productivity_review"),
-    ]);
-    expect(groups.map((g) => g.label)).toEqual(["Blocked", "Review"]);
-    expect(groups[0].items).toHaveLength(2);
-  });
-
-  it("keeps an ungrouped kind visible on its own row rather than losing it", () => {
-    const groups = groupAttentionByGroup([item("a", "approval"), item("b", "something_new")]);
-    expect(groups.map((g) => g.label)).toEqual(["Approve", "something new"]);
-  });
-});
-
-describe("attention group coverage", () => {
-  it("gives every canonical source kind exactly one group", () => {
-    const grouped = PLICA_ATTENTION_GROUPS.flatMap((group) => group.kinds);
-    // Nothing may fall through the six cells: an uncovered kind would count
-    // toward a company's total while being invisible in every bar mode.
-    expect([...ATTENTION_SOURCE_KINDS].sort()).toEqual([...grouped].sort());
-  });
-});
 
 describe("attentionRowTitle", () => {
   const item = (over: Record<string, unknown>) =>
@@ -1298,22 +841,3 @@ describe("attentionRowTitle", () => {
   });
 });
 
-describe("viewSupports", () => {
-  it("gives the wall every control", () => {
-    expect(viewSupports("wall")).toEqual({ layout: true, rows: true, order: true, docking: true });
-  });
-
-  it("drops the row mode in analytic, which renders measurements not rows", () => {
-    expect(viewSupports("analytic")).toMatchObject({ layout: true, rows: false, order: true });
-  });
-
-  it("leaves triage and feed with no workspace controls at all", () => {
-    for (const view of ["triage", "feed"] as const) {
-      expect(viewSupports(view)).toEqual({ layout: false, rows: false, order: false, docking: false });
-    }
-  });
-
-  it("treats an unknown view as supporting nothing rather than showing dead controls", () => {
-    expect(viewSupports("nonsense" as never).layout).toBe(false);
-  });
-});

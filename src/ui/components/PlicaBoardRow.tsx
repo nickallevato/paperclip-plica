@@ -17,7 +17,7 @@ import {
 } from "../lib/plica";
 import { PlicaCeoStrip } from "./PlicaCeoStrip";
 import { PlicaLink } from "./PlicaLink";
-import { LiveDot } from "./PlicaRunsStrip";
+import { LiveDot } from "./LiveDot";
 import { PlicaSparkline } from "./PlicaSparkline";
 import type { PlicaCompanyData } from "./usePlicaCompanyData";
 

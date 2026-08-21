@@ -20,14 +20,11 @@ vi.mock("./host/shims", async (importOriginal) => ({
   useBreadcrumbs: () => ({ setBreadcrumbs: vi.fn() }),
 }));
 vi.mock("./components/PlicaCompanySlot", () => ({
-  PlicaCompanySlot: ({ company, view }: { company: { name: string }; view: string }) =>
-    view === "board" ? (
-      <tr data-slot-view={view}>
-        <td>pane:{company.name}</td>
-      </tr>
-    ) : (
-      <div data-view={view}>pane:{company.name}</div>
-    ),
+  PlicaCompanySlot: ({ company }: { company: { name: string } }) => (
+    <tr data-slot>
+      <td>row:{company.name}</td>
+    </tr>
+  ),
 }));
 vi.mock("./components/PlicaBriefing", () => ({
   PlicaBriefing: ({ since }: { since: string }) => <div data-testid="briefing">briefing since {since}</div>,
@@ -49,13 +46,25 @@ const summaryFor = (companyId: string, running: number, pendingApprovals: number
 describe("PlicaHud", () => {
   let container: HTMLDivElement;
 
+  function render() {
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const root = createRoot(container);
+    act(() => {
+      root.render(
+        <QueryClientProvider client={queryClient}>
+          <MemoryRouter>
+            <PlicaHud />
+          </MemoryRouter>
+        </QueryClientProvider>,
+      );
+    });
+    return root;
+  }
+
   beforeEach(() => {
     container = document.createElement("div");
     document.body.appendChild(container);
-    // Most of these tests exercise the classic wall; the board (the default)
-    // has its own tests below.
-    localStorage.setItem("plica.view", "wall");
-    localStorage.removeItem("plica.lastVisit");
+    localStorage.clear();
     mockCompaniesApi.list.mockResolvedValue([
       { id: "c1", name: "Acme", status: "active", issuePrefix: "ACM" },
       { id: "c2", name: "Globex", status: "active", issuePrefix: "GLO" },
@@ -71,102 +80,25 @@ describe("PlicaHud", () => {
     vi.clearAllMocks();
   });
 
-  it("renders a pane per active company and totals in the global bar", async () => {
-    const queryClient = new QueryClient({
-      defaultOptions: { queries: { retry: false } },
-    });
-    const root = createRoot(container);
-    act(() => {
-      root.render(
-        <QueryClientProvider client={queryClient}>
-          <MemoryRouter>
-            <PlicaHud />
-          </MemoryRouter>
-        </QueryClientProvider>,
-      );
-    });
+  it("renders the board: one slot row per active company, the queue rail, and header totals", async () => {
+    const root = render();
     await vi.waitFor(() => {
-      expect(container.textContent).toContain("pane:Acme");
-      expect(container.textContent).toContain("pane:Globex");
-      expect(container.textContent).not.toContain("pane:Gone");
-      expect(container.textContent).toContain("3 running");     // 2 + 1
-      expect(container.textContent).toContain("1 approval");    // pending total
+      expect(container.querySelectorAll("[data-slot]").length).toBe(2);
     });
-    act(() => root.unmount());
-  });
-
-  it("switches layout modes and persists the choice", async () => {
-    localStorage.removeItem("plica.layout");
-    const queryClient = new QueryClient({
-      defaultOptions: { queries: { retry: false } },
-    });
-    const root = createRoot(container);
-    act(() => {
-      root.render(
-        <QueryClientProvider client={queryClient}>
-          <MemoryRouter>
-            <PlicaHud />
-          </MemoryRouter>
-        </QueryClientProvider>,
-      );
-    });
+    expect(container.textContent).toContain("row:Acme");
+    expect(container.textContent).toContain("row:Globex");
+    expect(container.textContent).not.toContain("row:Gone");
+    expect(container.querySelector('[data-view="board"]')).not.toBeNull();
+    expect(container.querySelector("[data-plica-queue]")).not.toBeNull();
+    expect(container.textContent).toContain("Needs you");
+    expect(container.textContent).toContain("2 companies");
     await vi.waitFor(() => {
-      expect(container.querySelector('[data-layout="auto"]')).not.toBeNull();
+      expect(container.textContent).toContain("3 running"); // 2 + 1
     });
-
-    const twoButton = Array.from(container.querySelectorAll("button")).find(
-      (button) => button.textContent === "2",
-    );
-    expect(twoButton).not.toBeUndefined();
-    await act(async () => {
-      twoButton!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-    });
-
-    const grid = container.querySelector('[data-layout="2"]');
-    expect(grid).not.toBeNull();
-    expect(grid?.className).toContain("grid-cols-2");
-    expect(localStorage.getItem("plica.layout")).toBe("2");
-    act(() => root.unmount());
-  });
-
-  it("switches view modes, persists the choice, and renders a single-column triage list instead of a grid", async () => {
-    localStorage.setItem("plica.view", "wall");
-    const queryClient = new QueryClient({
-      defaultOptions: { queries: { retry: false } },
-    });
-    const root = createRoot(container);
-    act(() => {
-      root.render(
-        <QueryClientProvider client={queryClient}>
-          <MemoryRouter>
-            <PlicaHud />
-          </MemoryRouter>
-        </QueryClientProvider>,
-      );
-    });
-    await vi.waitFor(() => {
-      expect(container.querySelector('[data-layout]')).not.toBeNull();
-    });
-
-    // Wall is the default: a grid of slots, none in triage view.
-    expect(container.querySelectorAll('[data-view="wall"]').length).toBeGreaterThan(0);
-    expect(container.querySelector('[data-view="triage"]')).toBeNull();
-
-    const triageButton = Array.from(container.querySelectorAll("button")).find(
-      (button) => button.textContent === "Triage",
-    );
-    expect(triageButton).not.toBeUndefined();
-    await act(async () => {
-      triageButton!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-    });
-
-    await vi.waitFor(() => {
-      expect(container.querySelector('[data-view="triage"]')).not.toBeNull();
-    });
-    // No grid layout wrapper when in triage view.
-    expect(container.querySelector('[data-layout]')).toBeNull();
-    expect(localStorage.getItem("plica.view")).toBe("triage");
-
+    // No classic chrome survives.
+    expect(container.querySelector('[aria-label="View mode"]')).toBeNull();
+    expect(container.querySelector('[aria-label="Layout columns"]')).toBeNull();
+    expect(container.querySelector("[data-plica-bar]")).toBeNull();
     act(() => root.unmount());
   });
 
@@ -174,123 +106,40 @@ describe("PlicaHud", () => {
     const requestFullscreen = vi.fn().mockResolvedValue(undefined);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (Element.prototype as any).requestFullscreen = requestFullscreen;
-    const queryClient = new QueryClient({
-      defaultOptions: { queries: { retry: false } },
-    });
-    const root = createRoot(container);
-    act(() => {
-      root.render(
-        <QueryClientProvider client={queryClient}>
-          <MemoryRouter>
-            <PlicaHud />
-          </MemoryRouter>
-        </QueryClientProvider>,
-      );
-    });
+    const root = render();
     await vi.waitFor(() => {
       expect(container.querySelector('[aria-label="Enter kiosk mode"]')).not.toBeNull();
     });
-
-    const kioskButton = container.querySelector('[aria-label="Enter kiosk mode"]') as HTMLButtonElement;
     await act(async () => {
-      kioskButton.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      (container.querySelector('[aria-label="Enter kiosk mode"]') as HTMLButtonElement).dispatchEvent(
+        new MouseEvent("click", { bubbles: true }),
+      );
     });
-
     expect(requestFullscreen).toHaveBeenCalledTimes(1);
     act(() => root.unmount());
   });
 
   it("toggles alerts on and persists the choice", async () => {
-    localStorage.removeItem("plica.alerts");
-    const queryClient = new QueryClient({
-      defaultOptions: { queries: { retry: false } },
-    });
-    const root = createRoot(container);
-    act(() => {
-      root.render(
-        <QueryClientProvider client={queryClient}>
-          <MemoryRouter>
-            <PlicaHud />
-          </MemoryRouter>
-        </QueryClientProvider>,
-      );
-    });
+    const root = render();
     await vi.waitFor(() => {
       expect(container.querySelector('[aria-label="Enable alerts"]')).not.toBeNull();
     });
-
-    const bellButton = container.querySelector('[aria-label="Enable alerts"]') as HTMLButtonElement;
     await act(async () => {
-      bellButton.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      (container.querySelector('[aria-label="Enable alerts"]') as HTMLButtonElement).dispatchEvent(
+        new MouseEvent("click", { bubbles: true }),
+      );
     });
-
     expect(localStorage.getItem("plica.alerts")).toBe("on");
     expect(container.querySelector('[aria-label="Disable alerts"]')).not.toBeNull();
-
     act(() => root.unmount());
   });
 
-  it("shows the briefing strip when the last visit is old", async () => {
-    localStorage.setItem("plica.lastVisit", new Date(Date.now() - 60 * 60_000).toISOString());
-    const queryClient = new QueryClient({
-      defaultOptions: { queries: { retry: false } },
-    });
-    const root = createRoot(container);
-    act(() => {
-      root.render(
-        <QueryClientProvider client={queryClient}>
-          <MemoryRouter>
-            <PlicaHud />
-          </MemoryRouter>
-        </QueryClientProvider>,
-      );
-    });
-    await vi.waitFor(() => {
-      expect(container.querySelector('[data-testid="briefing"]')).not.toBeNull();
-    });
-    act(() => root.unmount());
-  });
-
-  it("does not show the briefing strip when there is no recorded visit, or it was recent", async () => {
-    const queryClient = new QueryClient({
-      defaultOptions: { queries: { retry: false } },
-    });
-    const root = createRoot(container);
-    act(() => {
-      root.render(
-        <QueryClientProvider client={queryClient}>
-          <MemoryRouter>
-            <PlicaHud />
-          </MemoryRouter>
-        </QueryClientProvider>,
-      );
-    });
-    await vi.waitFor(() => {
-      expect(container.textContent).toContain("pane:Acme");
-    });
-    expect(container.querySelector('[data-testid="briefing"]')).toBeNull();
-    act(() => root.unmount());
-  });
-
-  it("persists the pane-order mode", async () => {
-    localStorage.removeItem("plica.sort");
-    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-    const root = createRoot(container);
-    act(() => {
-      root.render(
-        <QueryClientProvider client={queryClient}>
-          <MemoryRouter>
-            <PlicaHud />
-          </MemoryRouter>
-        </QueryClientProvider>,
-      );
-    });
+  it("persists the pane-order mode from the board header", async () => {
+    const root = render();
     await vi.waitFor(() => {
       expect(container.querySelector('[aria-label="Pane order"]')).not.toBeNull();
     });
-    const hotButton = Array.from(container.querySelectorAll("button")).find(
-      (button) => button.textContent === "Hot first",
-    );
+    const hotButton = Array.from(container.querySelectorAll("button")).find((button) => button.textContent === "Hot first");
     await act(async () => {
       hotButton!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
@@ -298,140 +147,21 @@ describe("PlicaHud", () => {
     act(() => root.unmount());
   });
 
-  it("docks collapsed companies out of the grid into the docked strip", async () => {
-    localStorage.setItem("plica.collapsed", JSON.stringify(["c1"]));
-    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-    const root = createRoot(container);
-    act(() => {
-      root.render(
-        <QueryClientProvider client={queryClient}>
-          <MemoryRouter>
-            <PlicaHud />
-          </MemoryRouter>
-        </QueryClientProvider>,
-      );
-    });
+  it("shows the briefing as the rail footer when the last visit is old, and not otherwise", async () => {
+    localStorage.setItem("plica.lastVisit", new Date(Date.now() - 60 * 60_000).toISOString());
+    let root = render();
     await vi.waitFor(() => {
-      expect(container.querySelector("[data-docked]")).not.toBeNull();
+      expect(container.querySelector('[data-testid="briefing"]')).not.toBeNull();
     });
-    const docked = container.querySelector("[data-docked]");
-    expect(docked?.textContent).toContain("Acme");
-    expect(container.textContent).not.toContain("pane:Acme");
-    expect(container.textContent).toContain("pane:Globex");
-    localStorage.removeItem("plica.collapsed");
+    expect(container.querySelector("[data-plica-queue] [data-testid='briefing']")).not.toBeNull();
     act(() => root.unmount());
-  });
 
-  it("docks and undocks every company via the header buttons, persisting the choice", async () => {
-    localStorage.removeItem("plica.collapsed");
-    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-    const root = createRoot(container);
-    act(() => {
-      root.render(
-        <QueryClientProvider client={queryClient}>
-          <MemoryRouter>
-            <PlicaHud />
-          </MemoryRouter>
-        </QueryClientProvider>,
-      );
-    });
+    localStorage.removeItem("plica.lastVisit");
+    root = render();
     await vi.waitFor(() => {
-      expect(container.textContent).toContain("pane:Acme");
+      expect(container.textContent).toContain("row:Acme");
     });
-
-    const dockAll = container.querySelector<HTMLButtonElement>('button[aria-label="Dock all companies"]');
-    const undockAll = container.querySelector<HTMLButtonElement>('button[aria-label="Undock all companies"]');
-    expect(dockAll).not.toBeNull();
-    expect(undockAll).not.toBeNull();
-    // Nothing docked yet: undock-all is a no-op and disabled.
-    expect(dockAll!.disabled).toBe(false);
-    expect(undockAll!.disabled).toBe(true);
-
-    await act(async () => {
-      dockAll!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-    });
-    expect(container.textContent).not.toContain("pane:Acme");
-    expect(container.textContent).not.toContain("pane:Globex");
-    const docked = container.querySelector("[data-docked]");
-    expect(docked?.textContent).toContain("Acme");
-    expect(docked?.textContent).toContain("Globex");
-    expect(JSON.parse(localStorage.getItem("plica.collapsed") ?? "[]").sort()).toEqual(["c1", "c2"]);
-    // Everything docked now: dock-all is the no-op.
-    expect(dockAll!.disabled).toBe(true);
-    expect(undockAll!.disabled).toBe(false);
-
-    await act(async () => {
-      undockAll!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-    });
-    expect(container.textContent).toContain("pane:Acme");
-    expect(container.textContent).toContain("pane:Globex");
-    expect(container.querySelector("[data-docked]")).toBeNull();
-    expect(JSON.parse(localStorage.getItem("plica.collapsed") ?? "[]")).toEqual([]);
-
-    localStorage.removeItem("plica.collapsed");
-    act(() => root.unmount());
-  });
-
-  it("lands on the board by default: one slot row per company, the queue rail, and no classic toolbars", async () => {
-    localStorage.removeItem("plica.view");
-    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-    const root = createRoot(container);
-    act(() => {
-      root.render(
-        <QueryClientProvider client={queryClient}>
-          <MemoryRouter>
-            <PlicaHud />
-          </MemoryRouter>
-        </QueryClientProvider>,
-      );
-    });
-    await vi.waitFor(() => {
-      expect(container.querySelectorAll('[data-slot-view="board"]').length).toBe(2);
-    });
-    expect(container.querySelector('[data-view="board"]')).not.toBeNull();
-    expect(container.querySelector("[data-plica-queue]")).not.toBeNull();
-    expect(container.querySelector("[data-plica-bar]")).toBeNull();
-    expect(container.querySelector('[aria-label="Layout columns"]')).toBeNull();
-    expect(container.textContent).toContain("Needs you");
-    expect(container.textContent).toContain("2 companies");
-    act(() => root.unmount());
-  });
-
-  it("switches to the classic wall from the header and back, persisting the choice", async () => {
-    localStorage.removeItem("plica.view");
-    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-    const root = createRoot(container);
-    act(() => {
-      root.render(
-        <QueryClientProvider client={queryClient}>
-          <MemoryRouter>
-            <PlicaHud />
-          </MemoryRouter>
-        </QueryClientProvider>,
-      );
-    });
-    await vi.waitFor(() => {
-      expect(container.querySelector('[data-view="board"]')).not.toBeNull();
-    });
-    const classic = Array.from(container.querySelectorAll("button")).find((button) => button.textContent === "Classic");
-    expect(classic).not.toBeUndefined();
-    await act(async () => {
-      classic!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-    });
-    await vi.waitFor(() => {
-      expect(container.querySelectorAll('[data-view="wall"]').length).toBeGreaterThan(0);
-    });
-    expect(container.querySelector('[data-view="board"]')).toBeNull();
-    expect(localStorage.getItem("plica.view")).toBe("wall");
-
-    const board = Array.from(container.querySelectorAll("button")).find((button) => button.textContent === "Board");
-    await act(async () => {
-      board!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-    });
-    await vi.waitFor(() => {
-      expect(container.querySelector('[data-view="board"]')).not.toBeNull();
-    });
-    expect(localStorage.getItem("plica.view")).toBe("board");
+    expect(container.querySelector('[data-testid="briefing"]')).toBeNull();
     act(() => root.unmount());
   });
 });

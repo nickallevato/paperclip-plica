@@ -84,7 +84,7 @@ export function PlicaTokenSettingsPanel({
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-[length:var(--plica-fs-body,14px)] leading-[1.45] font-semibold">Token thresholds</span>
         <span className="text-[length:var(--plica-fs-micro,11px)] leading-[1.45] text-muted-foreground">
-          Monthly tokens · colours Scoreboard, Tote and Analytic
+          Monthly tokens · colours the Spend column on the board
         </span>
         <button
           type="button"

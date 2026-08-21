@@ -15,11 +15,6 @@ import type {
 
 export type PlicaHealth = "red" | "amber" | "green";
 
-export interface PlicaProjectChip {
-  project: Project;
-  openCount: number;
-}
-
 const CLOSED_ISSUE_STATUSES = new Set(["done", "cancelled"]);
 
 /**
@@ -77,13 +72,6 @@ export function derivePaneHealth(
   return "green";
 }
 
-/** Solid dot fill per health — single source for pane, docked tile, etc. */
-export const PLICA_HEALTH_DOT_CLASSES: Record<PlicaHealth, string> = {
-  green: "bg-emerald-500",
-  amber: "bg-amber-500",
-  red: "bg-red-500",
-};
-
 /**
  * Accessible/plain-language label for a pane's health dot, naming the reason
  * (incidents, agent errors, approvals) rather than just the color.
@@ -104,30 +92,6 @@ export function healthLabel(health: PlicaHealth, summary: DashboardSummary | und
   return "Health: green — all clear";
 }
 
-export function selectProjectChips(
-  projects: Project[],
-  issues: Issue[],
-  max = 5,
-): { chips: PlicaProjectChip[]; overflow: number } {
-  const openCounts = new Map<string, number>();
-  for (const issue of issues) {
-    if (!issue.projectId || CLOSED_ISSUE_STATUSES.has(issue.status)) continue;
-    openCounts.set(issue.projectId, (openCounts.get(issue.projectId) ?? 0) + 1);
-  }
-  // Only projects with open work earn a pill — a wall of zero-count chips
-  // tells you nothing (and archived projects never show).
-  const active = projects
-    .filter((project) => !project.archivedAt && (openCounts.get(project.id) ?? 0) > 0)
-    .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
-  return {
-    chips: active.slice(0, max).map((project) => ({
-      project,
-      openCount: openCounts.get(project.id) ?? 0,
-    })),
-    overflow: Math.max(0, active.length - max),
-  };
-}
-
 export function formatCents(cents: number): string {
   const dollars = cents / 100;
   return cents % 100 === 0 ? `$${dollars}` : `$${dollars.toFixed(2)}`;
@@ -142,24 +106,6 @@ export function issueStatusLabel(status: string): string {
 
 export function plicaRefetchInterval(): number {
   return typeof document !== "undefined" && document.visibilityState === "hidden" ? 30_000 : 5_000;
-}
-
-export type PlicaLayoutMode = "auto" | "1" | "2" | "3";
-
-export const PLICA_LAYOUT_STORAGE_KEY = "plica.layout";
-
-// "2"/"3" are caps, not forces: below the breakpoints they fall back to
-// fewer columns so a persisted "3" on a narrow window never yields
-// unreadably crushed panes. "auto" gains a 4th column on very wide walls.
-export const PLICA_LAYOUT_CLASSES: Record<PlicaLayoutMode, string> = {
-  auto: "md:grid-cols-2 2xl:grid-cols-3 min-[2200px]:grid-cols-4",
-  "1": "grid-cols-1",
-  "2": "sm:grid-cols-2",
-  "3": "md:grid-cols-2 xl:grid-cols-3",
-};
-
-export function normalizeLayoutMode(value: string | null | undefined): PlicaLayoutMode {
-  return value === "1" || value === "2" || value === "3" ? value : "auto";
 }
 
 export function selectCeo(agents: Agent[]): Agent | undefined {
@@ -214,18 +160,6 @@ export function intervalLabel(intervalSec: number | null): string | null {
   return `every ${intervalSec}s`;
 }
 
-export type PlicaViewMode = "board" | "wall" | "triage" | "feed" | "analytic";
-
-export const PLICA_VIEW_STORAGE_KEY = "plica.view";
-
-const PLICA_VIEW_MODES: ReadonlyArray<PlicaViewMode> = ["board", "wall", "triage", "feed", "analytic"];
-
-export function normalizeViewMode(value: string | null | undefined): PlicaViewMode {
-  // Board is the default: the queue-and-ledger page that replaced the wall as
-  // the landing view. The classic views stay reachable behind it.
-  return PLICA_VIEW_MODES.includes(value as PlicaViewMode) ? (value as PlicaViewMode) : "board";
-}
-
 export const PLICA_ALERTS_STORAGE_KEY = "plica.alerts";
 
 export function normalizeAlertsEnabled(value: string | null | undefined): boolean {
@@ -238,7 +172,7 @@ export interface PlicaActionable {
 }
 
 /**
- * Computes the "actionable" summary (used for triage counts/ordering) from
+ * Computes the "actionable" summary (used for the Need-you counts and hot-first ordering) from
  * the pieces of PlicaCompanyData that matter for it: pending approvals,
  * undismissed attention items, and whether the CEO heartbeat is overdue.
  * Kept as a plain data-in shape (rather than taking PlicaCompanyData
@@ -262,48 +196,12 @@ export function deriveActionable(data: {
 }
 
 /**
- * Orders companies for the triage list: those with any critical/high
- * attention item first, then by actionable count descending, then by
- * name ascending. Pure so it can be unit-tested without the polling hooks.
- */
-/**
- * Flattens an approval payload into key/value display rows for the
- * approval preview: primitives render as-is, objects/arrays are
- * JSON.stringify'd, and every value is truncated to `maxLen` characters so
- * a huge blob doesn't blow out the row. Pure so it's unit-testable without
- * mounting PlicaApprovalRow.
- */
-export function summarizePayloadEntries(
-  payload: Record<string, unknown>,
-  maxLen = 120,
-): Array<{ key: string; value: string }> {
-  return Object.entries(payload).map(([key, value]) => {
-    const text = value !== null && typeof value === "object" ? JSON.stringify(value) : String(value);
-    return { key, value: text.length > maxLen ? text.slice(0, maxLen) : text };
-  });
-}
-
-/**
  * Derives a CEO-nudge issue title from the free-text draft: the first
  * line, trimmed and capped at 140 characters (the issue title limit).
  */
 export function nudgeTitle(text: string): string {
   const firstLine = (text.trim().split("\n")[0] ?? "").trim();
   return firstLine.length > 140 ? firstLine.slice(0, 140) : firstLine;
-}
-
-export function orderTriageCompanies<T extends { company: Company; actionable: PlicaActionable }>(
-  entries: T[],
-): T[] {
-  return [...entries].sort((a, b) => {
-    if (a.actionable.criticalOrHigh !== b.actionable.criticalOrHigh) {
-      return a.actionable.criticalOrHigh ? -1 : 1;
-    }
-    if (a.actionable.count !== b.actionable.count) {
-      return b.actionable.count - a.actionable.count;
-    }
-    return a.company.name.localeCompare(b.company.name);
-  });
 }
 
 export interface PlicaSparklineDay {
@@ -494,89 +392,6 @@ export function partitionHotFirst<T extends { id: string }>(items: T[], hotIds: 
   return [...hot, ...rest];
 }
 
-export interface PlicaTriageSummaryPart {
-  label: string;
-  tone: "critical" | "warn" | "muted";
-}
-
-/**
- * Plain-language summary parts for a company's collapsed triage row, e.g.
- * [{2 blockers, critical}, {1 approval, warn}, {1 failed run, warn}].
- * Empty array = clear.
- */
-export function deriveTriageSummary(input: {
-  approvalCount: number;
-  attention: AttentionFeed | undefined;
-  ceoOverdue: boolean;
-}): PlicaTriageSummaryPart[] {
-  const items = (input.attention?.items ?? []).filter((item) => !item.dismissal);
-  const blockers = items.filter((item) => item.sourceKind === "blocker_attention").length;
-  const failed = items.filter((item) => item.sourceKind === "failed_run").length;
-  // Approval-sourced attention items duplicate `approvalCount` — don't let
-  // them inflate the "attention item" bucket too.
-  const approvalItems = items.filter((item) => item.sourceKind === "approval").length;
-  const other = items.length - blockers - failed - approvalItems;
-  const parts: PlicaTriageSummaryPart[] = [];
-  const plural = (count: number, noun: string) => `${count} ${noun}${count === 1 ? "" : "s"}`;
-  if (blockers > 0) parts.push({ label: plural(blockers, "blocker"), tone: "critical" });
-  if (input.approvalCount > 0) parts.push({ label: plural(input.approvalCount, "approval"), tone: "warn" });
-  if (failed > 0) parts.push({ label: plural(failed, "failed run"), tone: "warn" });
-  if (input.ceoOverdue) parts.push({ label: "CEO overdue", tone: "warn" });
-  if (other > 0) parts.push({ label: plural(other, "attention item"), tone: "muted" });
-  return parts;
-}
-
-/**
- * Human line for an attention item's detail payload — the actual question,
- * confirmation prompt, failure reason, etc. Null when there's nothing
- * beyond the item's whyNow line.
- */
-export function attentionDetailText(detail: AttentionItem["detail"]): string | null {
-  if (!detail) return null;
-  switch (detail.kind) {
-    case "approval":
-    case "plan_approval":
-    case "generic":
-      return detail.summaryExcerpt;
-    case "confirmation":
-    case "checkbox_confirmation":
-    case "item_verdicts":
-      return detail.promptExcerpt;
-    case "questions":
-      return detail.firstQuestionText
-        ? `${detail.questionCount} question${detail.questionCount === 1 ? "" : "s"} — “${detail.firstQuestionText}”`
-        : `${detail.questionCount} question${detail.questionCount === 1 ? "" : "s"} awaiting answers`;
-    case "suggested_tasks":
-      return detail.firstTaskTitle
-        ? `${detail.taskCount} suggested task${detail.taskCount === 1 ? "" : "s"} — first: ${detail.firstTaskTitle}`
-        : null;
-    case "failed_run":
-    case "agent_error":
-      return detail.failureReasonExcerpt;
-    case "blocker":
-      return detail.blockingIssue
-        ? `blocked by ${detail.blockingIssue.identifier ?? detail.blockingIssue.id ?? "?"}${detail.blockingIssue.title ? ` — ${detail.blockingIssue.title}` : ""}`
-        : null;
-    case "budget":
-      return `${detail.observedPercent}% of budget used ($${(detail.amountObserved / 100).toFixed(2)} of $${(detail.amountLimit / 100).toFixed(2)})`;
-    default:
-      return null;
-  }
-}
-
-export const PLICA_COLLAPSED_STORAGE_KEY = "plica.collapsed";
-
-/** Parse the persisted collapsed-company id list, tolerating junk. */
-export function normalizeCollapsedIds(raw: string | null | undefined): string[] {
-  if (!raw) return [];
-  try {
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === "string") : [];
-  } catch {
-    return [];
-  }
-}
-
 export const PLICA_PINNED_STORAGE_KEY = "plica.pinned";
 
 /** Parse the persisted pinned-company id list, tolerating junk. */
@@ -590,38 +405,7 @@ export function normalizePinnedIds(raw: string | null | undefined): string[] {
   }
 }
 
-/**
- * How the pinned bar presents a company. Separate from PlicaViewMode because
- * the bar and the workspace answer different questions and are switched
- * independently — you can watch four companies as a heatmap up top while
- * reading the rest as panes below.
- */
-export type PlicaBarMode = "signal" | "matrix" | "scoreboard" | "tote";
-
-/**
- * Everything PlicaCompanySlot can render a company as. One union so the slot
- * keeps a single data poll no matter which zone it is rendering into.
- */
-export type PlicaSlotPresentation = PlicaViewMode | PlicaBarMode;
-
-export const PLICA_BAR_STORAGE_KEY = "plica.bar";
-
-const PLICA_BAR_MODES: ReadonlyArray<PlicaBarMode> = ["signal", "matrix", "scoreboard", "tote"];
-
-export function normalizeBarMode(value: string | null | undefined): PlicaBarMode {
-  return PLICA_BAR_MODES.includes(value as PlicaBarMode) ? (value as PlicaBarMode) : "signal";
-}
-
 const SEVERITY_RANK: Record<AttentionSeverity, number> = { critical: 0, high: 1, medium: 2, low: 3 };
-
-/** The worst severity in a set, or null when the set is empty. */
-export function worstSeverity(items: ReadonlyArray<Pick<AttentionItem, "severity">>): AttentionSeverity | null {
-  let worst: AttentionSeverity | null = null;
-  for (const item of items) {
-    if (worst === null || SEVERITY_RANK[item.severity] < SEVERITY_RANK[worst]) worst = item.severity;
-  }
-  return worst;
-}
 
 
 /**
@@ -685,8 +469,8 @@ export function currentMonthRange(nowMs: number): { from: string; to: string } {
 
 /**
  * The compact per-company facts the bar's cross-company modes need. Slots
- * derive this from data they already hold and report it up, so Scoreboard can
- * lay companies side by side and Tote can add them together without either
+ * derive this from data they already hold and report it up, so the board can
+ * lay companies side by side and total them in its footer without either
  * one owning a second copy of the fetching.
  */
 export interface PlicaCompanyStats {
@@ -794,161 +578,8 @@ export function thresholdsFor(settings: PlicaTokenSettings, companyId: string): 
   return settings.overrides[companyId] ?? settings.defaults;
 }
 
-/**
- * Thresholds for a group read as one number. Summing each member's own
- * thresholds keeps the aggregate on the same footing as the rows that compose
- * it, including any overrides, instead of needing a second pair of numbers
- * that drifts whenever the per-company ones are tuned.
- */
-export function aggregateTokenState(
-  settings: PlicaTokenSettings,
-  members: ReadonlyArray<{ id: string; tokens: number | undefined }>,
-): { total: number; state: "crit" | "warn" | "ok"; known: boolean } {
-  const known = members.some((member) => member.tokens !== undefined);
-  const total = members.reduce((sum, member) => sum + (member.tokens ?? 0), 0);
-  const warn = members.reduce((sum, member) => sum + thresholdsFor(settings, member.id).warn, 0);
-  const crit = members.reduce((sum, member) => sum + thresholdsFor(settings, member.id).crit, 0);
-  return { total, state: total > crit ? "crit" : total > warn ? "warn" : "ok", known };
-}
-
-/**
- * How the panes render attention items.
- *
- * "card" is the original: the model's prose leads at line-clamp-2 with a meta
- * line beneath, so a row is two or three lines depending on what was written
- * and no two panes line up. The other two fix that by leading with the stable
- * noun — identifier and subject title — and demoting prose.
- */
-export type PlicaRowMode = "card" | "ledger" | "digest";
-
-export const PLICA_ROWS_STORAGE_KEY = "plica.rows";
-
-const PLICA_ROW_MODES: ReadonlyArray<PlicaRowMode> = ["card", "ledger", "digest"];
-
-export function normalizeRowMode(value: string | null | undefined): PlicaRowMode {
-  return PLICA_ROW_MODES.includes(value as PlicaRowMode) ? (value as PlicaRowMode) : "ledger";
-}
-
 const SEVERITY_ORDER: Record<AttentionSeverity, number> = { critical: 0, high: 1, medium: 2, low: 3 };
 
-/** Worst first, then oldest first within a severity. */
-export function compareAttention(a: AttentionItem, b: AttentionItem): number {
-  const bySeverity = SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity];
-  if (bySeverity !== 0) return bySeverity;
-  return (a.activityAt ? new Date(a.activityAt).getTime() : 0) - (b.activityAt ? new Date(b.activityAt).getTime() : 0);
-}
-
-export interface PlicaAttentionGroup {
-  kind: AttentionItem["sourceKind"];
-  label: string;
-  items: AttentionItem[];
-  worst: AttentionSeverity | null;
-}
-
-
-/** Minutes since an item last moved, or null when it carries no timestamp. */
-export function attentionAgeMinutes(item: { activityAt: string | null }, nowMs: number): number | null {
-  if (!item.activityAt) return null;
-  const mins = Math.round((nowMs - new Date(item.activityAt).getTime()) / 60_000);
-  return Number.isFinite(mins) && mins >= 0 ? mins : null;
-}
-
-/** Which slice of the merged feed is showing. */
-export type PlicaFeedFilter = "all" | "unseen" | "urgent";
-
-/**
- * Merge every company's attention into one stream, newest first.
- *
- * The only cross-company ordering in Plica: a fresh blocker at one company
- * outranks a stale one at another, which no side-by-side arrangement of panes
- * can express because each pane only sorts against itself.
- */
-export function mergeAttentionFeed<T extends { id: string }>(
-  entries: ReadonlyArray<{ company: T; items: ReadonlyArray<AttentionItem> | undefined }>,
-): Array<{ company: T; item: AttentionItem }> {
-  const merged: Array<{ company: T; item: AttentionItem }> = [];
-  for (const { company, items } of entries) {
-    for (const item of items ?? []) {
-      if (!item.dismissal) merged.push({ company, item });
-    }
-  }
-  // Newest first; items with no timestamp sort last rather than pretending to
-  // be from 1970 and dominating the top of the stream.
-  return merged.sort((a, b) => {
-    const at = a.item.activityAt ? new Date(a.item.activityAt).getTime() : Number.NEGATIVE_INFINITY;
-    const bt = b.item.activityAt ? new Date(b.item.activityAt).getTime() : Number.NEGATIVE_INFINITY;
-    return bt - at;
-  });
-}
-
-export function filterFeed<T>(
-  rows: ReadonlyArray<{ company: T; item: AttentionItem }>,
-  filter: PlicaFeedFilter,
-  sinceMs: number | null,
-): Array<{ company: T; item: AttentionItem }> {
-  if (filter === "urgent") return rows.filter((row) => row.item.severity === "critical" || row.item.severity === "high");
-  if (filter === "unseen") {
-    if (sinceMs === null) return [...rows];
-    return rows.filter((row) => Boolean(row.item.activityAt) && new Date(row.item.activityAt).getTime() > sinceMs);
-  }
-  return [...rows];
-}
-
-/**
- * How long attention has been sitting, in buckets.
- *
- * Every other surface ranks by severity, so a medium item nobody has touched
- * in two days sits below a high one from ten minutes ago forever. This is the
- * only place neglect is visible, which is why the oldest bucket is the one
- * that earns a colour.
- */
-export const PLICA_AGE_BUCKETS: ReadonlyArray<{ label: string; maxMins: number }> = [
-  { label: "<1h", maxMins: 60 },
-  { label: "1–4h", maxMins: 240 },
-  { label: "4–12h", maxMins: 720 },
-  { label: ">12h", maxMins: Number.POSITIVE_INFINITY },
-];
-
-export function bucketAttentionByAge(
-  items: ReadonlyArray<{ activityAt: string | null }>,
-  nowMs: number,
-): Array<{ label: string; count: number; stale: boolean }> {
-  return PLICA_AGE_BUCKETS.map((bucket, index) => {
-    const floor = index === 0 ? 0 : PLICA_AGE_BUCKETS[index - 1].maxMins;
-    const count = items.filter((item) => {
-      const mins = attentionAgeMinutes(item, nowMs);
-      // Items with no timestamp have no age to bucket; counting them as fresh
-      // would understate neglect and as ancient would invent it.
-      return mins !== null && mins >= floor && mins < bucket.maxMins;
-    }).length;
-    return { label: bucket.label, count, stale: index === PLICA_AGE_BUCKETS.length - 1 && count > 0 };
-  });
-}
-
-/**
- * Which companies the merged feed draws from.
- *
- * The three zones mean different things and the feed has to respect that:
- * pinned is what you are watching, the wall is what you are working through,
- * and docked is what you deliberately set aside. Folding all three together
- * puts items you chose to stop looking at back in front of you.
- */
-export type PlicaFeedScope = "active" | "pinned" | "all";
-
-export function selectFeedCompanies<T extends { id: string }>(
-  companies: ReadonlyArray<T>,
-  zones: { pinnedIds: ReadonlyArray<string>; collapsedIds: ReadonlyArray<string> },
-  scope: PlicaFeedScope,
-): T[] {
-  if (scope === "pinned") return companies.filter((company) => zones.pinnedIds.includes(company.id));
-  if (scope === "all") return [...companies];
-  // "active": everything you have not put away. A pinned company is never
-  // docked from the feed's point of view even if it also carries a stale
-  // collapsed id, because pinning is the stronger, more recent statement.
-  return companies.filter(
-    (company) => zones.pinnedIds.includes(company.id) || !zones.collapsedIds.includes(company.id),
-  );
-}
 
 /**
  * A routine that should have fired by now but has not is invisible in every
@@ -1021,106 +652,6 @@ export function formatCountdown(iso: string | null, nowMs: number): string {
   if (mins < 60) return `in ${mins}m`;
   if (mins < 1440) return `in ${Math.round(mins / 60)}h`;
   return `in ${Math.round(mins / 1440)}d`;
-}
-
-/**
- * The six things a company can need from you.
- *
- * The API has eleven attention source kinds, which is the right vocabulary for
- * a feed and the wrong one for a glance: eleven cells is three rows of reading,
- * and several of the kinds differ only in provenance, not in what you would do
- * about them. These group by the response they ask for.
- *
- * A kind outside this table still counts toward a company's total and still
- * appears in the digest under its own name — it just has no cell of its own,
- * which is better than inventing a seventh group nobody scans for.
- */
-export const PLICA_ATTENTION_GROUPS: ReadonlyArray<{
-  key: string;
-  label: string;
-  kinds: ReadonlyArray<AttentionItem["sourceKind"]>;
-}> = [
-  // Work has stopped and needs you to unstick it.
-  { key: "blocked", label: "Blocked", kinds: ["blocker_attention", "recovery_action"] },
-  // Something broke. Agent errors are failures that never got as far as a run.
-  { key: "failed", label: "Failed", kinds: ["failed_run", "agent_error_alert"] },
-  // Say yes or no. A join request is an approval that happens to be about a person.
-  { key: "approve", label: "Approve", kinds: ["approval", "decision", "join_request"] },
-  // Someone is waiting on an answer from you specifically.
-  { key: "answer", label: "Answer", kinds: ["issue_thread_interaction"] },
-  // Read it and respond; nothing is blocked while you do.
-  { key: "review", label: "Review", kinds: ["review", "productivity_review"] },
-  // Money.
-  { key: "budget", label: "Budget", kinds: ["budget_alert"] },
-];
-
-const GROUP_BY_KIND = new Map<string, (typeof PLICA_ATTENTION_GROUPS)[number]>();
-for (const group of PLICA_ATTENTION_GROUPS) {
-  for (const kind of group.kinds) GROUP_BY_KIND.set(kind, group);
-}
-
-export function attentionGroupFor(kind: string): (typeof PLICA_ATTENTION_GROUPS)[number] | undefined {
-  return GROUP_BY_KIND.get(kind);
-}
-
-export type PlicaGroupCell = {
-  key: string;
-  label: string;
-  kinds: ReadonlyArray<AttentionItem["sourceKind"]>;
-  count: number;
-  worst: AttentionSeverity | null;
-};
-
-export interface PlicaGroupSummary {
-  cells: PlicaGroupCell[];
-  /** Every live item, including kinds that fall outside the six groups. */
-  total: number;
-}
-
-/** Roll an attention feed up into the six response groups. */
-export function attentionGroupSummary(attention: AttentionFeed | undefined): PlicaGroupSummary {
-  const live = (attention?.items ?? []).filter((item) => !item.dismissal);
-  return {
-    cells: PLICA_ATTENTION_GROUPS.map((group) => {
-      const inGroup = live.filter((item) => group.kinds.includes(item.sourceKind));
-      return { key: group.key, label: group.label, kinds: group.kinds, count: inGroup.length, worst: worstSeverity(inGroup) };
-    }),
-    total: live.length,
-  };
-}
-
-/**
- * Group items for the digest by response group rather than raw kind, so a pane
- * folds to at most six rows and reads the same way as the bar. Kinds with no
- * group keep their own row rather than disappearing.
- */
-export function groupAttentionByGroup(items: ReadonlyArray<AttentionItem>): PlicaAttentionGroup[] {
-  const groups: PlicaAttentionGroup[] = [];
-  for (const group of PLICA_ATTENTION_GROUPS) {
-    const inGroup = items.filter((item) => group.kinds.includes(item.sourceKind));
-    if (inGroup.length) {
-      groups.push({
-        kind: group.key as AttentionItem["sourceKind"],
-        label: group.label,
-        items: [...inGroup].sort(compareAttention),
-        worst: worstSeverity(inGroup),
-      });
-    }
-  }
-  const ungrouped = items.filter((item) => !GROUP_BY_KIND.has(item.sourceKind));
-  const seen = new Set<string>();
-  for (const item of ungrouped) {
-    if (seen.has(item.sourceKind)) continue;
-    seen.add(item.sourceKind);
-    const inKind = ungrouped.filter((other) => other.sourceKind === item.sourceKind);
-    groups.push({
-      kind: item.sourceKind,
-      label: item.sourceKind.replace(/_/g, " "),
-      items: [...inKind].sort(compareAttention),
-      worst: worstSeverity(inKind),
-    });
-  }
-  return groups;
 }
 
 /**
@@ -1246,33 +777,4 @@ export function attentionRowTitle(item: AttentionItem): string {
   const subjectTitle = item.subject.title?.trim();
   if (subjectTitle) return subjectTitle;
   return attentionSpecificText(item.detail) ?? item.whyNow;
-}
-
-/**
- * Which workspace controls a view actually obeys.
- *
- * Not every control applies to every view, and a control that is visible but
- * inert is worse than one that is absent: it invites you to press it and then
- * says nothing. Triage carries its own ordering and its own single-column
- * layout; Feed is one merged list sorted by time and has neither panes to lay
- * out nor attention rows to restyle; Analytic renders measurements rather than
- * attention rows, so the row mode has nothing to change.
- */
-export function viewSupports(view: PlicaViewMode): {
-  layout: boolean;
-  rows: boolean;
-  order: boolean;
-  docking: boolean;
-} {
-  switch (view) {
-    case "wall":
-      return { layout: true, rows: true, order: true, docking: true };
-    case "analytic":
-      return { layout: true, rows: false, order: true, docking: false };
-    case "board":
-    case "triage":
-    case "feed":
-    default:
-      return { layout: false, rows: false, order: false, docking: false };
-  }
 }
