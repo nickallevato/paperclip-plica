@@ -29,6 +29,7 @@ export {
   PopoverTrigger,
 } from "./popover";
 export { Textarea } from "./textarea";
+export { Dialog, DialogContent, DialogTrigger } from "./dialog";
 export {
   DropdownMenu,
   DropdownMenuCheckboxItem,

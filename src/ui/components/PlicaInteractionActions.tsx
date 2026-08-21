@@ -9,7 +9,7 @@ import type {
 } from "@paperclipai/shared";
 import { issuesApi } from "../host/api";
 import { useToastActions } from "../host/shims";
-import { Button, Popover, PopoverContent, PopoverTrigger, Textarea } from "../host/ui-kit";
+import { Button, Dialog, DialogContent, DialogTrigger, Popover, PopoverContent, PopoverTrigger, Textarea } from "../host/ui-kit";
 import { cn } from "../host/util";
 import { attentionIssueId } from "../lib/plica";
 
@@ -224,18 +224,17 @@ function InteractionFormPopover({
     staleTime: 10_000,
   });
   const interaction = interactions.data?.find((entry) => entry.id === interactionId);
+  const issueLabel = item.subject.title?.trim() || "Thread request";
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
         <Button size="sm" variant="outline" className={cn("h-6 px-2 font-medium", MICRO)} aria-label={label}>
           {label}
         </Button>
-      </PopoverTrigger>
-      <PopoverContent
-        align="end"
-        side="bottom"
-        collisionPadding={12}
-        className="flex w-[26rem] max-w-[90vw] flex-col overflow-y-auto p-3 max-h-[var(--radix-popover-content-available-height)]"
+      </DialogTrigger>
+      <DialogContent
+        title={interaction && "payload" in interaction && "title" in interaction.payload && interaction.payload.title ? interaction.payload.title : issueLabel}
+        description={item.originAgentName ? `asked by ${item.originAgentName}` : undefined}
       >
         {interactions.isLoading && (
           <p className={cn("flex items-center gap-2 text-muted-foreground", MICRO)}>
@@ -277,8 +276,8 @@ function InteractionFormPopover({
           interaction.kind !== "request_checkbox_confirmation" && (
             <p className={cn("text-muted-foreground", MICRO)}>Open the thread to resolve this one.</p>
           )}
-      </PopoverContent>
-    </Popover>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -341,12 +340,7 @@ function QuestionsForm({
         respond.mutate();
       }}
     >
-      {(interaction.payload.title || draft) && (
-        <div className="flex items-baseline gap-2">
-          {interaction.payload.title && <p className={cn("font-semibold", BODY)}>{interaction.payload.title}</p>}
-          {draft && <span className={cn("ml-auto shrink-0 italic text-muted-foreground", MICRO)}>draft restored</span>}
-        </div>
-      )}
+      {draft && <p className={cn("italic text-muted-foreground", MICRO)}>draft restored</p>}
       {questions.map((question, index) => {
         const answer = answerOf(question.id);
         const multi = question.selectionMode === "multi";
