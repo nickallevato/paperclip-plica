@@ -932,7 +932,7 @@ Re-verify `/<prefix>/plica` renders the complete HUD on the current canary build
 
 ```bash
 cd the plugin directory
-git remote add mirror <private-mirror-remote>
+git remote add mirror <the private mirror-remote-url>
 git push -u mirror main
 ```
 

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { renderHook } from "@testing-library/react";
-import { buildCompanyPath, mapToneToPluginTone, useDialogActions } from "./shims";
+import { buildCompanyPath, isSafeLocalPath, mapToneToPluginTone, useDialogActions } from "./shims";
 import { TEST_COMPANY_ID, installTestBridge } from "../../test/bridge";
 
 describe("host/shims", () => {
@@ -75,5 +75,17 @@ describe("host/shims", () => {
       result.current.openNewIssue({});
       expect(navigate).toHaveBeenCalledWith("/ACME/issues");
     });
+  });
+});
+
+describe("isSafeLocalPath", () => {
+  it("allows root-relative paths and refuses anything that could leave the origin", () => {
+    expect(isSafeLocalPath("/LIOA/issues/LIOA-1#x")).toBe(true);
+    expect(isSafeLocalPath("/")).toBe(true);
+    expect(isSafeLocalPath("//evil.example/x")).toBe(false);
+    expect(isSafeLocalPath("/\\evil.example")).toBe(false);
+    expect(isSafeLocalPath("https://evil.example")).toBe(false);
+    expect(isSafeLocalPath("javascript:alert(1)")).toBe(false);
+    expect(isSafeLocalPath("issues")).toBe(false);
   });
 });

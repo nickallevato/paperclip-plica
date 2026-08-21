@@ -304,7 +304,7 @@ describe("attention headline / ask / action", () => {
   it("prefers the issue title over a generic interaction label, but keeps a specific one", () => {
     expect(attentionHeadline(interaction("ask_user_questions", "Questions need answers", null), issue)).toBe("Fall class registration");
     expect(attentionHeadline(interaction("ask_user_questions", "Questions need answers", null), null)).toBe("Questions need answers");
-    expect(attentionHeadline(interaction("ask_user_questions", "Robin — pick a class", null), issue)).toBe("Robin — pick a class");
+    expect(attentionHeadline(interaction("ask_user_questions", "Pick a fall class", null), issue)).toBe("Pick a fall class");
   });
 
   it("surfaces the question, the prompt, or the blocker as the ask line", () => {

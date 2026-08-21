@@ -157,7 +157,17 @@ export function buildCompanyPath(prefix: string | null | undefined, path: string
  * company sync without patching host code. Switching companies is a heavyweight
  * context change anyway, so the reload is honest rather than wasteful.
  */
+/**
+ * Only same-origin, root-relative paths may be handed to the browser. Paths
+ * are built from server data (attention `subject.href`, issue identifiers),
+ * so a malformed or hostile value must not become an off-site redirect.
+ */
+export function isSafeLocalPath(to: string): boolean {
+  return /^\/(?![\/\\])/.test(to) && !/[\u0000-\u001f]/.test(to);
+}
+
 export function hardNavigate(to: string): void {
+  if (!isSafeLocalPath(to)) return;
   window.location.assign(to);
 }
 

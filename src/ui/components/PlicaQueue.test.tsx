@@ -62,7 +62,7 @@ function buildItems() {
               metadata: { kind: "ask_user_questions", issueId: "i-77" },
             },
             whyNow: "Questions need answers on an issue thread.",
-            detail: { kind: "questions", questionCount: 3, firstQuestionText: "Which class do you select for Robin?", images: [] },
+            detail: { kind: "questions", questionCount: 3, firstQuestionText: "Which class do you select for the fall term?", images: [] },
           },
           {
             id: "confirm",
@@ -211,7 +211,7 @@ describe("PlicaQueue", () => {
     expect(row.textContent).toContain("ACM-77");
     expect(row.textContent).toContain("Fall class registration");
     expect(row.textContent).not.toContain("Questions need answers");
-    expect(row.querySelector("[data-queue-ask]")?.textContent).toContain("3 questions · Which class do you select for Robin?");
+    expect(row.querySelector("[data-queue-ask]")?.textContent).toContain("3 questions · Which class do you select for the fall term?");
     expect(row.textContent).toContain("questions");
     expect(row.querySelector('[aria-label="Answer"], a')?.textContent).toContain("Answer");
     act(() => root.unmount());
