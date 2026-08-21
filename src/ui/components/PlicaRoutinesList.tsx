@@ -2,7 +2,7 @@ import { CalendarClock } from "lucide-react";
 import { CompanyPatternIcon } from "../host/ui-kit";
 import { cn } from "../host/util";
 import { formatAgeMinutes, formatCountdown } from "../lib/plica";
-import type { PlicaUpcomingRoutine } from "../lib/queue";
+import { describeCron, type PlicaUpcomingRoutine } from "../lib/queue";
 import { PlicaLink } from "./PlicaLink";
 
 const MICRO = "text-[length:var(--plica-fs-micro,11px)] leading-[1.45]";
@@ -31,7 +31,10 @@ export function PlicaRoutinesList({
       ) : (
         <ul className="flex flex-col gap-2">
           {items.map(({ company, routine, trigger, atMs, state }) => {
-            const cadence = trigger.label?.trim() || trigger.cronExpression || trigger.kind;
+            // Cadence in words when the cron is a shape we can read; the
+            // trigger's own label (often prose) stays as the tooltip.
+            const label = trigger.label?.trim() || null;
+            const cadence = describeCron(trigger.cronExpression) ?? label ?? trigger.cronExpression ?? trigger.kind;
             const atIso = new Date(atMs).toISOString();
             return (
               <li
@@ -47,12 +50,12 @@ export function PlicaRoutinesList({
                 <PlicaLink
                   to={`/${company.issuePrefix}/routines/${routine.id}`}
                   companyId={company.id}
-                  className="w-36 shrink-0 truncate font-medium hover:underline decoration-dotted underline-offset-2"
+                  className="w-52 shrink-0 truncate font-medium hover:underline decoration-dotted underline-offset-2"
                   title={`${routine.title} · ${company.name}`}
                 >
                   {routine.title}
                 </PlicaLink>
-                <span className="min-w-0 flex-1 truncate text-muted-foreground">
+                <span className="min-w-0 flex-1 truncate text-muted-foreground" title={label ?? undefined}>
                   {cadence}
                   {state === "failed" && <span className="text-red-600 dark:text-red-400"> · last run failed</span>}
                 </span>

@@ -3,6 +3,7 @@ import type { AttentionFeed, Company } from "@paperclipai/shared";
 import {
   compareQueueItems,
   deriveQueueItems,
+  describeCron,
   flattenLiveRuns,
   groupQueue,
   normalizeQueueGrouping,
@@ -255,5 +256,25 @@ describe("upcomingRoutines", () => {
       ["failed", "failed"],
     ]);
     expect(overflow).toBe(1);
+  });
+});
+
+describe("describeCron", () => {
+  it("reads the common shapes", () => {
+    expect(describeCron("0 8 * * *")).toBe("daily 08:00");
+    expect(describeCron("30 9 * * 1-5")).toBe("weekdays 09:30");
+    expect(describeCron("0 7 * * 1")).toBe("Mon 07:00");
+    expect(describeCron("0 7 * * 1,4")).toBe("Mon, Thu 07:00");
+    expect(describeCron("*/30 * * * *")).toBe("every 30m");
+    expect(describeCron("0 */6 * * *")).toBe("every 6h");
+    expect(describeCron("15 * * * *")).toBe("hourly");
+    expect(describeCron("0 9 1 * *")).toBe("monthly on the 1 at 09:00");
+  });
+
+  it("gives up on shapes it cannot read", () => {
+    expect(describeCron("0 8 * 6 *")).toBeNull();
+    expect(describeCron("0 8 L * *")).toBeNull();
+    expect(describeCron("nonsense")).toBeNull();
+    expect(describeCron(null)).toBeNull();
   });
 });

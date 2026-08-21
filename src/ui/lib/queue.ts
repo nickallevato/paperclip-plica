@@ -335,3 +335,59 @@ export function upcomingRoutines(
   });
   return { items: out.slice(0, limit), overflow: Math.max(0, out.length - limit) };
 }
+
+// ---------------------------------------------------------------------------
+// Cron → cadence
+// ---------------------------------------------------------------------------
+
+const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+function clock(hour: number, minute: number): string {
+  return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+}
+
+function dayList(field: string): string | null {
+  if (field === "1-5") return "weekdays";
+  if (field === "0,6" || field === "6,0") return "weekends";
+  const days = field.split(",").map((part) => Number(part));
+  if (days.some((day) => !Number.isInteger(day) || day < 0 || day > 7)) return null;
+  return days.map((day) => DAY_NAMES[day % 7]).join(", ");
+}
+
+/**
+ * The common cron shapes in plain words — "daily 08:00", "weekdays 09:30",
+ * "every 30m", "Mon 07:00". Anything fancier returns null and the caller
+ * falls back to the trigger's own label or the raw expression.
+ */
+export function describeCron(expression: string | null | undefined): string | null {
+  if (!expression) return null;
+  const parts = expression.trim().split(/\s+/);
+  if (parts.length !== 5) return null;
+  const [min, hour, dom, mon, dow] = parts;
+  const every = (field: string) => (field.startsWith("*/") ? Number(field.slice(2)) : null);
+  const num = (field: string) => (/^\d+$/.test(field) ? Number(field) : null);
+
+  if (dom === "*" && mon === "*") {
+    const everyMin = every(min);
+    if (everyMin && hour === "*" && dow === "*") return `every ${everyMin}m`;
+    const everyHour = every(hour);
+    const minute = num(min);
+    if (everyHour && minute !== null && dow === "*") return everyHour === 1 ? "hourly" : `every ${everyHour}h`;
+    if (min === "*" && hour === "*" && dow === "*") return "every minute";
+    if (hour === "*" && minute !== null && dow === "*") return "hourly";
+    const hourNum = num(hour);
+    if (minute !== null && hourNum !== null) {
+      const time = clock(hourNum, minute);
+      if (dow === "*") return `daily ${time}`;
+      const days = dayList(dow);
+      if (days) return `${days} ${time}`;
+    }
+  }
+  if (mon === "*" && dow === "*") {
+    const minute = num(min);
+    const hourNum = num(hour);
+    const day = num(dom);
+    if (minute !== null && hourNum !== null && day !== null) return `monthly on the ${day} at ${clock(hourNum, minute)}`;
+  }
+  return null;
+}
