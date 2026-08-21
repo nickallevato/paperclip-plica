@@ -22,10 +22,16 @@ function Avatar({ company }: { company: Company }) {
   );
 }
 
-/** What the agent says it is doing right now, plus what it plans next — the hover detail. */
+/**
+ * The hover detail: the agent's own last words (the human-readable summary
+ * the host shows in the thread), with the terse status line only as a
+ * fallback. No tool names or runtime plumbing.
+ */
 function RunDetail({ run, issue, company }: { run: LiveRunForIssue; issue: Issue | undefined; company: Company }) {
+  const said = run.lastAssistantSnippet?.trim() || null;
   const status = run.currentStatusMessage?.trim() || null;
   const next = run.nextAction?.trim() || null;
+  const summary = said ?? status ?? next;
   return (
     <div className={cn("flex flex-col gap-2", BODY)}>
       <div className="flex items-start gap-2">
@@ -35,24 +41,16 @@ function RunDetail({ run, issue, company }: { run: LiveRunForIssue; issue: Issue
         </div>
         {issue?.status && <IssueStatusBadge status={issue.status} />}
       </div>
-      <p className={cn("text-muted-foreground", MICRO)}>
-        {run.agentName} · {company.name} · {run.status} for {elapsedLabel(run)}
-      </p>
-      {status && (
-        <p>
-          <span className={cn("mr-1.5 font-semibold uppercase tracking-wide text-muted-foreground", MICRO)}>now</span>
-          {status}
-        </p>
-      )}
-      {next && (
-        <p>
-          <span className={cn("mr-1.5 font-semibold uppercase tracking-wide text-muted-foreground", MICRO)}>next</span>
-          {next}
-        </p>
-      )}
-      {!status && !next && issue?.description?.trim() && (
+      {summary ? (
+        <p className="whitespace-pre-line">{summary}</p>
+      ) : issue?.description?.trim() ? (
         <p className="line-clamp-4 text-muted-foreground">{issue.description.trim()}</p>
+      ) : (
+        <p className="italic text-muted-foreground">working — nothing reported yet</p>
       )}
+      <p className={cn("text-muted-foreground", MICRO)}>
+        {run.agentName} · {company.name} · {elapsedLabel(run)}
+      </p>
     </div>
   );
 }

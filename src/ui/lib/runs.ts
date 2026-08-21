@@ -12,12 +12,12 @@ export function elapsedLabel(run: LiveRunForIssue, nowMs = Date.now()): string {
 }
 
 /**
- * A run's live narration: agents describe their current step in
- * currentStatusMessage / nextAction while running, so prefer that over the
- * static issue title — this is what makes the list read as "live".
+ * A run's live narration, most human first: what the agent last said, then
+ * its status line, then its planned next step, then the ticket title.
  */
 export function runNarration(run: LiveRunForIssue, issue: Issue | undefined): string {
   return (
+    run.lastAssistantSnippet?.trim() ||
     run.currentStatusMessage?.trim() ||
     run.nextAction?.trim() ||
     issue?.title ||

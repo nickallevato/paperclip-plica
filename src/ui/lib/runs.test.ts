@@ -8,6 +8,7 @@ const run = (overrides: Record<string, unknown>) =>
     createdAt: "2026-08-21T11:00:00Z",
     startedAt: "2026-08-21T11:05:00Z",
     currentStatusMessage: null,
+    lastAssistantSnippet: null,
     nextAction: null,
     triggerDetail: "trigger",
     invocationSource: "schedule",
@@ -17,6 +18,7 @@ const run = (overrides: Record<string, unknown>) =>
 describe("run helpers", () => {
   it("prefers the live status message, then next action, then the issue title", () => {
     const issue = { title: "Write the report" } as never;
+    expect(runNarration(run({ lastAssistantSnippet: "I've drafted section 2 and am checking the figures.", currentStatusMessage: "tool: read_file" }), issue)).toBe("I've drafted section 2 and am checking the figures.");
     expect(runNarration(run({ currentStatusMessage: "Drafting section 2" }), issue)).toBe("Drafting section 2");
     expect(runNarration(run({ nextAction: "Summarise findings" }), issue)).toBe("Summarise findings");
     expect(runNarration(run({}), issue)).toBe("Write the report");
