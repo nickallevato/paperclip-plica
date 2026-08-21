@@ -90,42 +90,45 @@ export function PlicaLiveList({ entries, limit = 8 }: { entries: PlicaLiveEntry[
                 <span className="min-w-0 truncate">{label}</span>
               </span>
             );
+            const ticket = run.issueId ? (
+              <HoverCard>
+                <HoverCardTrigger asChild>
+                  <span className="block min-w-0">
+                    <PlicaLink
+                      to={`/${company.issuePrefix}/issues/${issue?.identifier ?? run.issueId}`}
+                      companyId={company.id}
+                      className="block font-medium hover:underline decoration-dotted decoration-muted-foreground/40 underline-offset-2"
+                    >
+                      {line}
+                    </PlicaLink>
+                  </span>
+                </HoverCardTrigger>
+                <HoverCardContent data-live-detail>
+                  <RunDetail run={run} issue={issue} company={company} />
+                </HoverCardContent>
+              </HoverCard>
+            ) : (
+              <span className="block min-w-0 truncate text-muted-foreground">{label}</span>
+            );
             return (
-              <li key={run.id} className={cn("flex items-center gap-2.5 py-0.5", BODY)}>
+              <li key={run.id} className={cn("flex items-start gap-2.5 py-0.5", BODY)}>
                 <Avatar company={company} />
-                {run.status === "running" ? (
-                  <LiveDot />
-                ) : (
-                  <Loader2 className="h-3 w-3 shrink-0 animate-spin text-muted-foreground motion-reduce:animate-none" />
-                )}
-                <span className="max-w-[32%] shrink-0 truncate text-muted-foreground" title={`${run.agentName} · ${company.name}`}>
-                  {run.agentName}
-                </span>
-                <span className="min-w-0 flex-1">
-                  {run.issueId ? (
-                    <HoverCard>
-                      <HoverCardTrigger asChild>
-                        <span className="block min-w-0">
-                          <PlicaLink
-                            to={`/${company.issuePrefix}/issues/${issue?.identifier ?? run.issueId}`}
-                            companyId={company.id}
-                            className="block font-medium hover:underline decoration-dotted decoration-muted-foreground/40 underline-offset-2"
-                          >
-                            {line}
-                          </PlicaLink>
-                        </span>
-                      </HoverCardTrigger>
-                      <HoverCardContent data-live-detail>
-                        <RunDetail run={run} issue={issue} company={company} />
-                      </HoverCardContent>
-                    </HoverCard>
-                  ) : (
-                    <span className="block min-w-0 truncate text-muted-foreground">{label}</span>
-                  )}
-                </span>
-                <span className={`${MICRO} shrink-0 tabular-nums text-muted-foreground`} title={`running for ${elapsedLabel(run)}`}>
-                  {elapsedLabel(run)}
-                </span>
+                <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                  {ticket}
+                  <span className={cn("flex items-center gap-1.5 text-muted-foreground", MICRO)}>
+                    {run.status === "running" ? (
+                      <LiveDot />
+                    ) : (
+                      <Loader2 className="h-3 w-3 shrink-0 animate-spin motion-reduce:animate-none" />
+                    )}
+                    <span className="min-w-0 truncate" title={`${run.agentName} · ${company.name}`}>
+                      {run.agentName}
+                    </span>
+                    <span className="ml-auto shrink-0 tabular-nums" title={`running for ${elapsedLabel(run)}`}>
+                      {elapsedLabel(run)}
+                    </span>
+                  </span>
+                </div>
               </li>
             );
           })}
