@@ -41,7 +41,7 @@ export function PlicaSparkline({ runActivity, days = 7 }: { runActivity: Dashboa
                   y={HEIGHT - failedHeight}
                   width={BAR_WIDTH}
                   height={failedHeight}
-                  className="fill-red-500"
+                  className="fill-red-500/50 dark:fill-red-400/40"
                 />
                 <rect
                   data-testid="sparkline-bar-succeeded"
@@ -49,7 +49,7 @@ export function PlicaSparkline({ runActivity, days = 7 }: { runActivity: Dashboa
                   y={HEIGHT - failedHeight - succeededHeight}
                   width={BAR_WIDTH}
                   height={succeededHeight}
-                  className="fill-emerald-500"
+                  className="fill-emerald-500/55 dark:fill-emerald-400/45"
                 />
               </>
             ) : (

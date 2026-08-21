@@ -223,7 +223,7 @@ export function PlicaBoardRow({
             className={cn(
               NUM,
               "rounded-md px-1.5 -mr-1.5 disabled:pointer-events-none",
-              actionable.criticalOrHigh ? "text-red-600 dark:text-red-400" : "text-amber-700 dark:text-amber-300",
+              actionable.criticalOrHigh ? "text-red-700/80 dark:text-red-300/75" : "text-amber-700/80 dark:text-amber-300/75",
               onFocusNeeds && "hover:bg-muted",
               needsFocused && "bg-muted ring-1 ring-border",
             )}
