@@ -151,13 +151,12 @@ function ConfirmButtons({
       <Button
         size="sm"
         variant="default"
-        className={cn("h-6 max-w-40 truncate px-2 font-medium", MICRO)}
+        className={cn("h-auto min-h-6 whitespace-normal px-2 py-0.5 text-left font-medium", MICRO)}
         disabled={busy}
         aria-label={acceptLabel}
-        title={acceptLabel}
         onClick={() => accept.mutate()}
       >
-        {accept.isPending ? <Loader2 className="mr-0.5 h-3 w-3 animate-spin" /> : <Check className="mr-0.5 h-3 w-3" />}
+        {accept.isPending ? <Loader2 className="mr-1 h-3 w-3 shrink-0 animate-spin" /> : <Check className="mr-1 h-3 w-3 shrink-0" />}
         {acceptLabel}
       </Button>
       <Popover open={declineOpen} onOpenChange={setDeclineOpen}>
@@ -165,12 +164,11 @@ function ConfirmButtons({
           <Button
             size="sm"
             variant="ghost"
-            className={cn("h-6 max-w-40 truncate px-2 text-red-600 dark:text-red-400", MICRO)}
+            className={cn("h-auto min-h-6 whitespace-normal border border-transparent px-2 py-0.5 text-left text-red-600 hover:border-red-500/30 dark:text-red-400", MICRO)}
             disabled={busy}
             aria-label={rejectLabel}
-            title={rejectLabel}
           >
-            <X className="mr-0.5 h-3 w-3" /> {rejectLabel}
+            <X className="mr-1 h-3 w-3 shrink-0" /> {rejectLabel}
           </Button>
         </PopoverTrigger>
         <PopoverContent align="end" className="w-72 p-2">
@@ -531,3 +529,71 @@ function CheckboxForm({
 }
 
 export type { IssueThreadInteraction };
+
+/**
+ * The ask as its own block under the headline. The feed carries only a
+ * server-truncated excerpt, so for thread interactions expanding the block
+ * fetches the payload and shows the whole prompt — or every question — in
+ * place; for anything else it just unclamps.
+ */
+export function PlicaAskBlock({ item, text }: { item: AttentionItem; text: string }) {
+  const [open, setOpen] = useState(false);
+  const issueId = attentionIssueId(item);
+  const fetchable = item.subject.kind === "interaction" && issueId !== null;
+  const expandable = fetchable || text.length > 140;
+  const interactions = useQuery({
+    queryKey: ["plica", "interactions", issueId],
+    queryFn: () => issuesApi.listInteractions(issueId as string),
+    enabled: open && fetchable,
+    staleTime: 10_000,
+  });
+  const interaction = interactions.data?.find((entry) => entry.id === item.subject.id);
+  const full = interaction ? fullPrompt(interaction) : null;
+  return (
+    <div
+      data-queue-ask
+      data-expanded={open}
+      className={cn(
+        "mt-0.5 rounded-md border-l-2 border-muted-foreground/30 bg-muted/40 px-2 py-1 text-foreground/90",
+        BODY,
+        expandable && "cursor-pointer",
+      )}
+      onClick={expandable ? () => setOpen((current) => !current) : undefined}
+      title={expandable && !open ? "Click to read the whole prompt" : undefined}
+    >
+      {open && full ? (
+        <div className="flex flex-col gap-1.5 whitespace-pre-wrap">
+          {full.map((line, index) => (
+            <p key={index} className={cn(index > 0 && full.length > 1 && "pl-3")}>
+              {line}
+            </p>
+          ))}
+        </div>
+      ) : (
+        <span className={cn(!open && "line-clamp-3")}>
+          {text}
+          {open && interactions.isLoading && <Loader2 className="ml-1 inline h-3 w-3 animate-spin text-muted-foreground" />}
+        </span>
+      )}
+    </div>
+  );
+}
+
+/** The payload's own words, one paragraph per line: prompt + details, or the questions in order. */
+function fullPrompt(interaction: IssueThreadInteraction): string[] | null {
+  switch (interaction.kind) {
+    case "request_confirmation":
+    case "request_checkbox_confirmation": {
+      const lines = [interaction.payload.prompt];
+      if (interaction.payload.detailsMarkdown?.trim()) lines.push(interaction.payload.detailsMarkdown.trim());
+      return lines;
+    }
+    case "ask_user_questions": {
+      const { title, questions } = interaction.payload;
+      const lines = questions.map((question, index) => `${questions.length > 1 ? `${index + 1}. ` : ""}${question.prompt}`);
+      return title ? [title, ...lines] : lines;
+    }
+    default:
+      return null;
+  }
+}

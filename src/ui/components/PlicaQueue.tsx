@@ -22,7 +22,7 @@ import {
   type PlicaQueueSummary,
 } from "../lib/queue";
 import { PlicaCeoNudge } from "./PlicaCeoNudge";
-import { PlicaInteractionActions, hasInlineInteraction } from "./PlicaInteractionActions";
+import { PlicaAskBlock, PlicaInteractionActions, hasInlineInteraction } from "./PlicaInteractionActions";
 import { PlicaIssueHover } from "./PlicaIssueHover";
 import { PlicaKindGlyph } from "./PlicaKindGlyph";
 import { PlicaLink } from "./PlicaLink";
@@ -140,6 +140,8 @@ export function PlicaQueueItemRow({
   let hoverIssueId: string | null = null;
   /** The question / prompt itself, when the item carries one. */
   let ask: string | null = null;
+  /** Inline resolve controls (confirm / answer), rendered under the ask. */
+  let inline: ReactNode = null;
 
   switch (item.kind) {
     case "approval": {
@@ -182,19 +184,17 @@ export function PlicaQueueItemRow({
         </>
       );
       const href = subject.href ? `/${company.issuePrefix}${toCompanyRelativePath(subject.href)}` : `/${company.issuePrefix}/decisions`;
-      actions = hasInlineInteraction(item.item) ? (
-        <>
-          <PlicaInteractionActions item={item.item} onActed={onActed} />
-          <PlicaLink
-            to={href}
-            companyId={company.id}
-            title="Open thread"
-            aria-label="Open thread"
-            className="rounded p-1 text-muted-foreground hover:text-foreground"
-          >
-            <ExternalLink className="h-3 w-3" />
-          </PlicaLink>
-        </>
+      if (hasInlineInteraction(item.item)) inline = <PlicaInteractionActions item={item.item} onActed={onActed} />;
+      actions = inline ? (
+        <PlicaLink
+          to={href}
+          companyId={company.id}
+          title="Open thread"
+          aria-label="Open thread"
+          className="rounded p-1 text-muted-foreground hover:text-foreground"
+        >
+          <ExternalLink className="h-3 w-3" />
+        </PlicaLink>
       ) : (
         <OpenLink to={href} companyId={company.id} label={attentionActionLabel(item.item)} />
       );
@@ -247,10 +247,15 @@ export function PlicaQueueItemRow({
           {title}
         </span>
       </div>
-      {ask && (
-        <p data-queue-ask className={cn("line-clamp-2 text-muted-foreground", BODY)} title={ask}>
-          {ask}
-        </p>
+      {ask && (item.kind === "attention" ? <PlicaAskBlock item={item.item} text={ask} /> : (
+        <div data-queue-ask className={cn("mt-0.5 rounded-md border-l-2 border-muted-foreground/30 bg-muted/40 px-2 py-1 text-foreground/90", BODY)}>
+          <span className="line-clamp-3">{ask}</span>
+        </div>
+      ))}
+      {inline && (
+        <div data-queue-inline className="mt-1 flex flex-wrap items-center gap-1.5">
+          {inline}
+        </div>
       )}
       <div
         className={cn(
