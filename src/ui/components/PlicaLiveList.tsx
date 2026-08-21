@@ -2,7 +2,6 @@ import type { Company } from "@paperclipai/shared";
 import { Loader2 } from "lucide-react";
 import { CompanyPatternIcon } from "../host/ui-kit";
 import type { PlicaLiveEntry } from "../lib/queue";
-import { PlicaIssueHover } from "./PlicaIssueHover";
 import { PlicaLink } from "./PlicaLink";
 import { LiveDot, elapsedLabel, runNarration } from "./PlicaRunsStrip";
 
@@ -56,15 +55,14 @@ export function PlicaLiveList({ entries, limit = 8 }: { entries: PlicaLiveEntry[
                 </span>
                 <span className="min-w-0 flex-1">
                   {run.issueId ? (
-                    <PlicaIssueHover issueId={run.issueId} anchorClassName="block min-w-0">
-                      <PlicaLink
-                        to={`/${company.issuePrefix}/issues/${issue?.identifier ?? run.issueId}`}
-                        companyId={company.id}
-                        className="block hover:underline decoration-dotted decoration-muted-foreground/40 underline-offset-2"
-                      >
-                        {line}
-                      </PlicaLink>
-                    </PlicaIssueHover>
+                    <PlicaLink
+                      to={`/${company.issuePrefix}/issues/${issue?.identifier ?? run.issueId}`}
+                      companyId={company.id}
+                      className="block hover:underline decoration-dotted decoration-muted-foreground/40 underline-offset-2"
+                      title={issue ? `${issue.identifier} · ${issue.title}` : undefined}
+                    >
+                      {line}
+                    </PlicaLink>
                   ) : (
                     line
                   )}

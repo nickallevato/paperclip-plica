@@ -23,7 +23,6 @@ import {
 } from "../lib/queue";
 import { PlicaCeoNudge } from "./PlicaCeoNudge";
 import { PlicaAskBlock, PlicaInteractionActions, hasInlineInteraction } from "./PlicaInteractionActions";
-import { PlicaIssueHover } from "./PlicaIssueHover";
 import { PlicaKindGlyph } from "./PlicaKindGlyph";
 import { PlicaLink } from "./PlicaLink";
 import { useApprovalDecision } from "./useApprovalDecision";
@@ -137,7 +136,6 @@ export function PlicaQueueItemRow({
   let title: string;
   let meta: ReactNode;
   let actions: ReactNode;
-  let hoverIssueId: string | null = null;
   /** The question / prompt itself, when the item carries one. */
   let ask: string | null = null;
   /** Inline resolve controls (confirm / answer), rendered under the ask. */
@@ -173,7 +171,6 @@ export function PlicaQueueItemRow({
       identifier = subject.identifier ?? item.issue?.identifier ?? null;
       title = attentionHeadline(item.item, item.issue);
       ask = attentionAskText(item.item, title);
-      hoverIssueId = subject.kind === "issue" ? subject.id : (item.issue?.id ?? null);
       meta = (
         <>
           <PlicaKindGlyph kind={item.item.sourceKind} />
@@ -287,13 +284,7 @@ export function PlicaQueueItemRow({
       style={{ borderLeftColor: edgeColor }}
     >
       <Avatar company={company} />
-      {hoverIssueId ? (
-        <PlicaIssueHover issueId={hoverIssueId} anchorClassName="flex min-w-0 flex-1">
-          {body}
-        </PlicaIssueHover>
-      ) : (
-        body
-      )}
+      {body}
       <span className="flex shrink-0 items-center gap-1 self-center">{actions}</span>
     </li>
   );
