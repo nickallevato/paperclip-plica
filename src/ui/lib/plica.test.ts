@@ -3,6 +3,7 @@ import { ATTENTION_SOURCE_KINDS } from "@paperclipai/shared";
 import type {
   Approval,
   AttentionFeed,
+  AttentionItem,
   Company,
   DashboardRunActivityDay,
   DashboardSummary,
@@ -18,6 +19,7 @@ import {
   attentionDetailText,
   attentionGroupFor,
   attentionGroupSummary,
+  attentionIssueId,
   attentionRowTitle,
   attentionSpecificText,
   bucketAttentionByAge,
@@ -51,6 +53,7 @@ import {
   normalizeViewMode,
   nudgeTitle,
   orderTriageCompanies,
+  pruneClosedIssueAttention,
   partitionHotFirst,
   relativeTimeLabel,
   selectCeo,
@@ -228,6 +231,55 @@ describe("view modes", () => {
     expect(normalizeViewMode("banana")).toBe("board");
     expect(normalizeViewMode(null)).toBe("board");
     expect(normalizeViewMode(undefined)).toBe("board");
+  });
+});
+
+describe("pruneClosedIssueAttention", () => {
+  const item = (id: string, subject: Record<string, unknown>): AttentionItem =>
+    ({
+      id,
+      companyId: "c1",
+      sourceKind: "issue_thread_interaction",
+      severity: "medium",
+      rank: 0,
+      whyNow: "",
+      dismissal: null,
+      subject: { kind: "interaction", id, companyId: "c1", title: null, identifier: null, status: "pending", href: null, ...subject },
+    }) as never;
+  const feed = (items: AttentionItem[]): AttentionFeed =>
+    ({ companyId: "c1", generatedAt: "", totalCount: items.length, countsBySourceKind: {}, items }) as never;
+  const issues = [
+    { id: "i-open", status: "in_review" },
+    { id: "i-done", status: "done" },
+    { id: "i-cancelled", status: "cancelled" },
+  ] as Issue[];
+
+  it("finds the issue behind a subject, whether it is the subject or in its metadata", () => {
+    expect(attentionIssueId(item("a", { kind: "issue", id: "i-1" }))).toBe("i-1");
+    expect(attentionIssueId(item("b", { metadata: { issueId: "i-2" } }))).toBe("i-2");
+    expect(attentionIssueId(item("c", {}))).toBeNull();
+    expect(attentionIssueId(item("d", { metadata: { issueId: 7 } }))).toBeNull();
+  });
+
+  it("drops interactions whose issue is done or cancelled and keeps the rest", () => {
+    const pruned = pruneClosedIssueAttention(
+      feed([
+        item("open", { metadata: { issueId: "i-open" } }),
+        item("done", { metadata: { issueId: "i-done" } }),
+        item("cancelled", { kind: "issue", id: "i-cancelled" }),
+        item("unknown", { metadata: { issueId: "i-not-listed" } }),
+        item("none", {}),
+      ]),
+      issues,
+    );
+    expect(pruned?.items.map((entry) => entry.id)).toEqual(["open", "unknown", "none"]);
+  });
+
+  it("returns the same feed reference when nothing is pruned", () => {
+    const untouched = feed([item("open", { metadata: { issueId: "i-open" } })]);
+    expect(pruneClosedIssueAttention(untouched, issues)).toBe(untouched);
+    expect(pruneClosedIssueAttention(untouched, [])).toBe(untouched);
+    expect(pruneClosedIssueAttention(undefined, issues)).toBeUndefined();
   });
 });
 

@@ -22,6 +22,42 @@ export interface PlicaProjectChip {
 
 const CLOSED_ISSUE_STATUSES = new Set(["done", "cancelled"]);
 
+/**
+ * The issue an attention item is about, when it is about one: the subject
+ * itself for issue-kind items, otherwise the `issueId` the server tucks into
+ * subject metadata (thread interactions, runs). Null when there is none.
+ */
+export function attentionIssueId(item: AttentionItem): string | null {
+  if (item.subject.kind === "issue") return item.subject.id;
+  const fromMeta = item.subject.metadata?.issueId;
+  return typeof fromMeta === "string" && fromMeta ? fromMeta : null;
+}
+
+/**
+ * Drops attention items whose issue has already reached a terminal status.
+ * The server keeps emitting an `issue_thread_interaction` for as long as the
+ * interaction row is `pending`, even after the issue it hangs off was closed,
+ * so a "Questions need answers" on a done issue would otherwise sit in the
+ * queue forever. Only items whose issue is in `issues` AND closed are pruned;
+ * an issue we don't hold (outside the list limit) is left alone rather than
+ * guessed at. Returns the same feed reference when nothing changes so
+ * downstream memoisation keyed on it stays quiet.
+ */
+export function pruneClosedIssueAttention(
+  feed: AttentionFeed | undefined,
+  issues: ReadonlyArray<Pick<Issue, "id" | "status">>,
+): AttentionFeed | undefined {
+  if (!feed || feed.items.length === 0 || issues.length === 0) return feed;
+  const closed = new Set<string>();
+  for (const issue of issues) if (CLOSED_ISSUE_STATUSES.has(issue.status)) closed.add(issue.id);
+  if (closed.size === 0) return feed;
+  const items = feed.items.filter((item) => {
+    const issueId = attentionIssueId(item);
+    return !issueId || !closed.has(issueId);
+  });
+  return items.length === feed.items.length ? feed : { ...feed, items };
+}
+
 export function derivePaneHealth(
   summary: DashboardSummary | undefined,
   /**

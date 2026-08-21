@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
   Agent,
@@ -20,7 +20,7 @@ import { heartbeatsApi, type LiveRunForIssue } from "../host/api";
 import { issuesApi } from "../host/api";
 import { projectsApi } from "../host/api";
 import { sidebarBadgesApi } from "../host/api";
-import { currentMonthRange, plicaRefetchInterval, sumAgentTokens } from "../lib/plica";
+import { currentMonthRange, plicaRefetchInterval, pruneClosedIssueAttention, sumAgentTokens } from "../lib/plica";
 import { queryKeys } from "../host/util";
 
 export interface PlicaCompanyData {
@@ -129,6 +129,13 @@ export function usePlicaCompanyData(companyId: string): PlicaCompanyData {
     ? Math.min(...erroring.map((query) => query.dataUpdatedAt))
     : null;
 
+  // Attention items on closed issues are noise the server doesn't filter;
+  // pruned here, once, so the rail, the counts and the classic panes agree.
+  const attentionData = useMemo(
+    () => pruneClosedIssueAttention(attention.data, issues.data ?? []),
+    [attention.data, issues.data],
+  );
+
   const invalidate = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ["plica"], predicate: (query) => query.queryKey[2] === companyId });
   }, [companyId, queryClient]);
@@ -141,7 +148,7 @@ export function usePlicaCompanyData(companyId: string): PlicaCompanyData {
     agents: agents.data ?? [],
     approvals: approvals.data ?? [],
     badges: badges.data,
-    attention: attention.data,
+    attention: attentionData,
     routines: routines.data ?? [],
     tokens: tokens.isSuccess ? sumAgentTokens(tokens.data) : undefined,
     isLoading: queries.some((query) => query.isLoading),
