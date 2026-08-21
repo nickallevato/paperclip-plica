@@ -175,7 +175,7 @@ function ConfirmButtons({
             <X className="mr-1 h-3 w-3 shrink-0" /> {rejectLabel}
           </Button>
         </PopoverTrigger>
-        <PopoverContent align="end" className="w-72 p-2">
+        <PopoverContent align="end" side="bottom" collisionPadding={12} className="w-72 p-2">
           <Textarea
             value={reason}
             onChange={(event) => setReason(event.target.value)}
@@ -231,7 +231,12 @@ function InteractionFormPopover({
           {label}
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-[26rem] max-w-[90vw] p-3">
+      <PopoverContent
+        align="end"
+        side="bottom"
+        collisionPadding={12}
+        className="flex w-[26rem] max-w-[90vw] flex-col overflow-y-auto p-3 max-h-[var(--radix-popover-content-available-height)]"
+      >
         {interactions.isLoading && (
           <p className={cn("flex items-center gap-2 text-muted-foreground", MICRO)}>
             <Loader2 className="h-3 w-3 animate-spin" /> loading…
@@ -330,7 +335,7 @@ function QuestionsForm({
 
   return (
     <form
-      className="flex max-h-[70vh] flex-col gap-3 overflow-y-auto"
+      className="flex flex-col gap-3"
       onSubmit={(event) => {
         event.preventDefault();
         respond.mutate();
@@ -488,7 +493,7 @@ function CheckboxForm({
   const max = payload.maxSelected ?? null;
   const busy = accept.isPending || reject.isPending;
   return (
-    <div className="flex max-h-[70vh] flex-col gap-2 overflow-y-auto">
+    <div className="flex flex-col gap-2">
       <p className={cn("font-medium", BODY)}>{payload.prompt}</p>
       {payload.options.map((option) => {
         const checked = selected.includes(option.id);
