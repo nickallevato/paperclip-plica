@@ -22,6 +22,7 @@ import type {
   DashboardSummary,
   Issue,
   IssueComment,
+  IssueThreadInteraction,
   Project,
   RoutineListItem,
   SidebarBadges,
@@ -244,6 +245,16 @@ export const issuesApi = {
       ...(reopen === undefined ? {} : { reopen }),
       ...(interrupt === undefined ? {} : { interrupt }),
     }),
+  listInteractions: (id: string) => api.get<IssueThreadInteraction[]>(`/issues/${id}/interactions`),
+  acceptInteraction: (id: string, interactionId: string, data?: { selectedOptionIds?: string[] }) =>
+    api.post<IssueThreadInteraction>(`/issues/${id}/interactions/${interactionId}/accept`, data ?? {}),
+  rejectInteraction: (id: string, interactionId: string, reason?: string) =>
+    api.post<IssueThreadInteraction>(`/issues/${id}/interactions/${interactionId}/reject`, reason ? { reason } : {}),
+  respondInteraction: (
+    id: string,
+    interactionId: string,
+    data: { answers: Array<{ questionId: string; optionIds: string[]; otherText?: string | null }>; summaryMarkdown?: string | null },
+  ) => api.post<IssueThreadInteraction>(`/issues/${id}/interactions/${interactionId}/respond`, data),
 };
 
 // ---------------------------------------------------------------------------

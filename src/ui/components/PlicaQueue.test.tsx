@@ -9,9 +9,11 @@ import { PlicaQueue } from "./PlicaQueue";
 import { deriveQueueItems, groupQueue, summarizeQueue } from "../lib/queue";
 
 const mockApprovalsApi = vi.hoisted(() => ({ approve: vi.fn(), reject: vi.fn(), listIssues: vi.fn() }));
+const mockIssuesApi = vi.hoisted(() => ({ acceptInteraction: vi.fn(), rejectInteraction: vi.fn(), listInteractions: vi.fn() }));
 vi.mock("../host/api", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../host/api")>()),
   approvalsApi: mockApprovalsApi,
+  issuesApi: mockIssuesApi,
 }));
 vi.mock("../host/shims", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../host/shims")>()),
@@ -61,6 +63,28 @@ function buildItems() {
             },
             whyNow: "Questions need answers on an issue thread.",
             detail: { kind: "questions", questionCount: 3, firstQuestionText: "Which class do you select for Robin?", images: [] },
+          },
+          {
+            id: "confirm",
+            severity: "medium",
+            sourceKind: "issue_thread_interaction",
+            activityAt: at(10 * 24 * 60),
+            dismissal: null,
+            subject: {
+              kind: "interaction",
+              id: "int-2",
+              title: "Confirmation requested",
+              identifier: null,
+              status: "pending",
+              href: "/ACM/issues/ACM-77#interaction-int-2",
+              metadata: { kind: "request_confirmation", issueId: "i-77" },
+            },
+            whyNow: "Confirmation requested on an issue thread.",
+            detail: { kind: "confirmation", promptExcerpt: "Ship the release?", isPlanTarget: false, images: [] },
+            decisionVerbs: [
+              { id: "accept", label: "Ship it", description: "" },
+              { id: "reject", label: "Hold", description: "" },
+            ],
           },
           {
             id: "low",
@@ -156,7 +180,7 @@ describe("PlicaQueue", () => {
     expect(container.querySelector('[aria-label="Approve"]')).not.toBeNull();
     expect(container.querySelector('[aria-label="Nudge Atlas"]')).not.toBeNull();
     // Later is folded: the low item is counted, not listed.
-    expect(container.textContent).toContain("2 low-priority notices");
+    expect(container.textContent).toContain("3 low-priority notices");
     expect(container.querySelector('[data-queue-item="attention:low"]')).toBeNull();
     // header: 3 urgent, oldest is the 130m-old heartbeat
     expect(container.textContent).toContain("oldest 2h");
@@ -193,12 +217,71 @@ describe("PlicaQueue", () => {
     act(() => root.unmount());
   });
 
+  it("confirms a plain confirmation inline with the server's verb and refetches", async () => {
+    mockIssuesApi.acceptInteraction.mockResolvedValue({ id: "int-2", status: "accepted" });
+    const root = render();
+    await act(async () => {
+      (container.querySelector('[data-queue-group="later"] button[aria-expanded]') as HTMLButtonElement).dispatchEvent(
+        new MouseEvent("click", { bubbles: true }),
+      );
+    });
+    const row = container.querySelector('[data-queue-item="attention:confirm"]') as HTMLElement;
+    // 10 days old → amber ramp
+    expect(row.querySelector("[data-age-tone]")?.getAttribute("data-age-tone")).toBe("aging");
+    const accept = row.querySelector('[aria-label="Ship it"]') as HTMLButtonElement;
+    expect(row.querySelector('[aria-label="Hold"]')).not.toBeNull();
+    await act(async () => {
+      accept.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    expect(mockIssuesApi.acceptInteraction).toHaveBeenCalledWith("i-77", "int-2");
+    expect(onActed).toHaveBeenCalledWith("c1");
+    act(() => root.unmount());
+  });
+
+  it("offers an All / home-company scope toggle", () => {
+    const onFilterCompany = vi.fn();
+    const items = buildItems();
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const root = createRoot(container);
+    act(() => {
+      root.render(
+        <QueryClientProvider client={queryClient}>
+          <MemoryRouter>
+            <PlicaQueue
+              groups={groupQueue(items, "kind", [acme, globex])}
+              summary={summarizeQueue(items, NOW)}
+              grouping="kind"
+              onGrouping={onGrouping}
+              companiesById={{ c1: acme, c2: globex }}
+              nowMs={NOW}
+              onActed={onActed}
+              homeCompany={globex}
+              onFilterCompany={onFilterCompany}
+              onClearFilter={onClearFilter}
+            />
+          </MemoryRouter>
+        </QueryClientProvider>,
+      );
+    });
+    const scope = Array.from(container.querySelectorAll('[aria-label="Queue scope"] button'));
+    expect(scope.map((button) => button.textContent)).toEqual(["All", "Globex"]);
+    act(() => {
+      scope[1].dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    expect(onFilterCompany).toHaveBeenCalledWith(globex);
+    // kind grouping: questions, confirmations, approvals, heartbeats, blockers, other(review)
+    const headers = Array.from(container.querySelectorAll("[data-queue-group]")).map((group) => group.getAttribute("data-queue-group"));
+    expect(headers).toEqual(["questions", "confirmations", "approvals", "heartbeats", "blockers", "other"]);
+    act(() => root.unmount());
+  });
+
   it("groups by company when asked, in the given company order", () => {
     const root = render("company");
     const headers = Array.from(container.querySelectorAll("[data-queue-group]")).map((group) => group.getAttribute("data-queue-group"));
     expect(headers).toEqual(["c1", "c2"]);
     const grouping = Array.from(container.querySelectorAll('[aria-label="Queue grouping"] button'));
-    expect(grouping.map((button) => button.getAttribute("aria-pressed"))).toEqual(["false", "true"]);
+    expect(grouping.map((button) => button.getAttribute("aria-pressed"))).toEqual(["false", "true", "false", "false", "false"]);
     act(() => {
       grouping[0].dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });

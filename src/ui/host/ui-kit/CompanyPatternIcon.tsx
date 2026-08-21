@@ -90,6 +90,17 @@ function hexToHue(hex: string): number {
   return ((h * 60) + 360) % 360;
 }
 
+/**
+ * The hue the pattern icon uses for a company — brand colour when set,
+ * otherwise the same name-seeded hue the icon draws with — as a CSS colour,
+ * so edges and chips can match the avatar without a canvas.
+ */
+export function companyAccentColor(companyName: string, brandColor?: string | null): string {
+  const rand = mulberry32(hashString(companyName.trim().toLowerCase()));
+  const hue = brandColor && /^#[0-9a-f]{6}$/i.test(brandColor) ? hexToHue(brandColor) : Math.floor(rand() * 360);
+  return `hsl(${hue} 60% 50%)`;
+}
+
 function makeCompanyPatternDataUrl(seed: string, brandColor?: string | null, logicalSize = 22, cellSize = 2): string {
   if (typeof document === "undefined") return "";
 

@@ -6,6 +6,9 @@ import {
   describeCron,
   flattenLiveRuns,
   groupQueue,
+  ageTone,
+  queueItemAge,
+  upcomingProjects,
   normalizeQueueGrouping,
   summarizeQueue,
   upcomingRoutines,
@@ -276,5 +279,104 @@ describe("describeCron", () => {
     expect(describeCron("0 8 L * *")).toBeNull();
     expect(describeCron("nonsense")).toBeNull();
     expect(describeCron(null)).toBeNull();
+  });
+});
+
+describe("age grouping and ramp", () => {
+  it("buckets by how long an item has waited", () => {
+    const item = (minsAgo: number) =>
+      deriveQueueItems({
+        companyId: "c1",
+        approvals: [{ id: `a-${minsAgo}`, type: "budget_increase", createdAt: new Date(at(minsAgo)), payload: {} }] as never,
+        attention: undefined,
+        agents: [],
+        routines: [],
+        nowMs: NOW,
+      })[0];
+    expect(queueItemAge(item(30), NOW)).toBe("today");
+    expect(queueItemAge(item(3 * 24 * 60), NOW)).toBe("week");
+    expect(queueItemAge(item(10 * 24 * 60), NOW)).toBe("older");
+    expect(queueItemAge(item(45 * 24 * 60), NOW)).toBe("stale");
+    const groups = groupQueue([item(30), item(45 * 24 * 60), item(10 * 24 * 60)], "age", [company("c1")], { nowMs: NOW });
+    expect(groups.map((group) => group.key)).toEqual(["stale", "older", "today"]);
+  });
+
+  it("ramps grey → amber at a week → red at a month", () => {
+    expect(ageTone(null)).toBe("fresh");
+    expect(ageTone(6 * 24 * 60)).toBe("fresh");
+    expect(ageTone(7 * 24 * 60)).toBe("aging");
+    expect(ageTone(30 * 24 * 60)).toBe("stale");
+  });
+});
+
+describe("project grouping", () => {
+  it("groups attention items by the issue's project, most urgent project first, no-project last", () => {
+    const items = deriveQueueItems({
+      companyId: "c1",
+      approvals: [{ id: "a1", type: "budget_increase", createdAt: new Date(at(5)), payload: {} }] as never,
+      // the fixture uses the item id as the subject issue id
+      attention: attention([
+        { id: "i-2", severity: "critical" },
+        { id: "i-1", severity: "high" },
+      ]),
+      agents: [],
+      routines: [],
+      issues: [
+        { id: "i-1", projectId: "p-a", status: "todo" },
+        { id: "i-2", projectId: "p-b", status: "todo" },
+      ] as never,
+      nowMs: NOW,
+    });
+    const groups = groupQueue(items, "project", [company("c1")], {
+      projects: [{ id: "p-a", name: "Alpha" }, { id: "p-b", name: "Beta" }] as never,
+    });
+    expect(groups.map((group) => [group.key, group.label, group.items.length])).toEqual([
+      ["p-b", "Beta", 1],
+      ["p-a", "Alpha", 1],
+      ["", "No project", 1],
+    ]);
+  });
+});
+
+describe("upcomingProjects", () => {
+  const project = (id: string, name: string, targetDate: string | null, status = "in_progress") =>
+    ({ id, name, urlKey: id, targetDate, status, archivedAt: null }) as never;
+  const issue = (id: string, projectId: string | null, status: string) => ({ id, projectId, status }) as never;
+
+  it("lists projects with open work, nearest deadline first, undated by open count; skips finished and empty", () => {
+    const today = new Date(NOW);
+    const iso = (days: number) => {
+      const d = new Date(today.getFullYear(), today.getMonth(), today.getDate() + days);
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    };
+    const result = upcomingProjects(
+      [
+        {
+          company: company("c1"),
+          projects: [
+            project("late", "Late", iso(-2)),
+            project("soon", "Soon", iso(3)),
+            project("big", "Big", null),
+            project("small", "Small", null),
+            project("done", "Done", iso(1), "completed"),
+            project("empty", "Empty", iso(1)),
+          ],
+          issues: [
+            issue("1", "late", "blocked"),
+            issue("2", "soon", "in_progress"),
+            issue("3", "big", "todo"),
+            issue("4", "big", "in_review"),
+            issue("5", "small", "todo"),
+            issue("6", "done", "todo"),
+            issue("7", "empty", "done"),
+          ],
+        },
+      ],
+      NOW,
+    );
+    expect(result.items.map((entry) => entry.project.id)).toEqual(["late", "soon", "big", "small"]);
+    expect(result.items[0]).toMatchObject({ open: 1, blocked: 1, inProgress: 0, overdue: true });
+    expect(result.items[2]).toMatchObject({ open: 2, inProgress: 1, blocked: 0, dueMs: null, overdue: false });
+    expect(result.overflow).toBe(0);
   });
 });

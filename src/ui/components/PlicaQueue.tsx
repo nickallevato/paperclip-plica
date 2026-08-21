@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from "react";
-import { Check, ChevronDown, ChevronRight, ExternalLink, HeartPulse, CalendarClock, X } from "lucide-react";
+import { AlertTriangle, Check, ChevronDown, ChevronRight, ExternalLink, HeartPulse, CalendarClock, X } from "lucide-react";
 import type { Company } from "@paperclipai/shared";
-import { Button, CompanyPatternIcon } from "../host/ui-kit";
+import { Button, CompanyPatternIcon, companyAccentColor } from "../host/ui-kit";
 import { cn, toCompanyRelativePath } from "../host/util";
 import {
   attentionActionLabel,
@@ -13,6 +13,8 @@ import {
   relativeTimeLabel,
 } from "../lib/plica";
 import {
+  PLICA_QUEUE_GROUPINGS,
+  ageTone,
   queueItemAgeMinutes,
   type PlicaQueueGroup,
   type PlicaQueueGrouping,
@@ -20,6 +22,7 @@ import {
   type PlicaQueueSummary,
 } from "../lib/queue";
 import { PlicaCeoNudge } from "./PlicaCeoNudge";
+import { PlicaInteractionActions, hasInlineInteraction } from "./PlicaInteractionActions";
 import { PlicaIssueHover } from "./PlicaIssueHover";
 import { PlicaKindGlyph } from "./PlicaKindGlyph";
 import { PlicaLink } from "./PlicaLink";
@@ -122,13 +125,13 @@ export function PlicaQueueItemRow({
   nowMs: number;
   onActed: () => void;
 }) {
-  const age = formatAgeMinutes(queueItemAgeMinutes(item, nowMs));
+  const ageMinutes = queueItemAgeMinutes(item, nowMs);
+  const age = formatAgeMinutes(ageMinutes);
+  const tone = ageTone(ageMinutes);
   const critical = item.kind === "attention" && item.item.severity === "critical";
-  const edge = critical
-    ? "border-l-red-500 bg-red-500/[0.08]"
-    : item.bucket === "now"
-      ? "border-l-amber-500"
-      : "border-l-transparent";
+  // The edge says *whose* item this is (it matches the company avatar); how
+  // urgent it is moves to a mark before the title so the two never compete.
+  const edgeColor = companyAccentColor(company.name, company.brandColor);
 
   let identifier: string | null = null;
   let title: string;
@@ -179,7 +182,22 @@ export function PlicaQueueItemRow({
         </>
       );
       const href = subject.href ? `/${company.issuePrefix}${toCompanyRelativePath(subject.href)}` : `/${company.issuePrefix}/decisions`;
-      actions = <OpenLink to={href} companyId={company.id} label={attentionActionLabel(item.item)} />;
+      actions = hasInlineInteraction(item.item) ? (
+        <>
+          <PlicaInteractionActions item={item.item} onActed={onActed} />
+          <PlicaLink
+            to={href}
+            companyId={company.id}
+            title="Open thread"
+            aria-label="Open thread"
+            className="rounded p-1 text-muted-foreground hover:text-foreground"
+          >
+            <ExternalLink className="h-3 w-3" />
+          </PlicaLink>
+        </>
+      ) : (
+        <OpenLink to={href} companyId={company.id} label={attentionActionLabel(item.item)} />
+      );
       break;
     }
     case "heartbeat": {
@@ -217,6 +235,11 @@ export function PlicaQueueItemRow({
   const body = (
     <div className="flex min-w-0 flex-1 flex-col gap-0.5">
       <div className={cn("flex items-baseline gap-1.5", BODY)}>
+        {critical ? (
+          <AlertTriangle className="h-3 w-3 shrink-0 self-center text-red-600 dark:text-red-400" aria-label="critical" />
+        ) : item.bucket === "now" ? (
+          <span className="size-1.5 shrink-0 self-center rounded-full bg-amber-500" aria-label="now" />
+        ) : null}
         {identifier && (
           <span className={cn("shrink-0 font-mono tabular-nums text-muted-foreground", MICRO)}>{identifier}</span>
         )}
@@ -237,7 +260,17 @@ export function PlicaQueueItemRow({
         )}
       >
         {meta}
-        <span className="ml-auto shrink-0 tabular-nums">{age}</span>
+        <span
+          data-age-tone={tone}
+          className={cn(
+            "ml-auto shrink-0 tabular-nums",
+            tone === "stale" && "font-semibold text-red-600 dark:text-red-400",
+            tone === "aging" && "font-medium text-amber-700 dark:text-amber-300",
+          )}
+          title={tone === "stale" ? "waiting a month or more" : tone === "aging" ? "waiting over a week" : undefined}
+        >
+          {age}
+        </span>
       </div>
     </div>
   );
@@ -246,7 +279,8 @@ export function PlicaQueueItemRow({
     <li
       data-queue-item={item.id}
       data-queue-kind={item.kind}
-      className={cn("flex items-start gap-2.5 border-l-[3px] py-2 pl-3 pr-3 hover:bg-muted/30", edge)}
+      className={cn("flex items-start gap-2.5 border-l-[3px] py-2 pl-3 pr-3 hover:bg-muted/30", critical && "bg-red-500/[0.08]")}
+      style={{ borderLeftColor: edgeColor }}
     >
       <Avatar company={company} />
       {hoverIssueId ? (
@@ -277,6 +311,8 @@ export function PlicaQueue({
   footer,
   filterCompany,
   onClearFilter,
+  homeCompany,
+  onFilterCompany,
 }: {
   groups: PlicaQueueGroup[];
   summary: PlicaQueueSummary;
@@ -290,6 +326,9 @@ export function PlicaQueue({
   /** When set, the rail shows only this company's items and says so. */
   filterCompany?: Company | null;
   onClearFilter?: () => void;
+  /** The company whose page the HUD is on — the "just this one" half of the scope toggle. */
+  homeCompany?: Company | null;
+  onFilterCompany?: (company: Company) => void;
 }) {
   const [laterOpen, setLaterOpen] = useState(false);
   const urgent = summary.now + summary.soon;
@@ -318,8 +357,33 @@ export function PlicaQueue({
         {summary.oldestMins !== null && (
           <span className={cn(MICRO, "tabular-nums text-muted-foreground")}>oldest {formatAgeMinutes(summary.oldestMins)}</span>
         )}
-        <div role="group" aria-label="Queue grouping" className="ml-auto flex items-center rounded-md border p-0.5">
-          {(["severity", "company"] as const).map((mode) => (
+        {homeCompany && onFilterCompany && (
+          <div role="group" aria-label="Queue scope" className="ml-auto flex items-center rounded-md border p-0.5">
+            <button
+              type="button"
+              aria-pressed={!filterCompany}
+              onClick={() => onClearFilter?.()}
+              className={cn("rounded px-2 py-0.5", MICRO, !filterCompany ? "bg-muted font-medium" : "text-muted-foreground hover:text-foreground")}
+            >
+              All
+            </button>
+            <button
+              type="button"
+              aria-pressed={filterCompany?.id === homeCompany.id}
+              onClick={() => onFilterCompany(homeCompany)}
+              className={cn(
+                "max-w-32 truncate rounded px-2 py-0.5",
+                MICRO,
+                filterCompany?.id === homeCompany.id ? "bg-muted font-medium" : "text-muted-foreground hover:text-foreground",
+              )}
+              title={`Only ${homeCompany.name}`}
+            >
+              {homeCompany.name}
+            </button>
+          </div>
+        )}
+        <div role="group" aria-label="Queue grouping" className={cn("flex items-center rounded-md border p-0.5", !(homeCompany && onFilterCompany) && "ml-auto")}>
+          {PLICA_QUEUE_GROUPINGS.map(({ grouping: mode, label }) => (
             <button
               key={mode}
               type="button"
@@ -331,13 +395,13 @@ export function PlicaQueue({
                 grouping === mode ? "bg-muted font-medium" : "text-muted-foreground hover:text-foreground",
               )}
             >
-              {mode === "severity" ? "Severity" : "Company"}
+              {label}
             </button>
           ))}
         </div>
       </div>
 
-      {filterCompany && (
+      {filterCompany && filterCompany.id !== homeCompany?.id && (
         <div className={cn("flex items-center gap-2 border-b bg-muted/40 px-3 py-1.5", MICRO)}>
           <CompanyPatternIcon
             companyName={filterCompany.name}

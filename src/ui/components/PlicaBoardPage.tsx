@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import type { Company } from "@paperclipai/shared";
+import { useOptionalCompany } from "../host/shims";
 import { cn } from "../host/util";
 import {
   formatCents,
@@ -14,12 +15,14 @@ import {
   flattenLiveRuns,
   groupQueue,
   summarizeQueue,
+  upcomingProjects,
   upcomingRoutines,
   type PlicaQueueGrouping,
 } from "../lib/queue";
 import { PLICA_BOARD_COLUMNS } from "./PlicaBoardRow";
 import { PlicaCompanySlot } from "./PlicaCompanySlot";
 import { PlicaLiveList } from "./PlicaLiveList";
+import { PlicaProjectsList } from "./PlicaProjectsList";
 import { PlicaQueue } from "./PlicaQueue";
 import { PlicaRoutinesList } from "./PlicaRoutinesList";
 import type { PlicaCompanyData } from "./usePlicaCompanyData";
@@ -85,6 +88,8 @@ export function PlicaBoardPage({
   // glance, not a setting.
   const [focusCompanyId, setFocusCompanyId] = useState<string | null>(null);
   const focusCompany = focusCompanyId ? companies.find((company) => company.id === focusCompanyId) ?? null : null;
+  const host = useOptionalCompany();
+  const homeCompany = host?.selectedCompanyId ? companies.find((company) => company.id === host.selectedCompanyId) ?? null : null;
   const toggleFocus = (companyId: string) =>
     setFocusCompanyId((current) => (current === companyId ? null : companyId));
   const companiesById = useMemo(
@@ -118,7 +123,11 @@ export function PlicaBoardPage({
       ),
     [loaded, nowMs, focusCompanyId],
   );
-  const groups = useMemo(() => groupQueue(queueItems, grouping, companies), [queueItems, grouping, companies]);
+  const projects = useMemo(() => loaded.flatMap(({ data }) => data.projects), [loaded]);
+  const groups = useMemo(
+    () => groupQueue(queueItems, grouping, companies, { projects, nowMs }),
+    [queueItems, grouping, companies, projects, nowMs],
+  );
   const summary = useMemo(() => summarizeQueue(queueItems, nowMs), [queueItems, nowMs]);
   const live = useMemo(
     () => flattenLiveRuns(loaded.map(({ company, data }) => ({ company, runs: data.liveRuns, issues: data.issues }))),
@@ -126,6 +135,10 @@ export function PlicaBoardPage({
   );
   const routines = useMemo(
     () => upcomingRoutines(loaded.map(({ company, data }) => ({ company, routines: data.routines })), nowMs),
+    [loaded, nowMs],
+  );
+  const projectEntries = useMemo(
+    () => upcomingProjects(loaded.map(({ company, data }) => ({ company, projects: data.projects, issues: data.issues })), nowMs),
     [loaded, nowMs],
   );
 
@@ -153,6 +166,7 @@ export function PlicaBoardPage({
       <div className="flex min-w-0 flex-col gap-4">
         <PlicaLiveList entries={live} />
         <PlicaRoutinesList items={routines.items} overflow={routines.overflow} nowMs={nowMs} />
+        <PlicaProjectsList items={projectEntries.items} overflow={projectEntries.overflow} nowMs={nowMs} />
       </div>
 
       <div className="flex min-w-0 flex-col gap-4">
@@ -252,6 +266,8 @@ export function PlicaBoardPage({
           footer={footer}
           filterCompany={focusCompany}
           onClearFilter={() => setFocusCompanyId(null)}
+          homeCompany={homeCompany}
+          onFilterCompany={(company) => setFocusCompanyId(company.id)}
         />
       </div>
     </div>

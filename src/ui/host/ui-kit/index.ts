@@ -46,6 +46,6 @@ export {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "./dropdown-menu";
-export { CompanyPatternIcon } from "./CompanyPatternIcon";
+export { CompanyPatternIcon, companyAccentColor } from "./CompanyPatternIcon";
 export { IssueStatusBadge } from "./StatusBadge";
 export { StatusGlyph } from "./StatusGlyph";

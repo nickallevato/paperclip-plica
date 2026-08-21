@@ -1,6 +1,6 @@
 import { ExternalLink, Pin } from "lucide-react";
 import type { Company } from "@paperclipai/shared";
-import { CompanyPatternIcon } from "../host/ui-kit";
+import { CompanyPatternIcon, companyAccentColor } from "../host/ui-kit";
 import { cn } from "../host/util";
 import {
   derivePaneHealth,
@@ -33,10 +33,10 @@ export const PLICA_BOARD_COLUMNS: ReadonlyArray<{ key: string; label: string; al
   { key: "open", label: "", align: "right" },
 ];
 
-const HEALTH_EDGE: Record<PlicaHealth, string> = {
-  green: "border-l-emerald-500",
-  amber: "border-l-amber-500",
-  red: "border-l-red-500",
+const HEALTH_DOT: Record<PlicaHealth, string> = {
+  green: "bg-emerald-500",
+  amber: "bg-amber-500",
+  red: "bg-red-500",
 };
 
 const NUM = "text-[length:var(--plica-fs-title,20px)] leading-[1.2] font-semibold tabular-nums tracking-tight";
@@ -95,7 +95,7 @@ export function PlicaBoardRow({
         pulse && "animate-[pulse_3s_ease-in-out_infinite] bg-red-500/10 motion-reduce:animate-none",
       )}
     >
-      <td className={cn("border-l-4 py-2.5 pl-3 pr-2", HEALTH_EDGE[health])}>
+      <td className="border-l-4 py-2.5 pl-3 pr-2" style={{ borderLeftColor: companyAccentColor(company.name, company.brandColor) }}>
         <div className="flex items-center gap-2.5">
           <CompanyPatternIcon
             companyName={company.name}
@@ -112,7 +112,7 @@ export function PlicaBoardRow({
                 role="img"
                 title={healthLabel(health, data.summary)}
                 aria-label={healthLabel(health, data.summary)}
-                className="sr-only"
+                className={cn("size-2 shrink-0 rounded-full", HEALTH_DOT[health])}
               />
               {data.unavailable && (
                 <span className={cn(MICRO, "rounded-full border border-red-500/40 bg-red-500/10 px-1.5 text-red-700 dark:text-red-300")}>

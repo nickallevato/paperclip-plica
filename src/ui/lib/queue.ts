@@ -5,6 +5,7 @@ import type {
   AttentionItem,
   Company,
   Issue,
+  Project,
   RoutineListItem,
 } from "@paperclipai/shared";
 import type { LiveRunForIssue } from "../host/api";
@@ -219,12 +220,88 @@ export function summarizeQueue(items: ReadonlyArray<PlicaQueueItem>, nowMs: numb
   };
 }
 
-export type PlicaQueueGrouping = "severity" | "company";
+export type PlicaQueueGrouping = "severity" | "company" | "kind" | "project" | "age";
+
+export const PLICA_QUEUE_GROUPINGS: ReadonlyArray<{ grouping: PlicaQueueGrouping; label: string }> = [
+  { grouping: "severity", label: "Severity" },
+  { grouping: "company", label: "Company" },
+  { grouping: "kind", label: "Kind" },
+  { grouping: "project", label: "Project" },
+  { grouping: "age", label: "Age" },
+];
 
 export const PLICA_QUEUE_GROUPING_STORAGE_KEY = "plica.queueGrouping";
 
 export function normalizeQueueGrouping(value: string | null | undefined): PlicaQueueGrouping {
-  return value === "company" ? "company" : "severity";
+  return PLICA_QUEUE_GROUPINGS.some((entry) => entry.grouping === value) ? (value as PlicaQueueGrouping) : "severity";
+}
+
+/** What sort of ask an item is — the "Kind" grouping and the row glyph. */
+export type PlicaQueueKind =
+  | "questions"
+  | "confirmations"
+  | "approvals"
+  | "blockers"
+  | "failed"
+  | "heartbeats"
+  | "routines"
+  | "other";
+
+const KIND_ORDER: ReadonlyArray<{ kind: PlicaQueueKind; label: string }> = [
+  { kind: "questions", label: "Questions" },
+  { kind: "confirmations", label: "Confirmations" },
+  { kind: "approvals", label: "Approvals" },
+  { kind: "heartbeats", label: "Heartbeats" },
+  { kind: "failed", label: "Failed runs" },
+  { kind: "routines", label: "Routines" },
+  { kind: "blockers", label: "Blockers" },
+  { kind: "other", label: "Other" },
+];
+
+export function queueItemKind(item: PlicaQueueItem): PlicaQueueKind {
+  switch (item.kind) {
+    case "approval":
+      return "approvals";
+    case "heartbeat":
+      return "heartbeats";
+    case "routine":
+      return "routines";
+    default: {
+      const source = item.item.sourceKind;
+      if (source === "issue_thread_interaction") {
+        const kind = item.item.subject.metadata?.kind;
+        return kind === "ask_user_questions" ? "questions" : "confirmations";
+      }
+      if (source === "blocker_attention") return "blockers";
+      if (source === "failed_run" || source === "agent_error_alert") return "failed";
+      return "other";
+    }
+  }
+}
+
+/** Age buckets for the "Age" grouping and the colour ramp on the age label. */
+export type PlicaQueueAge = "today" | "week" | "older" | "stale";
+
+const AGE_ORDER: ReadonlyArray<{ age: PlicaQueueAge; label: string }> = [
+  { age: "stale", label: "Stale · 30d+" },
+  { age: "older", label: "Older than a week" },
+  { age: "week", label: "This week" },
+  { age: "today", label: "Today" },
+];
+
+export function queueItemAge(item: PlicaQueueItem, nowMs: number): PlicaQueueAge {
+  const minutes = queueItemAgeMinutes(item, nowMs);
+  if (minutes === null) return "today";
+  if (minutes >= 30 * 24 * 60) return "stale";
+  if (minutes >= 7 * 24 * 60) return "older";
+  if (minutes >= 24 * 60) return "week";
+  return "today";
+}
+
+/** Grey until a week, amber to a month, red after — the ramp on the age label. */
+export function ageTone(minutes: number | null): "fresh" | "aging" | "stale" {
+  if (minutes === null || minutes < 7 * 24 * 60) return "fresh";
+  return minutes >= 30 * 24 * 60 ? "stale" : "aging";
 }
 
 export interface PlicaQueueGroup {
@@ -245,26 +322,66 @@ export function groupQueue(
   items: ReadonlyArray<PlicaQueueItem>,
   grouping: PlicaQueueGrouping,
   companies: ReadonlyArray<Company>,
+  context: { projects?: ReadonlyArray<Project>; nowMs?: number } = {},
 ): PlicaQueueGroup[] {
   const sorted = [...items].sort(compareQueueItems);
-  if (grouping === "company") {
-    return companies
-      .map((company) => ({
-        key: company.id,
-        label: company.name,
+  const groupsOf = <K extends string>(
+    order: ReadonlyArray<{ key: K; label: string }>,
+    keyOf: (item: PlicaQueueItem) => K,
+  ): PlicaQueueGroup[] =>
+    order
+      .map(({ key, label }) => ({
+        key,
+        label,
         bucket: null,
-        company,
-        items: sorted.filter((item) => item.companyId === company.id),
+        company: null,
+        items: sorted.filter((item) => keyOf(item) === key),
       }))
       .filter((group) => group.items.length > 0);
+
+  switch (grouping) {
+    case "company":
+      return companies
+        .map((company) => ({
+          key: company.id,
+          label: company.name,
+          bucket: null,
+          company,
+          items: sorted.filter((item) => item.companyId === company.id),
+        }))
+        .filter((group) => group.items.length > 0);
+    case "kind":
+      return groupsOf(KIND_ORDER.map(({ kind, label }) => ({ key: kind, label })), queueItemKind);
+    case "age": {
+      const nowMs = context.nowMs ?? Date.now();
+      return groupsOf(AGE_ORDER.map(({ age, label }) => ({ key: age, label })), (item) => queueItemAge(item, nowMs));
+    }
+    case "project": {
+      // Projects in the order they first appear in the sorted queue, so the
+      // project holding the most urgent item leads; no-project items last.
+      const projectName = new Map((context.projects ?? []).map((project) => [project.id, project.name]));
+      const projectOf = (item: PlicaQueueItem): string =>
+        item.kind === "attention" && item.issue?.projectId ? item.issue.projectId : "";
+      const order: Array<{ key: string; label: string }> = [];
+      for (const item of sorted) {
+        const key = projectOf(item);
+        if (key && !order.some((entry) => entry.key === key)) {
+          order.push({ key, label: projectName.get(key) ?? "Project" });
+        }
+      }
+      order.push({ key: "", label: "No project" });
+      return groupsOf(order, projectOf);
+    }
+    case "severity":
+    default:
+      return PLICA_QUEUE_BUCKETS.map(({ bucket, label }) => ({
+        key: bucket,
+        label,
+        bucket,
+        company: null,
+        items: sorted.filter((item) => item.bucket === bucket),
+      })).filter((group) => group.items.length > 0);
   }
-  return PLICA_QUEUE_BUCKETS.map(({ bucket, label }) => ({
-    key: bucket,
-    label,
-    bucket,
-    company: null,
-    items: sorted.filter((item) => item.bucket === bucket),
-  })).filter((group) => group.items.length > 0);
 }
 
 // ---------------------------------------------------------------------------
@@ -403,4 +520,65 @@ export function describeCron(expression: string | null | undefined): string | nu
     if (minute !== null && hourNum !== null && day !== null) return `monthly on the ${day} at ${clock(hourNum, minute)}`;
   }
   return null;
+}
+
+// ---------------------------------------------------------------------------
+// Cross-company projects (the third list on the left)
+// ---------------------------------------------------------------------------
+
+export interface PlicaProjectEntry {
+  company: Company;
+  project: Project;
+  open: number;
+  inProgress: number;
+  blocked: number;
+  /** Target date at local midnight (epoch ms), or null when the project has none. */
+  dueMs: number | null;
+  overdue: boolean;
+}
+
+function targetDateMs(targetDate: string | null): number | null {
+  if (!targetDate) return null;
+  // Date-only strings parse as UTC midnight; anchor to local midnight so
+  // "due today" is today in the viewer's timezone.
+  const [year, month, day] = targetDate.slice(0, 10).split("-").map(Number);
+  if (!year || !month || !day) return null;
+  return new Date(year, month - 1, day).getTime();
+}
+
+/**
+ * Every unarchived project with open work, across companies: nearest target
+ * date first (overdue leading), undated ones after by open count. Paused /
+ * completed projects are skipped — they are not "what's in flight".
+ */
+export function upcomingProjects(
+  entries: ReadonlyArray<{ company: Company; projects: ReadonlyArray<Project>; issues: ReadonlyArray<Issue> }>,
+  nowMs: number,
+  limit = 8,
+): { items: PlicaProjectEntry[]; overflow: number } {
+  const all: PlicaProjectEntry[] = [];
+  for (const { company, projects, issues } of entries) {
+    const counts = new Map<string, { open: number; inProgress: number; blocked: number }>();
+    for (const issue of issues) {
+      if (!issue.projectId || issue.status === "done" || issue.status === "cancelled") continue;
+      const count = counts.get(issue.projectId) ?? { open: 0, inProgress: 0, blocked: 0 };
+      count.open += 1;
+      if (issue.status === "in_progress" || issue.status === "in_review") count.inProgress += 1;
+      if (issue.status === "blocked") count.blocked += 1;
+      counts.set(issue.projectId, count);
+    }
+    for (const project of projects) {
+      if (project.archivedAt || project.status === "completed" || project.status === "cancelled") continue;
+      const count = counts.get(project.id);
+      if (!count) continue;
+      const dueMs = targetDateMs(project.targetDate);
+      all.push({ company, project, ...count, dueMs, overdue: dueMs !== null && dueMs < nowMs });
+    }
+  }
+  all.sort((a, b) => {
+    if (a.dueMs !== null && b.dueMs !== null && a.dueMs !== b.dueMs) return a.dueMs - b.dueMs;
+    if ((a.dueMs === null) !== (b.dueMs === null)) return a.dueMs === null ? 1 : -1;
+    return b.open - a.open || a.project.name.localeCompare(b.project.name);
+  });
+  return { items: all.slice(0, limit), overflow: Math.max(0, all.length - limit) };
 }
