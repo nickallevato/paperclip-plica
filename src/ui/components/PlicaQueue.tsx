@@ -257,6 +257,8 @@ export function PlicaQueue({
   nowMs,
   onActed,
   footer,
+  filterCompany,
+  onClearFilter,
 }: {
   groups: PlicaQueueGroup[];
   summary: PlicaQueueSummary;
@@ -267,6 +269,9 @@ export function PlicaQueue({
   onActed: (companyId: string) => void;
   /** Rendered at the bottom of the rail — the "since you last looked" line. */
   footer?: ReactNode;
+  /** When set, the rail shows only this company's items and says so. */
+  filterCompany?: Company | null;
+  onClearFilter?: () => void;
 }) {
   const [laterOpen, setLaterOpen] = useState(false);
   const urgent = summary.now + summary.soon;
@@ -314,9 +319,33 @@ export function PlicaQueue({
         </div>
       </div>
 
+      {filterCompany && (
+        <div className={cn("flex items-center gap-2 border-b bg-muted/40 px-3 py-1.5", MICRO)}>
+          <CompanyPatternIcon
+            companyName={filterCompany.name}
+            logoUrl={filterCompany.logoUrl}
+            brandColor={filterCompany.brandColor}
+            className="size-4 shrink-0 rounded text-[7px]"
+          />
+          <span className="min-w-0 truncate">
+            Only <span className="font-medium text-foreground">{filterCompany.name}</span>
+          </span>
+          <button
+            type="button"
+            onClick={onClearFilter}
+            aria-label="Show all companies"
+            className="ml-auto inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-muted-foreground hover:text-foreground"
+          >
+            <X className="h-3 w-3" /> all companies
+          </button>
+        </div>
+      )}
+
       <div className="min-h-0 flex-1 overflow-y-auto">
         {summary.total === 0 ? (
-          <p className={cn("px-3 py-6 text-center text-muted-foreground", BODY)}>Nothing needs you right now.</p>
+          <p className={cn("px-3 py-6 text-center text-muted-foreground", BODY)}>
+            {filterCompany ? `Nothing from ${filterCompany.name} needs you.` : "Nothing needs you right now."}
+          </p>
         ) : (
           groups.map((group) => {
             const folded = group.bucket === "later" && !laterOpen;

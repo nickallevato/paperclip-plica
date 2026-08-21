@@ -97,8 +97,10 @@ describe("PlicaQueue", () => {
     vi.clearAllMocks();
   });
 
-  function render(grouping: "severity" | "company" = "severity") {
-    const items = buildItems();
+  const onClearFilter = vi.fn();
+
+  function render(grouping: "severity" | "company" = "severity", filterCompany: Company | null = null) {
+    const items = buildItems().filter((item) => !filterCompany || item.companyId === filterCompany.id);
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
     const root = createRoot(container);
     act(() => {
@@ -114,6 +116,8 @@ describe("PlicaQueue", () => {
               nowMs={NOW}
               onActed={onActed}
               footer={<span data-testid="footer">since you last looked</span>}
+              filterCompany={filterCompany}
+              onClearFilter={onClearFilter}
             />
           </MemoryRouter>
         </QueryClientProvider>,
@@ -175,6 +179,20 @@ describe("PlicaQueue", () => {
     });
     expect(mockApprovalsApi.approve).toHaveBeenCalledWith("ap-1", undefined);
     expect(onActed).toHaveBeenCalledWith("c1");
+    act(() => root.unmount());
+  });
+
+  it("shows a clearable chip while filtered to one company", () => {
+    const root = render("severity", globex);
+    expect(container.textContent).toContain("Only Globex");
+    const rows = Array.from(container.querySelectorAll("[data-queue-item]")).map((row) => row.getAttribute("data-queue-item"));
+    expect(rows).toEqual(["heartbeat:ceo-2"]);
+    act(() => {
+      (container.querySelector('[aria-label="Show all companies"]') as HTMLButtonElement).dispatchEvent(
+        new MouseEvent("click", { bubbles: true }),
+      );
+    });
+    expect(onClearFilter).toHaveBeenCalled();
     act(() => root.unmount());
   });
 });

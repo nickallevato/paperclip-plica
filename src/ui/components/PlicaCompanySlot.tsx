@@ -47,6 +47,8 @@ export function PlicaCompanySlot({
   tokenThresholds,
   rowMode,
   pinned = false,
+  onFocusNeeds,
+  needsFocused = false,
 }: {
   company: Company;
   view: PlicaSlotPresentation;
@@ -76,6 +78,9 @@ export function PlicaCompanySlot({
   tokenThresholds?: PlicaTokenThresholds;
   /** Board: watched companies sort to the top. */
   pinned?: boolean;
+  /** Board: filter the queue rail to this company. */
+  onFocusNeeds?: () => void;
+  needsFocused?: boolean;
   /** How attention items render inside the pane presentation. */
   rowMode?: PlicaRowMode;
 }) {
@@ -150,6 +155,8 @@ export function PlicaCompanySlot({
         pulse={pulse}
         pinned={pinned}
         onTogglePin={onTogglePin}
+        onFocusNeeds={onFocusNeeds}
+        needsFocused={needsFocused}
         nowMs={Date.now()}
       />
     );

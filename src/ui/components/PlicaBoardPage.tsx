@@ -80,6 +80,13 @@ export function PlicaBoardPage({
   footer?: ReactNode;
 }) {
   const nowMs = useNowMs();
+  // Clicking a row's Need-you count narrows the rail to that company; clicking
+  // it again (or the rail's chip) widens it back. Not persisted — it is a
+  // glance, not a setting.
+  const [focusCompanyId, setFocusCompanyId] = useState<string | null>(null);
+  const focusCompany = focusCompanyId ? companies.find((company) => company.id === focusCompanyId) ?? null : null;
+  const toggleFocus = (companyId: string) =>
+    setFocusCompanyId((current) => (current === companyId ? null : companyId));
   const companiesById = useMemo(
     () => Object.fromEntries(companies.map((company) => [company.id, company])) as Record<string, Company | undefined>,
     [companies],
@@ -96,7 +103,9 @@ export function PlicaBoardPage({
 
   const queueItems = useMemo(
     () =>
-      loaded.flatMap(({ company, data }) =>
+      loaded
+        .filter(({ company }) => !focusCompanyId || company.id === focusCompanyId)
+        .flatMap(({ company, data }) =>
         deriveQueueItems({
           companyId: company.id,
           approvals: data.approvals,
@@ -106,7 +115,7 @@ export function PlicaBoardPage({
           nowMs,
         }),
       ),
-    [loaded, nowMs],
+    [loaded, nowMs, focusCompanyId],
   );
   const groups = useMemo(() => groupQueue(queueItems, grouping, companies), [queueItems, grouping, companies]);
   const summary = useMemo(() => summarizeQueue(queueItems, nowMs), [queueItems, nowMs]);
@@ -149,6 +158,8 @@ export function PlicaBoardPage({
         nowMs={nowMs}
         onActed={(companyId) => dataByCompany[companyId]?.invalidate()}
         footer={footer}
+        filterCompany={focusCompany}
+        onClearFilter={() => setFocusCompanyId(null)}
       />
 
       <div className="flex min-w-0 flex-col gap-4">
@@ -207,6 +218,8 @@ export function PlicaBoardPage({
                   alertsEnabled={alertsEnabled}
                   pinned={pinnedIds.includes(company.id)}
                   onTogglePin={() => onTogglePin(company.id)}
+                  onFocusNeeds={() => toggleFocus(company.id)}
+                  needsFocused={focusCompanyId === company.id}
                 />
               ))}
             </tbody>

@@ -56,6 +56,8 @@ export function PlicaBoardRow({
   pulse = false,
   pinned = false,
   onTogglePin,
+  onFocusNeeds,
+  needsFocused = false,
   nowMs,
 }: {
   company: Company;
@@ -68,6 +70,9 @@ export function PlicaBoardRow({
   /** Watched companies sort to the top of the board. */
   pinned?: boolean;
   onTogglePin?: () => void;
+  /** Filters the queue rail to this company (toggle). */
+  onFocusNeeds?: () => void;
+  needsFocused?: boolean;
   nowMs: number;
 }) {
   const health = data.unavailable ? "red" : derivePaneHealth(data.summary, data.attention);
@@ -165,15 +170,27 @@ export function PlicaBoardRow({
         {loading || data.unavailable ? dash : stats.tasks === 0 ? <span className="text-muted-foreground/50">0</span> : stats.tasks}
       </td>
 
-      <td
-        className={cn(
-          "px-3 py-2 text-right",
-          NUM,
-          actionable.count > 0 && (actionable.criticalOrHigh ? "text-red-600 dark:text-red-400" : "text-amber-700 dark:text-amber-300"),
+      <td className="px-3 py-2 text-right">
+        {loading || data.unavailable || actionable.count === 0 ? (
+          <span className={NUM}>{dash}</span>
+        ) : (
+          <button
+            type="button"
+            onClick={onFocusNeeds}
+            disabled={!onFocusNeeds}
+            aria-pressed={needsFocused}
+            title={`${actionable.count} item${actionable.count === 1 ? "" : "s"} need${actionable.count === 1 ? "s" : ""} you — ${needsFocused ? "showing all companies" : "show only these in the queue"}`}
+            className={cn(
+              NUM,
+              "rounded-md px-1.5 -mr-1.5 disabled:pointer-events-none",
+              actionable.criticalOrHigh ? "text-red-600 dark:text-red-400" : "text-amber-700 dark:text-amber-300",
+              onFocusNeeds && "hover:bg-muted",
+              needsFocused && "bg-muted ring-1 ring-border",
+            )}
+          >
+            {actionable.count}
+          </button>
         )}
-        title={`${actionable.count} item${actionable.count === 1 ? "" : "s"} need${actionable.count === 1 ? "s" : ""} you`}
-      >
-        {loading || data.unavailable ? dash : actionable.count === 0 ? dash : actionable.count}
       </td>
 
       <td className="px-3 py-2">
