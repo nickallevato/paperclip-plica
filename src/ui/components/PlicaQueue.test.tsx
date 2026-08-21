@@ -239,8 +239,7 @@ describe("PlicaQueue", () => {
     act(() => root.unmount());
   });
 
-  it("offers an All / home-company scope toggle", () => {
-    const onFilterCompany = vi.fn();
+  it("groups by kind in a fixed order", () => {
     const items = buildItems();
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     const root = createRoot(container);
@@ -256,20 +255,12 @@ describe("PlicaQueue", () => {
               companiesById={{ c1: acme, c2: globex }}
               nowMs={NOW}
               onActed={onActed}
-              homeCompany={globex}
-              onFilterCompany={onFilterCompany}
               onClearFilter={onClearFilter}
             />
           </MemoryRouter>
         </QueryClientProvider>,
       );
     });
-    const scope = Array.from(container.querySelectorAll('[aria-label="Queue scope"] button'));
-    expect(scope.map((button) => button.textContent)).toEqual(["All", "Globex"]);
-    act(() => {
-      scope[1].dispatchEvent(new MouseEvent("click", { bubbles: true }));
-    });
-    expect(onFilterCompany).toHaveBeenCalledWith(globex);
     // kind grouping: questions, confirmations, approvals, heartbeats, blockers, other(review)
     const headers = Array.from(container.querySelectorAll("[data-queue-group]")).map((group) => group.getAttribute("data-queue-group"));
     expect(headers).toEqual(["questions", "confirmations", "approvals", "heartbeats", "blockers", "other"]);

@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import type { Company } from "@paperclipai/shared";
-import { useOptionalCompany } from "../host/shims";
 import { cn } from "../host/util";
 import {
   formatCents,
@@ -88,8 +87,6 @@ export function PlicaBoardPage({
   // glance, not a setting.
   const [focusCompanyId, setFocusCompanyId] = useState<string | null>(null);
   const focusCompany = focusCompanyId ? companies.find((company) => company.id === focusCompanyId) ?? null : null;
-  const host = useOptionalCompany();
-  const homeCompany = host?.selectedCompanyId ? companies.find((company) => company.id === host.selectedCompanyId) ?? null : null;
   const toggleFocus = (companyId: string) =>
     setFocusCompanyId((current) => (current === companyId ? null : companyId));
   const companiesById = useMemo(
@@ -266,8 +263,6 @@ export function PlicaBoardPage({
           footer={footer}
           filterCompany={focusCompany}
           onClearFilter={() => setFocusCompanyId(null)}
-          homeCompany={homeCompany}
-          onFilterCompany={(company) => setFocusCompanyId(company.id)}
         />
       </div>
     </div>

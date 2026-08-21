@@ -306,8 +306,6 @@ export function PlicaQueue({
   footer,
   filterCompany,
   onClearFilter,
-  homeCompany,
-  onFilterCompany,
 }: {
   groups: PlicaQueueGroup[];
   summary: PlicaQueueSummary;
@@ -321,9 +319,6 @@ export function PlicaQueue({
   /** When set, the rail shows only this company's items and says so. */
   filterCompany?: Company | null;
   onClearFilter?: () => void;
-  /** The company whose page the HUD is on — the "just this one" half of the scope toggle. */
-  homeCompany?: Company | null;
-  onFilterCompany?: (company: Company) => void;
 }) {
   const [laterOpen, setLaterOpen] = useState(false);
   const urgent = summary.now + summary.soon;
@@ -352,32 +347,7 @@ export function PlicaQueue({
         {summary.oldestMins !== null && (
           <span className={cn(MICRO, "tabular-nums text-muted-foreground")}>oldest {formatAgeMinutes(summary.oldestMins)}</span>
         )}
-        {homeCompany && onFilterCompany && (
-          <div role="group" aria-label="Queue scope" className="ml-auto flex items-center rounded-md border p-0.5">
-            <button
-              type="button"
-              aria-pressed={!filterCompany}
-              onClick={() => onClearFilter?.()}
-              className={cn("rounded px-2 py-0.5", MICRO, !filterCompany ? "bg-muted font-medium" : "text-muted-foreground hover:text-foreground")}
-            >
-              All
-            </button>
-            <button
-              type="button"
-              aria-pressed={filterCompany?.id === homeCompany.id}
-              onClick={() => onFilterCompany(homeCompany)}
-              className={cn(
-                "max-w-32 truncate rounded px-2 py-0.5",
-                MICRO,
-                filterCompany?.id === homeCompany.id ? "bg-muted font-medium" : "text-muted-foreground hover:text-foreground",
-              )}
-              title={`Only ${homeCompany.name}`}
-            >
-              {homeCompany.name}
-            </button>
-          </div>
-        )}
-        <div role="group" aria-label="Queue grouping" className={cn("flex items-center rounded-md border p-0.5", !(homeCompany && onFilterCompany) && "ml-auto")}>
+        <div role="group" aria-label="Queue grouping" className="ml-auto flex items-center rounded-md border p-0.5">
           {PLICA_QUEUE_GROUPINGS.map(({ grouping: mode, label }) => (
             <button
               key={mode}
@@ -396,7 +366,7 @@ export function PlicaQueue({
         </div>
       </div>
 
-      {filterCompany && filterCompany.id !== homeCompany?.id && (
+      {filterCompany && (
         <div className={cn("flex items-center gap-2 border-b bg-muted/40 px-3 py-1.5", MICRO)}>
           <CompanyPatternIcon
             companyName={filterCompany.name}

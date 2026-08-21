@@ -90,8 +90,21 @@ export function PlicaBoardRow({
       data-board-row={company.id}
       data-health={health}
       data-pulse={pulse}
+      aria-pressed={onFocusNeeds ? needsFocused : undefined}
+      onClick={
+        onFocusNeeds
+          ? (event) => {
+              // The whole row filters the queue — except where a control
+              // (pin, nudge, open link, the buttons) already owns the click.
+              if ((event.target as HTMLElement).closest("button, a, input, [role=button], [data-no-row-click]")) return;
+              onFocusNeeds();
+            }
+          : undefined
+      }
+      title={onFocusNeeds ? (needsFocused ? "Showing only this company in the queue — click to show all" : "Click to filter the queue to this company") : undefined}
       className={cn(
         "border-t align-middle hover:bg-muted/30",
+        onFocusNeeds && "cursor-pointer",
         needsFocused && "bg-muted/40",
         pulse && "animate-[pulse_3s_ease-in-out_infinite] bg-red-500/10 motion-reduce:animate-none",
       )}
