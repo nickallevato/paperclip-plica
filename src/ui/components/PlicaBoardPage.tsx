@@ -148,7 +148,7 @@ export function PlicaBoardPage({
   );
 
   return (
-    <div data-view="board" className="grid gap-4 lg:grid-cols-[minmax(300px,380px)_minmax(0,1fr)] xl:grid-cols-[420px_minmax(0,1fr)]">
+    <div data-view="board" className="grid gap-4 lg:grid-cols-[minmax(300px,380px)_minmax(0,1fr)] xl:grid-cols-[420px_minmax(0,1fr)] [.plica-kiosk_&]:gap-6 [.plica-kiosk_&]:xl:grid-cols-[540px_minmax(0,1fr)]">
       <PlicaQueue
         groups={groups}
         summary={summary}

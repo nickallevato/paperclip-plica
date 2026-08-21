@@ -50,7 +50,7 @@ export function PlicaRoutinesList({
                 <PlicaLink
                   to={`/${company.issuePrefix}/routines/${routine.id}`}
                   companyId={company.id}
-                  className="w-52 shrink-0 truncate font-medium hover:underline decoration-dotted underline-offset-2"
+                  className="w-52 shrink-0 truncate font-medium hover:underline decoration-dotted underline-offset-2 [.plica-kiosk_&]:w-72"
                   title={`${routine.title} · ${company.name}`}
                 >
                   {routine.title}
