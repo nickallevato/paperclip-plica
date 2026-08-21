@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Check, Loader2, X } from "lucide-react";
 import type {
@@ -15,6 +15,53 @@ import { attentionIssueId } from "../lib/plica";
 
 const MICRO = "text-[length:var(--plica-fs-micro,11px)] leading-[1.45]";
 const BODY = "text-[length:var(--plica-fs-body,14px)] leading-[1.45]";
+
+/**
+ * Drafts survive closing the popover or the tab, the way the host's comment
+ * composers do: localStorage, debounced, cleared on send. Keyed per
+ * interaction, so a half-answered question set comes back as you left it.
+ */
+export const PLICA_DRAFT_DEBOUNCE_MS = 800;
+export const draftKeyFor = (interactionId: string) => `plica.interactionDraft.${interactionId}`;
+
+export function loadDraft<T>(key: string): T | null {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? (JSON.parse(raw) as T) : null;
+  } catch {
+    return null;
+  }
+}
+
+export function saveDraft(key: string, value: unknown, empty: boolean) {
+  try {
+    if (empty) localStorage.removeItem(key);
+    else localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    // storage disabled or full — drafts are a convenience, never an error
+  }
+}
+
+export function clearDraft(key: string) {
+  try {
+    localStorage.removeItem(key);
+  } catch {
+    // ignore
+  }
+}
+
+/** Debounced write of `value` under `key`; skips the initial mount so loading a draft never re-saves it. */
+function useDraftSaver(key: string, value: unknown, empty: boolean) {
+  const first = useRef(true);
+  useEffect(() => {
+    if (first.current) {
+      first.current = false;
+      return;
+    }
+    const timer = setTimeout(() => saveDraft(key, value, empty), PLICA_DRAFT_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+  }, [key, value, empty]);
+}
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : "Please try again.";
@@ -241,9 +288,14 @@ function QuestionsForm({
 }) {
   const { pushToast } = useToastActions();
   const questions = interaction.payload.questions;
-  const [answers, setAnswers] = useState<Record<string, Answer>>({});
-  const [summary, setSummary] = useState("");
+  const draftKey = draftKeyFor(interaction.id);
+  const [draft] = useState(() => loadDraft<{ answers?: Record<string, Answer>; summary?: string }>(draftKey));
+  const [answers, setAnswers] = useState<Record<string, Answer>>(draft?.answers ?? {});
+  const [summary, setSummary] = useState(draft?.summary ?? "");
   const answerOf = (id: string): Answer => answers[id] ?? { optionIds: [], otherText: "" };
+  const untouched =
+    !summary.trim() && Object.values(answers).every((answer) => answer.optionIds.length === 0 && !answer.otherText.trim());
+  useDraftSaver(draftKey, { answers, summary }, untouched);
   const setAnswer = (id: string, next: Answer) => setAnswers((current) => ({ ...current, [id]: next }));
 
   const respond = useMutation({
@@ -261,6 +313,7 @@ function QuestionsForm({
         summaryMarkdown: summary.trim() || null,
       }),
     onSuccess: () => {
+      clearDraft(draftKey);
       pushToast({ title: "Answers sent", tone: "success" });
       onDone();
     },
@@ -281,22 +334,59 @@ function QuestionsForm({
         respond.mutate();
       }}
     >
-      {interaction.payload.title && <p className={cn("font-medium", BODY)}>{interaction.payload.title}</p>}
+      {(interaction.payload.title || draft) && (
+        <div className="flex items-baseline gap-2">
+          {interaction.payload.title && <p className={cn("font-semibold", BODY)}>{interaction.payload.title}</p>}
+          {draft && <span className={cn("ml-auto shrink-0 italic text-muted-foreground", MICRO)}>draft restored</span>}
+        </div>
+      )}
       {questions.map((question, index) => {
         const answer = answerOf(question.id);
         const multi = question.selectionMode === "multi";
         const freeTextOn = question.options.some((option) => option.freeText && answer.optionIds.includes(option.id));
+        const answered = answer.optionIds.length > 0 || !!answer.otherText.trim();
         return (
-          <fieldset key={question.id} className="flex flex-col gap-1.5">
-            <legend className={cn("font-medium", BODY)}>
-              {questions.length > 1 && <span className="text-muted-foreground">{index + 1}. </span>}
-              {question.prompt}
-            </legend>
-            {question.helpText && <p className={cn("text-muted-foreground", MICRO)}>{question.helpText}</p>}
+          <fieldset
+            key={question.id}
+            data-question={question.id}
+            className={cn(
+              "flex flex-col gap-2 rounded-md border p-2.5",
+              answered ? "border-emerald-500/40 bg-emerald-500/[0.04]" : "bg-muted/30",
+            )}
+          >
+            <legend className="sr-only">{question.prompt}</legend>
+            <div className="flex items-start gap-2">
+              <span
+                aria-hidden
+                className={cn(
+                  "mt-0.5 inline-flex size-5 shrink-0 items-center justify-center rounded-full font-semibold tabular-nums",
+                  MICRO,
+                  answered ? "bg-emerald-600 text-white" : "bg-muted text-muted-foreground",
+                )}
+              >
+                {answered ? <Check className="h-3 w-3" /> : index + 1}
+              </span>
+              <div className="flex min-w-0 flex-col gap-0.5">
+                <p className={cn("font-medium", BODY)}>
+                  {question.prompt}
+                  {question.required === false && <span className={cn("ml-1 font-normal text-muted-foreground", MICRO)}>optional</span>}
+                </p>
+                {question.helpText && <p className={cn("text-muted-foreground", MICRO)}>{question.helpText}</p>}
+                {multi && question.options.length > 0 && <p className={cn("text-muted-foreground", MICRO)}>select all that apply</p>}
+              </div>
+            </div>
+            <div className="ml-7 flex flex-col gap-1">
             {question.options.map((option) => {
               const checked = answer.optionIds.includes(option.id);
               return (
-                <label key={option.id} className={cn("flex cursor-pointer items-start gap-2", BODY)}>
+                <label
+                  key={option.id}
+                  className={cn(
+                    "flex cursor-pointer items-start gap-2 rounded px-1.5 py-1 hover:bg-muted/60",
+                    BODY,
+                    checked && "bg-muted/80",
+                  )}
+                >
                   <input
                     type={multi ? "checkbox" : "radio"}
                     name={question.id}
@@ -325,9 +415,10 @@ function QuestionsForm({
                 onChange={(event) => setAnswer(question.id, { ...answer, otherText: event.target.value })}
                 placeholder="Your answer"
                 rows={2}
-                className={BODY}
+                className={cn("mt-1", BODY)}
               />
             )}
+            </div>
           </fieldset>
         );
       })}
@@ -338,7 +429,14 @@ function QuestionsForm({
         rows={2}
         className={BODY}
       />
-      <div className="flex justify-end">
+      <div className="flex items-center justify-end gap-2">
+        <span className={cn("mr-auto text-muted-foreground", MICRO)}>
+          {questions.filter((question) => {
+            const answer = answerOf(question.id);
+            return answer.optionIds.length > 0 || !!answer.otherText.trim();
+          }).length}
+          /{questions.length} answered · draft saved as you type
+        </span>
         <Button type="submit" size="sm" variant="default" className={cn("h-7 px-3", MICRO)} disabled={incomplete || respond.isPending}>
           {respond.isPending && <Loader2 className="mr-1 h-3 w-3 animate-spin" />}
           {interaction.payload.submitLabel || "Send answers"}
@@ -361,10 +459,15 @@ function CheckboxForm({
 }) {
   const { pushToast } = useToastActions();
   const payload = interaction.payload;
-  const [selected, setSelected] = useState<string[]>(payload.defaultSelectedOptionIds ?? []);
+  const draftKey = draftKeyFor(interaction.id);
+  const [selected, setSelected] = useState<string[]>(
+    () => loadDraft<{ selected: string[] }>(draftKey)?.selected ?? payload.defaultSelectedOptionIds ?? [],
+  );
+  useDraftSaver(draftKey, { selected }, selected.length === 0);
   const accept = useMutation({
     mutationFn: () => issuesApi.acceptInteraction(issueId, interaction.id, { selectedOptionIds: selected }),
     onSuccess: () => {
+      clearDraft(draftKey);
       pushToast({ title: "Confirmed", tone: "success" });
       onDone();
     },
@@ -373,6 +476,7 @@ function CheckboxForm({
   const reject = useMutation({
     mutationFn: () => issuesApi.rejectInteraction(issueId, interaction.id),
     onSuccess: () => {
+      clearDraft(draftKey);
       pushToast({ title: "Declined", tone: "success" });
       onDone();
     },
@@ -387,7 +491,7 @@ function CheckboxForm({
       {payload.options.map((option) => {
         const checked = selected.includes(option.id);
         return (
-          <label key={option.id} className={cn("flex cursor-pointer items-start gap-2", BODY)}>
+          <label key={option.id} className={cn("flex cursor-pointer items-start gap-2 rounded px-1.5 py-1 hover:bg-muted/60", BODY, checked && "bg-muted/80")}>
             <input
               type="checkbox"
               checked={checked}
