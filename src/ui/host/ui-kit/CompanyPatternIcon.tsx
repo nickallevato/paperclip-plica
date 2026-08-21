@@ -100,8 +100,13 @@ export function companyAccentColor(companyName: string, brandColor?: string | nu
   const hex = brandColor?.trim() ?? "";
   if (/^#[0-9a-f]{6}$/i.test(hex)) return hex;
   if (/^#[0-9a-f]{3}$/i.test(hex)) return `#${hex[1]}${hex[1]}${hex[2]}${hex[2]}${hex[3]}${hex[3]}`;
+  // Replay the icon's own draw sequence so the accent is the pattern's base
+  // ("off") colour exactly — hue, then saturation, then lightness.
   const rand = mulberry32(hashString(companyName.trim().toLowerCase()));
-  return `hsl(${Math.floor(rand() * 360)} 60% 50%)`;
+  const hue = Math.floor(rand() * 360);
+  const saturation = 54 + Math.floor(rand() * 14);
+  const lightness = 36 + Math.floor(rand() * 12);
+  return `hsl(${hue} ${saturation}% ${lightness}%)`;
 }
 
 function makeCompanyPatternDataUrl(seed: string, brandColor?: string | null, logicalSize = 22, cellSize = 2): string {
