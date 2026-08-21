@@ -485,6 +485,15 @@ export function PlicaHud() {
     (sum, summary) => sum + summary.pendingApprovals,
     0,
   );
+  // Board header: the rail's own total, so the number up top is the number
+  // you will find below it (approvals + attention + overdue heartbeats).
+  const totalNeedsYou = companies.reduce(
+    (sum, company) => sum + (actionableByCompany[company.id]?.count ?? 0),
+    0,
+  );
+  const anyCriticalOrHigh = companies.some(
+    (company) => actionableByCompany[company.id]?.criticalOrHigh,
+  );
   const totalSpendCents = loaded.reduce(
     (sum, summary) => sum + (summary.costs?.monthSpendCents ?? 0),
     0,
@@ -525,7 +534,23 @@ export function PlicaHud() {
         <div className="ml-auto flex items-center gap-3 text-[length:var(--plica-fs-body,14px)] leading-[1.45] text-muted-foreground">
           <span className="tabular-nums">{companies.length} compan{companies.length === 1 ? "y" : "ies"}</span>
           <span className="tabular-nums">{totalRunning} running</span>
-          {totalApprovals > 0 ? (
+          {view === "board" ? (
+            totalNeedsYou > 0 ? (
+              <span className="inline-flex items-center gap-1.5 tabular-nums" title="Approvals, blockers and other items waiting on you">
+                <span
+                  className={cn(
+                    "inline-flex min-w-5 items-center justify-center rounded-full px-1.5 text-[length:var(--plica-fs-micro,11px)] leading-[1.45] font-semibold text-white",
+                    anyCriticalOrHigh ? "bg-red-600" : "bg-amber-600",
+                  )}
+                >
+                  {totalNeedsYou}
+                </span>
+                need you
+              </span>
+            ) : (
+              <span className="text-emerald-600 dark:text-emerald-400">nothing needs you</span>
+            )
+          ) : totalApprovals > 0 ? (
             <button
               type="button"
               onClick={() => selectView("triage")}

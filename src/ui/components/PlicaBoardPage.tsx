@@ -84,9 +84,15 @@ export function PlicaBoardPage({
     () => Object.fromEntries(companies.map((company) => [company.id, company])) as Record<string, Company | undefined>,
     [companies],
   );
-  const loaded = companies
-    .map((company) => ({ company, data: dataByCompany[company.id] }))
-    .filter((entry): entry is { company: Company; data: PlicaCompanyData } => entry.data !== undefined);
+  // Memoised on its inputs: every derivation below keys off this array, so a
+  // fresh one per render would recompute the queue on every poll of any query.
+  const loaded = useMemo(
+    () =>
+      companies
+        .map((company) => ({ company, data: dataByCompany[company.id] }))
+        .filter((entry): entry is { company: Company; data: PlicaCompanyData } => entry.data !== undefined),
+    [companies, dataByCompany],
+  );
 
   const queueItems = useMemo(
     () =>
