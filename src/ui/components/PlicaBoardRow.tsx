@@ -92,22 +92,49 @@ export function PlicaBoardRow({
       data-pulse={pulse}
       className={cn(
         "border-t align-middle hover:bg-muted/30",
+        needsFocused && "bg-muted/40",
         pulse && "animate-[pulse_3s_ease-in-out_infinite] bg-red-500/10 motion-reduce:animate-none",
       )}
     >
       <td className="border-l-4 py-2.5 pl-3 pr-2" style={{ borderLeftColor: companyAccentColor(company.name, company.brandColor) }}>
         <div className="flex items-center gap-2.5">
-          <CompanyPatternIcon
-            companyName={company.name}
-            logoUrl={company.logoUrl}
-            brandColor={company.brandColor}
-            className="size-7 shrink-0 rounded-md text-[10px]"
-          />
+          <button
+            type="button"
+            onClick={onFocusNeeds}
+            disabled={!onFocusNeeds}
+            aria-pressed={needsFocused}
+            aria-label={needsFocused ? `Show all companies in the queue` : `Show only ${company.name} in the queue`}
+            title={needsFocused ? "Showing only this company in the queue — click to show all" : "Filter the queue to this company"}
+            className={cn(
+              "-m-1 rounded-md p-1 transition-colors",
+              onFocusNeeds && "hover:bg-muted",
+              needsFocused && "bg-muted ring-1 ring-border",
+            )}
+          >
+            <CompanyPatternIcon
+              companyName={company.name}
+              logoUrl={company.logoUrl}
+              brandColor={company.brandColor}
+              className="size-7 shrink-0 rounded-md text-[10px]"
+            />
+          </button>
           <div className="flex min-w-0 flex-col gap-0.5">
             <div className="flex min-w-0 items-center gap-1.5">
-              <span className="truncate text-[length:var(--plica-fs-stat,16px)] leading-[1.25] font-semibold tracking-tight">
+              <button
+                type="button"
+                onClick={onFocusNeeds}
+                disabled={!onFocusNeeds}
+                aria-pressed={needsFocused}
+                data-company-filter
+                className={cn(
+                  "truncate text-left text-[length:var(--plica-fs-stat,16px)] leading-[1.25] font-semibold tracking-tight",
+                  onFocusNeeds && "hover:underline decoration-dotted underline-offset-4",
+                  needsFocused && "underline decoration-dotted underline-offset-4",
+                )}
+                title={needsFocused ? "Showing only this company in the queue — click to show all" : "Filter the queue to this company"}
+              >
                 {company.name}
-              </span>
+              </button>
               <span
                 role="img"
                 title={healthLabel(health, data.summary)}
