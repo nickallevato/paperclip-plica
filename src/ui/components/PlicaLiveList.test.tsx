@@ -38,7 +38,7 @@ describe("PlicaLiveList", () => {
     act(() => {
       root.render(
         <MemoryRouter>
-          <PlicaLiveList entries={[{ company, run: run({}), issue, startedMs: 0 }]} />
+          <PlicaLiveList entries={[{ company, run: run({}), issue, startedMs: 0, phase: "working" }]} />
         </MemoryRouter>,
       );
     });
@@ -52,6 +52,40 @@ describe("PlicaLiveList", () => {
     act(() => root.unmount());
   });
 
+  it("marks a queued run apart from a working one, and counts each in the header", () => {
+    container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+    act(() => {
+      root.render(
+        <MemoryRouter>
+          <PlicaLiveList
+            entries={[
+              { company, run: run({}), issue, startedMs: 0, phase: "working" },
+              {
+                company,
+                run: run({ id: "r2", status: "queued", startedAt: null, currentStatusMessage: null }),
+                issue,
+                startedMs: 1,
+                phase: "queued",
+              },
+            ]}
+          />
+        </MemoryRouter>,
+      );
+    });
+    expect(container.querySelector("h3")?.textContent).toContain("1 working");
+    expect(container.querySelector("h3")?.textContent).toContain("1 queued");
+    const rows = Array.from(container.querySelectorAll("li")) as HTMLElement[];
+    expect(rows[0].querySelector("[data-live-dot]")).not.toBeNull();
+    expect(rows[0].querySelector("[data-queued-dot]")).toBeNull();
+    expect(rows[1].getAttribute("data-run-phase")).toBe("queued");
+    expect(rows[1].querySelector("[data-queued-dot]")).not.toBeNull();
+    expect(rows[1].querySelector("[data-live-dot]")).toBeNull();
+    expect(rows[1].textContent).toContain("queued");
+    act(() => root.unmount());
+  });
+
   it("falls back to the narration when the run has no ticket", () => {
     container = document.createElement("div");
     document.body.appendChild(container);
@@ -59,7 +93,9 @@ describe("PlicaLiveList", () => {
     act(() => {
       root.render(
         <MemoryRouter>
-          <PlicaLiveList entries={[{ company, run: run({ issueId: null }), issue: undefined, startedMs: 0 }]} />
+          <PlicaLiveList
+            entries={[{ company, run: run({ issueId: null }), issue: undefined, startedMs: 0, phase: "working" }]}
+          />
         </MemoryRouter>,
       );
     });

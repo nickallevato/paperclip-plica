@@ -178,7 +178,7 @@ describe("PlicaQueue", () => {
     expect(container.textContent).toContain("Deploy blocked");
     expect(container.textContent).toContain("Atlas heartbeat overdue");
     expect(container.querySelector('[aria-label="Approve"]')).not.toBeNull();
-    expect(container.querySelector('[aria-label="Nudge Atlas"]')).not.toBeNull();
+    expect(container.querySelector('[data-queue-item="heartbeat:ceo-2"] a')).not.toBeNull();
     // Later is folded: the low item is counted, not listed.
     expect(container.textContent).toContain("3 low-priority notices");
     expect(container.querySelector('[data-queue-item="attention:low"]')).toBeNull();

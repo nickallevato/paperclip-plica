@@ -11,3 +11,18 @@ export function LiveDot() {
     </span>
   );
 }
+
+/**
+ * The counterpart to {@link LiveDot} for a run that is live but not yet
+ * moving: a hollow, still ring. Deliberately unanimated — the pulse is what
+ * says "an agent is working right now", and a queued run isn't.
+ */
+export function QueuedDot() {
+  return (
+    <span
+      data-queued-dot
+      className="relative flex h-2 w-2 shrink-0 rounded-full border border-muted-foreground/60"
+      aria-label="Run queued"
+    />
+  );
+}

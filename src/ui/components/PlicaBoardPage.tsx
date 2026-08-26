@@ -2,7 +2,10 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import type { Company } from "@paperclipai/shared";
 import { cn } from "../host/util";
 import {
-  formatCents,
+  PLICA_FREEZE,
+  deriveNeedsBreakdown,
+  deriveThroughput,
+  formatTokensMillions,
   thresholdsFor,
   type PlicaActionable,
   type PlicaCompanyStats,
@@ -32,6 +35,7 @@ const MICRO = "text-[length:var(--plica-fs-micro,11px)] leading-[1.45]";
 function useNowMs(intervalMs = 30_000): number {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
+    if (PLICA_FREEZE) return;
     const timer = setInterval(() => setNow(Date.now()), intervalMs);
     return () => clearInterval(timer);
   }, [intervalMs]);
@@ -145,30 +149,29 @@ export function PlicaBoardPage({
       const data = dataByCompany[company.id];
       const actionable = actionableByCompany[company.id];
       return {
-        running: sum.running + (stats?.running ?? 0),
-        active: sum.active + (stats?.active ?? 0),
-        tasks: sum.tasks + (stats?.tasks ?? 0),
         needs: sum.needs + (actionable?.count ?? 0),
-        routines: sum.routines + (stats?.routines ?? 0),
-        troubled: sum.troubled + (stats?.routinesOverdue ?? 0) + (stats?.routinesFailing ?? 0),
-        spend: sum.spend + (data?.summary?.costs.monthSpendCents ?? 0),
-        budget: sum.budget + (data?.summary?.costs.monthBudgetCents ?? 0),
+        questions: sum.questions + deriveNeedsBreakdown(data?.attention).questions,
+        blocked: sum.blocked + deriveNeedsBreakdown(data?.attention).blocked,
+        review: sum.review + deriveNeedsBreakdown(data?.attention).review,
+        tasksOpen: sum.tasksOpen + (stats?.tasksOpen ?? 0),
+        runs: sum.runs + deriveThroughput(data?.summary?.runActivity ?? []).total,
+        tokens: sum.tokens + (stats?.tokens ?? 0),
       };
     },
-    { running: 0, active: 0, tasks: 0, needs: 0, routines: 0, troubled: 0, spend: 0, budget: 0 },
+    { needs: 0, questions: 0, blocked: 0, review: 0, tasksOpen: 0, runs: 0, tokens: 0 },
   );
 
   return (
     <div data-view="board" className="grid gap-4 lg:grid-cols-[minmax(300px,380px)_minmax(0,1fr)] xl:grid-cols-[420px_minmax(0,1fr)] [.plica-kiosk_&]:gap-6 [.plica-kiosk_&]:xl:grid-cols-[540px_minmax(0,1fr)]">
       <div className="flex min-w-0 flex-col gap-4">
         <PlicaLiveList entries={live} />
-        <PlicaRoutinesList items={routines.items} overflow={routines.overflow} nowMs={nowMs} />
-        <PlicaProjectsList items={projectEntries.items} overflow={projectEntries.overflow} nowMs={nowMs} />
+        <PlicaRoutinesList items={routines} companies={companies} nowMs={nowMs} />
+        <PlicaProjectsList items={projectEntries} companies={companies} nowMs={nowMs} />
       </div>
 
       <div className="flex min-w-0 flex-col gap-4">
-        <div className="overflow-x-auto rounded-lg border bg-card">
-          <table className="w-full border-collapse text-[length:var(--plica-fs-body,14px)] leading-[1.45]">
+        <div className="overflow-hidden rounded-lg border bg-card">
+          <table className="w-full table-auto border-collapse text-[length:var(--plica-fs-body,14px)] leading-[1.45]">
             <thead>
               <tr>
                 {PLICA_BOARD_COLUMNS.map((column) => (
@@ -176,10 +179,12 @@ export function PlicaBoardPage({
                     key={column.key}
                     scope="col"
                     className={cn(
-                      "whitespace-nowrap px-3 py-2 font-semibold uppercase tracking-wide text-muted-foreground",
+                      "whitespace-nowrap px-2 py-2 font-semibold uppercase tracking-wide text-muted-foreground",
                       MICRO,
                       column.align === "right" ? "text-right" : "text-left",
-                      column.key === "company" && "pl-4",
+                      // Company takes every spare pixel; the figures take only
+                      // what they need, so the row never has to scroll.
+                      column.key === "company" ? "w-full pl-3" : "w-px",
                     )}
                   >
                     {column.key === "company" ? (
@@ -229,21 +234,14 @@ export function PlicaBoardPage({
             {companies.length > 1 && (
               <tfoot>
                 <tr data-board-totals className={cn("border-t text-muted-foreground", MICRO)}>
-                  <td className="py-2 pl-4 pr-3 uppercase tracking-wide">All companies</td>
-                  <td className="px-3 py-2 text-right tabular-nums">
-                    {totals.running} / {totals.active}
-                  </td>
-                  <td className="px-3 py-2 text-right tabular-nums">{totals.tasks}</td>
+                  <td className="truncate py-2 pl-3 pr-2 uppercase tracking-wide">All</td>
                   <td className="px-3 py-2 text-right tabular-nums">{totals.needs}</td>
-                  <td className="px-3 py-2 tabular-nums">
-                    {totals.routines}
-                    {totals.troubled > 0 && ` · ${totals.troubled} need care`}
-                  </td>
-                  <td className="px-3 py-2 tabular-nums">
-                    {formatCents(totals.spend)}
-                    {totals.budget > 0 && ` / ${formatCents(totals.budget)}`}
-                  </td>
-                  <td />
+                  <td className="px-3 py-2 text-right tabular-nums">{totals.questions}</td>
+                  <td className="px-3 py-2 text-right tabular-nums">{totals.blocked}</td>
+                  <td className="px-3 py-2 text-right tabular-nums">{totals.review}</td>
+                  <td className="px-3 py-2 text-right tabular-nums">{totals.tasksOpen}</td>
+                  <td className="px-3 py-2 tabular-nums">{Math.round((totals.runs / 7) * 10) / 10} /day</td>
+                  <td className="px-3 py-2 tabular-nums">{formatTokensMillions(totals.tokens)}M</td>
                   <td />
                 </tr>
               </tfoot>

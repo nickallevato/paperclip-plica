@@ -53,6 +53,60 @@ export function pruneClosedIssueAttention(
   return items.length === feed.items.length ? feed : { ...feed, items };
 }
 
+/**
+ * What Need-you is actually made of, by attention source.
+ *
+ * Every field is a slice of the same feed the Need-you count reads, so the
+ * columns can never drift from their own total. Counted here rather than from
+ * the issues list on purpose: that list is fetched with a `limit`, and a
+ * company with more issues than the limit would silently under-report — these
+ * are server-derived and complete.
+ *
+ * These are items the feed says need *you*, which is not the same as every
+ * issue in that status: the attention service applies its own audience and
+ * resolver-policy rules, so a company's Blocked here can be lower than its
+ * raw blocked-issue count. That is the honest figure for a column headed by
+ * "what needs me".
+ *
+ * Approvals are excluded — deriveActionable counts those separately, and
+ * including them here would double them.
+ */
+export interface PlicaNeedsBreakdown {
+  /** An agent asked you something and is waiting. */
+  questions: number;
+  blocked: number;
+  review: number;
+  decisions: number;
+  /** Failed runs, budget and agent-error alerts, join requests, everything else. */
+  other: number;
+}
+
+export function deriveNeedsBreakdown(attention: AttentionFeed | undefined): PlicaNeedsBreakdown {
+  const breakdown: PlicaNeedsBreakdown = { questions: 0, blocked: 0, review: 0, decisions: 0, other: 0 };
+  for (const item of attention?.items ?? []) {
+    if (item.dismissal) continue;
+    switch (item.sourceKind) {
+      case "approval":
+        break;
+      case "issue_thread_interaction":
+        breakdown.questions += 1;
+        break;
+      case "blocker_attention":
+        breakdown.blocked += 1;
+        break;
+      case "review":
+        breakdown.review += 1;
+        break;
+      case "decision":
+        breakdown.decisions += 1;
+        break;
+      default:
+        breakdown.other += 1;
+    }
+  }
+  return breakdown;
+}
+
 export function derivePaneHealth(
   summary: DashboardSummary | undefined,
   /**
@@ -104,7 +158,18 @@ export function issueStatusLabel(status: string): string {
     .join(" ");
 }
 
-export function plicaRefetchInterval(): number {
+/**
+ * Kill switch for every poll and clock in the HUD.
+ *
+ * Left in place as a diagnostic: flipping this to `true` freezes all of
+ * Plica's recurring state updates while leaving the UI fully rendered, which
+ * is how the render loop behind PAP-style "URL changes, view doesn't" was
+ * isolated. Normal operation is `false`.
+ */
+export const PLICA_FREEZE = false;
+
+export function plicaRefetchInterval(): number | false {
+  if (PLICA_FREEZE) return false;
   return typeof document !== "undefined" && document.visibilityState === "hidden" ? 30_000 : 5_000;
 }
 
@@ -193,15 +258,6 @@ export function deriveActionable(data: {
   const nonApprovalAttention = undismissedAttention.filter((item) => item.sourceKind !== "approval");
   const count = data.approvals.length + nonApprovalAttention.length + (data.ceoOverdue ? 1 : 0);
   return { criticalOrHigh, count };
-}
-
-/**
- * Derives a CEO-nudge issue title from the free-text draft: the first
- * line, trimmed and capped at 140 characters (the issue title limit).
- */
-export function nudgeTitle(text: string): string {
-  const firstLine = (text.trim().split("\n")[0] ?? "").trim();
-  return firstLine.length > 140 ? firstLine.slice(0, 140) : firstLine;
 }
 
 export interface PlicaSparklineDay {
@@ -476,14 +532,20 @@ export function currentMonthRange(nowMs: number): { from: string; to: string } {
 export interface PlicaCompanyStats {
   running: number;
   active: number;
-  tasks: number;
+  /**
+   * The live task breakdown. `tasksInProgress` was the board's old lone
+   * "Tasks" figure; open and blocked were fetched and dropped, and blocked is
+   * the most actionable of the three — work that exists and cannot move.
+   */
+  tasksOpen: number;
+  tasksInProgress: number;
+  tasksBlocked: number;
   /** Live attention items, dismissed excluded. */
   needs: number;
   critical: number;
   failed: number;
   /** Age in minutes of the oldest live attention item, or null when clear. */
   oldestMins: number | null;
-  inbox: number;
   /** Undefined when the costs endpoint is unavailable to this user. */
   tokens: number | undefined;
   /** Active routines, and how many of them are not firing when they should. */
@@ -496,7 +558,6 @@ export interface PlicaCompanyStats {
 export function deriveCompanyStats(input: {
   summary: DashboardSummary | undefined;
   attention: AttentionFeed | undefined;
-  badges: { inbox: number } | undefined;
   tokens: number | undefined;
   routines?: ReadonlyArray<RoutineListItem>;
   unavailable: boolean;
@@ -510,12 +571,13 @@ export function deriveCompanyStats(input: {
   return {
     running: input.summary?.agents.running ?? 0,
     active: input.summary?.agents.active ?? 0,
-    tasks: input.summary?.tasks.inProgress ?? 0,
+    tasksOpen: input.summary?.tasks.open ?? 0,
+    tasksInProgress: input.summary?.tasks.inProgress ?? 0,
+    tasksBlocked: input.summary?.tasks.blocked ?? 0,
     needs: live.length,
     critical: live.filter((item) => item.severity === "critical").length,
     failed: live.filter((item) => item.sourceKind === "failed_run").length,
     oldestMins: ages.length ? Math.max(...ages) : null,
-    inbox: input.badges?.inbox ?? 0,
     tokens: input.tokens,
     routines: routineHealth.active,
     routinesOverdue: routineHealth.overdue,
@@ -777,4 +839,94 @@ export function attentionRowTitle(item: AttentionItem): string {
   const subjectTitle = item.subject.title?.trim();
   if (subjectTitle) return subjectTitle;
   return attentionSpecificText(item.detail) ?? item.whyNow;
+}
+
+
+/**
+ * Runs completed per day over the trailing window, with the failure split.
+ *
+ * The board's old column was labelled "7d", which named a window rather than a
+ * measure — this is the measure: throughput, in runs a day.
+ */
+export interface PlicaThroughput {
+  perDay: number;
+  succeeded: number;
+  failed: number;
+  total: number;
+  /** Whole-percent failure rate, or null when nothing ran at all. */
+  failRatePct: number | null;
+  days: DashboardRunActivityDay[];
+}
+
+export function deriveThroughput(runActivity: ReadonlyArray<DashboardRunActivityDay>, window = 7): PlicaThroughput {
+  const days = runActivity.slice(-window);
+  const succeeded = days.reduce((sum, day) => sum + day.succeeded, 0);
+  const failed = days.reduce((sum, day) => sum + day.failed, 0);
+  const total = succeeded + failed;
+  return {
+    // One decimal: "4.7 /day" reads as a rate, "5 /day" reads as a count.
+    perDay: Math.round((total / Math.max(1, window)) * 10) / 10,
+    succeeded,
+    failed,
+    total,
+    failRatePct: total === 0 ? null : Math.round((failed / total) * 100),
+    days,
+  };
+}
+
+/**
+ * Tokens as millions, for a column that is read at a glance rather than
+ * reconciled against an invoice. Sub-million figures keep one decimal so a
+ * quiet company reads "0.4" rather than collapsing to "0".
+ */
+export function formatTokensMillions(tokens: number): string {
+  if (!Number.isFinite(tokens) || tokens <= 0) return "0";
+  const millions = tokens / 1e6;
+  return millions < 1 ? millions.toFixed(1) : String(Math.round(millions));
+}
+
+/**
+ * How badly a company wants you, 0–5.
+ *
+ * Deliberately never rendered: Need-you and Decisions already answer "does
+ * this company want me", so a heat mark beside them would be a second opinion
+ * on the same question. Heat exists to *order* the board, which is the one
+ * job those columns cannot do — it folds in the things no single column shows
+ * (a stalled run, an errored agent, an unreachable company), so a company with
+ * nothing in its Need-you count can still sort to the top when it is broken.
+ */
+export interface PlicaHeatInput {
+  unavailable: boolean;
+  criticalOrHigh: boolean;
+  needs: number;
+  /** Age of the oldest thing waiting on you, in minutes. */
+  oldestMins: number | null;
+  tasksBlocked: number;
+  /** Live runs that have gone quiet — see deriveCapacity. */
+  stalled: number;
+  agentErrors: number;
+  /** Open decisions — a slice of `needs`, counted here so heat can weight them. */
+  decisionsOpen: number;
+  tokenState: "crit" | "warn" | "ok";
+}
+
+export const PLICA_HEAT_MAX = 5;
+
+export function deriveHeat(input: PlicaHeatInput): number {
+  // An unreachable company is the top of the board by definition: every other
+  // signal about it is missing, which is exactly why it needs a person.
+  if (input.unavailable) return PLICA_HEAT_MAX;
+  let score = 0;
+  if (input.agentErrors > 0) score += 2;
+  if (input.stalled > 0) score += 2;
+  if (input.decisionsOpen > 0) score += 1;
+  if (input.criticalOrHigh) score += 2;
+  // Age outranks volume: one thing ignored for two days beats six from this
+  // morning, and neither the count nor the severity captures that.
+  if (input.oldestMins !== null && input.oldestMins >= 1440) score += 2;
+  else if (input.oldestMins !== null && input.oldestMins >= 240) score += 1;
+  if (input.needs > 0) score += 1;
+  if (input.tasksBlocked > 0) score += 1;
+  if (input.tokenState === "crit") score += 1;
+  return Math.min(PLICA_HEAT_MAX, score);
 }

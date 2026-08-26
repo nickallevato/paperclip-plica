@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Check, Loader2, X } from "lucide-react";
 import type {
@@ -11,7 +11,7 @@ import { issuesApi } from "../host/api";
 import { useToastActions } from "../host/shims";
 import { Button, Dialog, DialogContent, DialogTrigger, Popover, PopoverContent, PopoverTrigger, Textarea } from "../host/ui-kit";
 import { cn } from "../host/util";
-import { clearDraft, draftKeyFor, loadDraft, useDraftSaver } from "../lib/drafts";
+import { clearDraft, draftKeyFor, loadDraft, useDraftSaver, releaseStrandedPointerEvents } from "../lib/drafts";
 import { attentionIssueId } from "../lib/plica";
 
 const MICRO = "text-[length:var(--plica-fs-micro,11px)] leading-[1.45]";
@@ -193,6 +193,12 @@ function InteractionFormPopover({
   });
   const interaction = interactions.data?.find((entry) => entry.id === interactionId);
   const issueLabel = headline?.trim() || item.subject.title?.trim() || "Thread request";
+  // If this row is removed while its dialog is open — which the queue does
+  // routinely, since answering resolves the item it was rendered from —
+  // Radix never restores body pointer-events and every click in the app
+  // stops working. Release it on the way out.
+  useEffect(() => () => void releaseStrandedPointerEvents(), []);
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>

@@ -20,6 +20,32 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/*
+ * SCADA-influenced signal palette (ISA-101): the board is a grey field and
+ * colour is reserved for abnormal conditions, so every hue here is low-chroma
+ * and each carries exactly one meaning:
+ *
+ *   live  — happening right now. Nothing static is ever this hue.
+ *   wait  — waiting on you, on a runner, or on a clock.
+ *   alarm — broken: agent errors, unreachable companies, expired decisions.
+ *
+ * The company brand accent stays the only saturated thing on the board and
+ * never encodes a value, so it cannot compete with an alarm for attention.
+ */
+:root {
+  --plica-live: #5a7d9a;
+  --plica-wait: #9c8340;
+  --plica-alarm: #a1564e;
+  /* Where a routine's colour rests between cycles: present, but receded. */
+  --plica-rest: #86817a;
+}
+.dark {
+  --plica-live: #7396b4;
+  --plica-wait: #b89b56;
+  --plica-alarm: #bd7d74;
+  --plica-rest: #56514b;
+}
+
 @theme inline reference {
   --font-sans: var(--font-sans);
   --font-mono: var(--font-mono);
@@ -42,6 +68,9 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  --color-plica-live: var(--plica-live);
+  --color-plica-wait: var(--plica-wait);
+  --color-plica-alarm: var(--plica-alarm);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);

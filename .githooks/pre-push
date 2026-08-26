@@ -1,0 +1,8 @@
+#!/bin/sh
+# The bundle and stylesheet must actually build before anything is pushed.
+#
+# `pnpm build` is what produces dist/, which is what the host loads — a push
+# that does not build is a push nobody can install.
+set -e
+echo "pre-push: build"
+pnpm build

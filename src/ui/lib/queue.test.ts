@@ -12,6 +12,11 @@ import {
   normalizeQueueGrouping,
   summarizeQueue,
   upcomingRoutines,
+  routineHeat,
+  routineOutcome,
+  describeCronClock,
+  distinctLabel,
+  groupByCompany,
 } from "./queue";
 
 const NOW = Date.UTC(2026, 7, 21, 12);
@@ -213,7 +218,7 @@ describe("compareQueueItems / summarizeQueue / groupQueue", () => {
 });
 
 describe("flattenLiveRuns", () => {
-  it("keeps only active runs, longest-running first, with the issue attached", () => {
+  it("keeps only active runs, working before queued, with the issue attached", () => {
     const entries = flattenLiveRuns([
       {
         company: company("c1"),
@@ -225,18 +230,24 @@ describe("flattenLiveRuns", () => {
       },
       {
         company: company("c2"),
-        runs: [{ id: "r-old", status: "queued", startedAt: null, createdAt: at(40) }] as never,
+        runs: [
+          { id: "r-waiting-long", status: "queued", startedAt: null, createdAt: at(40) },
+          { id: "r-waiting-short", status: "queued", startedAt: null, createdAt: at(1) },
+        ] as never,
         issues: [],
       },
     ]);
-    expect(entries.map((entry) => entry.run.id)).toEqual(["r-old", "r-new"]);
-    expect(entries[1].issue).toMatchObject({ title: "Ship it" });
+    // Working first even though both queued runs are older, then the queue
+    // itself longest-waiting first.
+    expect(entries.map((entry) => entry.run.id)).toEqual(["r-new", "r-waiting-long", "r-waiting-short"]);
+    expect(entries.map((entry) => entry.phase)).toEqual(["working", "queued", "queued"]);
+    expect(entries[0].issue).toMatchObject({ title: "Ship it" });
   });
 });
 
 describe("upcomingRoutines", () => {
-  it("lists overdue routines first, then by soonest, marks failed last runs, and caps with overflow", () => {
-    const { items, overflow } = upcomingRoutines(
+  it("marks overdue and failed states, skips disabled and paused, and keeps every one", () => {
+    const items = upcomingRoutines(
       [
         {
           company: company("c1"),
@@ -251,27 +262,40 @@ describe("upcomingRoutines", () => {
         { company: company("c2"), routines: [routine({ id: "tomorrow", triggers: [{ id: "t", kind: "cron", enabled: true, nextRunAt: inMins(1440) }] })] },
       ],
       NOW,
-      3,
     );
+    // Nothing is truncated any more — the rail groups and collapses instead.
     expect(items.map((item) => [item.routine.id, item.state])).toEqual([
       ["late", "overdue"],
       ["soon", "scheduled"],
       ["failed", "failed"],
+      ["tomorrow", "scheduled"],
     ]);
-    expect(overflow).toBe(1);
   });
 });
 
 describe("describeCron", () => {
+  // Times are written the way the reader's locale writes them, so the
+  // expectations are built the same way rather than hardcoding 12- or
+  // 24-hour output and failing on somebody else's machine.
+  const t = (hour: number, minute: number) =>
+    new Date(2000, 0, 1, hour, minute).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+
   it("reads the common shapes", () => {
-    expect(describeCron("0 8 * * *")).toBe("daily 08:00");
-    expect(describeCron("30 9 * * 1-5")).toBe("weekdays 09:30");
-    expect(describeCron("0 7 * * 1")).toBe("Mon 07:00");
-    expect(describeCron("0 7 * * 1,4")).toBe("Mon, Thu 07:00");
+    expect(describeCron("0 8 * * *")).toBe(`daily ${t(8, 0)}`);
+    expect(describeCron("30 9 * * 1-5")).toBe(`weekdays ${t(9, 30)}`);
+    expect(describeCron("0 7 * * 1")).toBe(`Mon ${t(7, 0)}`);
+    expect(describeCron("0 7 * * 1,4")).toBe(`Mon, Thu ${t(7, 0)}`);
     expect(describeCron("*/30 * * * *")).toBe("every 30m");
     expect(describeCron("0 */6 * * *")).toBe("every 6h");
     expect(describeCron("15 * * * *")).toBe("hourly");
-    expect(describeCron("0 9 1 * *")).toBe("monthly on the 1 at 09:00");
+    expect(describeCron("0 9 1 * *")).toBe(`monthly on the 1 at ${t(9, 0)}`);
+  });
+
+  it("formats the clock through the locale rather than pasting the cron fields", () => {
+    // The bug this guards: "0 8 * * *" rendering as the raw, zero-padded
+    // "08:00" regardless of how the reader writes times.
+    expect(describeCron("0 8 * * *")).not.toContain("* *");
+    expect(describeCron("0 8 * * *")?.replace("daily ", "")).toBe(t(8, 0));
   });
 
   it("gives up on shapes it cannot read", () => {
@@ -338,6 +362,33 @@ describe("project grouping", () => {
   });
 });
 
+  it("orders the week Sunday through Saturday, not by which fires soonest", () => {
+    // NOW is a Friday. `sunday` is nearly two days out but belongs to the top
+    // of the week; `saturday` fires first by the clock yet sorts after it.
+    const dayAt = (dayOffset: number, hour: number) => {
+      const d = new Date(NOW);
+      d.setDate(d.getDate() + dayOffset);
+      d.setHours(hour, 0, 0, 0);
+      return d.toISOString();
+    };
+    const items = upcomingRoutines(
+      [
+        {
+          company: company("c1"),
+          routines: [
+            routine({ id: "saturday", triggers: [{ id: "t", kind: "cron", enabled: true, nextRunAt: dayAt(1, 9) }] }),
+            routine({ id: "sunday", triggers: [{ id: "t", kind: "cron", enabled: true, nextRunAt: dayAt(2, 9) }] }),
+            routine({ id: "sunday-late", triggers: [{ id: "t", kind: "cron", enabled: true, nextRunAt: dayAt(2, 17) }] }),
+          ],
+        },
+      ],
+      NOW,
+    );
+    const byDay = items.map((item) => [new Date(item.atMs).getDay(), item.routine.id] as const);
+    // Sunday (0) before Saturday (6); within Sunday, morning before evening.
+    expect(byDay).toEqual([[0, "sunday"], [0, "sunday-late"], [6, "saturday"]]);
+  });
+
 describe("upcomingProjects", () => {
   const project = (id: string, name: string, targetDate: string | null, status = "in_progress") =>
     ({ id, name, urlKey: id, targetDate, status, archivedAt: null }) as never;
@@ -349,7 +400,7 @@ describe("upcomingProjects", () => {
       const d = new Date(today.getFullYear(), today.getMonth(), today.getDate() + days);
       return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
     };
-    const result = upcomingProjects(
+    const items = upcomingProjects(
       [
         {
           company: company("c1"),
@@ -374,9 +425,177 @@ describe("upcomingProjects", () => {
       ],
       NOW,
     );
-    expect(result.items.map((entry) => entry.project.id)).toEqual(["late", "soon", "big", "small"]);
-    expect(result.items[0]).toMatchObject({ open: 1, blocked: 1, inProgress: 0, overdue: true });
-    expect(result.items[2]).toMatchObject({ open: 2, inProgress: 1, blocked: 0, dueMs: null, overdue: false });
-    expect(result.overflow).toBe(0);
+    expect(items.map((entry) => entry.project.id)).toEqual(["late", "soon", "big", "small"]);
+    expect(items[0]).toMatchObject({ open: 1, blocked: 1, inProgress: 0, overdue: true });
+    expect(items[2]).toMatchObject({ open: 2, inProgress: 1, blocked: 0, dueMs: null, overdue: false });
+  });
+});
+
+describe("routineHeat", () => {
+  const HOUR = 60 * 60_000;
+
+  it("burns live for the hour after it fires", () => {
+    expect(routineHeat({ nextAtMs: null, lastFiredAtMs: NOW - 10 * 60_000, nowMs: NOW }))
+      .toEqual({ phase: "running", intensity: 1 });
+  });
+
+  it("warms toward live as the run approaches, without ever reaching it", () => {
+    const far = routineHeat({ nextAtMs: NOW + 20 * HOUR, lastFiredAtMs: null, nowMs: NOW });
+    const near = routineHeat({ nextAtMs: NOW + 1 * HOUR, lastFiredAtMs: null, nowMs: NOW });
+    expect(far.phase).toBe("approaching");
+    expect(near.intensity).toBeGreaterThan(far.intensity);
+    // A routine that is merely due soon must stay dimmer than one actually running.
+    expect(near.intensity).toBeLessThan(1);
+  });
+
+  it("rests when the next run is more than a day out", () => {
+    expect(routineHeat({ nextAtMs: NOW + 48 * HOUR, lastFiredAtMs: null, nowMs: NOW }))
+      .toEqual({ phase: "resting", intensity: 0 });
+  });
+
+  it("drops hard to rest once the live hour is over, with no afterglow", () => {
+    // A finished routine is finished; how it went is the outcome mark's job,
+    // and a lingering glow would compete with rows about to fire.
+    expect(routineHeat({ nextAtMs: null, lastFiredAtMs: NOW - 90 * 60_000, nowMs: NOW }))
+      .toEqual({ phase: "resting", intensity: 0 });
+  });
+
+
+  it("warms for the next run even though it only just ran", () => {
+    const heat = routineHeat({ nextAtMs: NOW + 30 * 60_000, lastFiredAtMs: NOW - 5 * 60 * 60_000, nowMs: NOW });
+    expect(heat.phase).toBe("approaching");
+  });
+
+  it("ignores a fired timestamp from the future rather than pinning itself live", () => {
+    expect(routineHeat({ nextAtMs: NOW + 48 * HOUR, lastFiredAtMs: NOW + HOUR, nowMs: NOW }).phase).toBe("resting");
+  });
+
+  it("rests with nothing scheduled and nothing run", () => {
+    expect(routineHeat({ nextAtMs: null, lastFiredAtMs: null, nowMs: NOW }))
+      .toEqual({ phase: "resting", intensity: 0 });
+  });
+});
+
+
+
+
+describe("routineOutcome", () => {
+  const issue = (over: Partial<{ id: string; identifier: string | null; title: string; status: string }> = {}) =>
+    ({ id: "i1", identifier: "ACM-1", title: "Nightly digest", status: "done", ...over }) as never;
+  const withRun = (run: unknown, activeIssue: unknown = null) =>
+    ({ lastRun: run, activeIssue }) as never;
+
+  it("says so when a routine has never run", () => {
+    expect(routineOutcome(withRun(null))).toMatchObject({ state: "never", issue: null });
+  });
+
+  it("ticks a completed run", () => {
+    expect(routineOutcome(withRun({ status: "completed", linkedIssue: issue() })).state).toBe("ok");
+  });
+
+  it("flags a failed run and carries its reason", () => {
+    const outcome = routineOutcome(withRun({ status: "failed", failureReason: "adapter timeout", linkedIssue: issue() }));
+    expect(outcome.state).toBe("failed");
+    expect(outcome.label).toContain("adapter timeout");
+    expect(outcome.issue).toMatchObject({ identifier: "ACM-1" });
+  });
+
+  it("reports a blocked issue as blocked, not as a clean completion", () => {
+    // The run finished; the work it created did not. That is the case worth
+    // catching — a tick here would say the routine is fine when it is stuck.
+    const outcome = routineOutcome(withRun({ status: "completed", linkedIssue: issue({ status: "blocked" }) }));
+    expect(outcome.state).toBe("blocked");
+    expect(outcome.label).toContain("ACM-1");
+    expect(outcome.issue).not.toBeNull();
+  });
+
+  it("treats an issue still in flight as working", () => {
+    expect(routineOutcome(withRun({ status: "issue_created", linkedIssue: issue({ status: "in_progress" }) })).state)
+      .toBe("working");
+  });
+
+  it("counts a closed issue from an issue_created run as done", () => {
+    expect(routineOutcome(withRun({ status: "issue_created", linkedIssue: issue({ status: "done" }) })).state).toBe("ok");
+  });
+
+  it("marks skipped and coalesced runs without alarming about them", () => {
+    expect(routineOutcome(withRun({ status: "skipped" })).state).toBe("skipped");
+    expect(routineOutcome(withRun({ status: "coalesced" })).state).toBe("skipped");
+  });
+
+  it("falls back to the routine's active issue when the run carries none", () => {
+    const outcome = routineOutcome(withRun({ status: "issue_created" }, issue({ status: "blocked" })));
+    expect(outcome.state).toBe("blocked");
+    expect(outcome.issue).toMatchObject({ identifier: "ACM-1" });
+  });
+});
+
+describe("describeCronClock", () => {
+  const t = (hour: number, minute: number) =>
+    new Date(2000, 0, 1, hour, minute).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+
+  it("never names a day, whatever the schedule is", () => {
+    // The rail has a weekday column; if this said days too, the column would
+    // mean one thing on some rows and another on the rest.
+    for (const expression of ["0 9 * * 1", "0 9 * * 1,4", "30 9 * * 1-5", "0 9 * * *", "0 9 1 * *"]) {
+      expect(describeCronClock(expression)).not.toMatch(/Mon|Thu|weekday|daily|monthly/i);
+    }
+  });
+
+  it("gives the clock time for any fixed-time schedule", () => {
+    expect(describeCronClock("0 9 * * 1")).toBe(t(9, 0));
+    expect(describeCronClock("30 9 * * 1-5")).toBe(t(9, 30));
+    expect(describeCronClock("0 9 1 * *")).toBe(t(9, 0));
+  });
+
+  it("gives the interval for schedules with no single time", () => {
+    expect(describeCronClock("*/30 * * * *")).toBe("every 30m");
+    expect(describeCronClock("0 */6 * * *")).toBe("every 6h");
+    expect(describeCronClock("15 * * * *")).toBe("hourly");
+  });
+
+  it("gives up on shapes it cannot read", () => {
+    expect(describeCronClock("not a cron")).toBeNull();
+    expect(describeCronClock(null)).toBeNull();
+  });
+});
+
+describe("distinctLabel", () => {
+  it("drops a label that just restates the routine title", () => {
+    expect(distinctLabel("Series release", "Series Content Release")).toBeNull();
+    expect(distinctLabel("nightly digest", "Nightly Digest")).toBeNull();
+  });
+
+  it("keeps a label that adds something", () => {
+    expect(distinctLabel("after the Friday close", "Nightly Digest")).toBe("after the Friday close");
+  });
+
+  it("treats blank and missing labels as nothing to show", () => {
+    expect(distinctLabel("   ", "Nightly Digest")).toBeNull();
+    expect(distinctLabel(null, "Nightly Digest")).toBeNull();
+  });
+});
+
+describe("groupByCompany", () => {
+  const co = (id: string) => ({ id, name: id }) as never;
+  const item = (companyId: string, tag: string) => ({ company: co(companyId), tag });
+
+  it("follows the board's company order rather than the item order", () => {
+    const groups = groupByCompany(
+      [item("c3", "a"), item("c1", "b"), item("c2", "c"), item("c1", "d")],
+      [co("c1"), co("c2"), co("c3")],
+    );
+    expect(groups.map((group) => group.company.id)).toEqual(["c1", "c2", "c3"]);
+    expect(groups[0].items).toHaveLength(2);
+  });
+
+  it("puts companies missing from the order last instead of dropping them", () => {
+    const groups = groupByCompany([item("ghost", "a"), item("c1", "b")], [co("c1")]);
+    expect(groups.map((group) => group.company.id)).toEqual(["c1", "ghost"]);
+  });
+
+  it("falls back to first appearance with no order given", () => {
+    const groups = groupByCompany([item("c2", "a"), item("c1", "b")]);
+    expect(groups.map((group) => group.company.id)).toEqual(["c2", "c1"]);
   });
 });

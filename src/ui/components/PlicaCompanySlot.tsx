@@ -69,39 +69,40 @@ export function PlicaCompanySlot({
   const alertSnapshot: PlicaAlertSnapshot | null = dataReady ? { health, criticalAttentionIds, ceoOverdue } : null;
   const pulse = usePlicaAlerts(company.name, alertsEnabled, alertSnapshot);
 
-  // Effects, not inline calls: a parent state setter must not run during this
-  // component's render. Each depends on the values, not the rebuilt objects.
-  useEffect(() => {
-    onActionable?.(company.id, actionable);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [company.id, actionable.criticalOrHigh, actionable.count]);
-
   const stats = deriveCompanyStats({
     summary: data.summary,
     attention: data.attention,
-    badges: data.badges,
     tokens: data.tokens,
     routines: data.routines,
     unavailable: data.unavailable,
     nowMs: Date.now(),
   });
-  useEffect(() => {
-    onStats?.(company.id, stats);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    company.id,
-    stats.running, stats.active, stats.tasks, stats.needs, stats.critical,
-    stats.failed, stats.oldestMins, stats.inbox, stats.tokens, stats.unavailable,
-    stats.routines, stats.routinesOverdue, stats.routinesFailing,
-  ]);
 
+  // One effect, not three.
+  //
+  // React Router 7 wraps navigation in `startTransition`, and a transition
+  // render can be interrupted indefinitely by higher-priority updates. Each
+  // company slot used to push three separate parent setStates per poll, so a
+  // dozen companies produced a steady drumbeat of commits into the same tree
+  // the host router renders in — enough to starve a route transition so the
+  // URL changes while the view never does.
+  //
+  // Reporting all three together lets React batch them into a single commit,
+  // cutting this slot's commit rate to a third of what it was.
   useEffect(() => {
+    onActionable?.(company.id, actionable);
+    onStats?.(company.id, stats);
     onData?.(company.id, data);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     company.id,
+    actionable.criticalOrHigh, actionable.count,
+    stats.running, stats.active, stats.tasksOpen, stats.tasksInProgress, stats.tasksBlocked, stats.needs,
+    stats.critical, stats.failed, stats.oldestMins, stats.tokens, stats.unavailable,
+    stats.routines, stats.routinesOverdue, stats.routinesFailing,
     data.summary, data.liveRuns, data.projects, data.issues, data.agents, data.approvals,
-    data.badges, data.attention, data.routines, data.tokens, data.isLoading, data.unavailable, data.staleSince,
+    data.attention, data.routines, data.needsBreakdown, data.tokens,
+    data.isLoading, data.unavailable, data.staleSince,
   ]);
 
   return (

@@ -36,7 +36,6 @@ import {
   normalizePinnedIds,
   normalizeSortMode,
   normalizeTokenSettings,
-  nudgeTitle,
   pruneClosedIssueAttention,
   partitionHotFirst,
   relativeTimeLabel,
@@ -47,6 +46,11 @@ import {
   thresholdsFor,
   tokenState,
   type PlicaAlertSnapshot,
+  deriveHeat,
+  deriveThroughput,
+  formatTokensMillions,
+  PLICA_HEAT_MAX,
+  deriveNeedsBreakdown,
 } from "./plica";
 
 function summaryWith(overrides: {
@@ -317,32 +321,6 @@ describe("labels", () => {
   });
 });
 
-
-describe("nudgeTitle", () => {
-  it("uses the first line, trimmed", () => {
-    expect(nudgeTitle("  Ping the CEO  \nmore detail below")).toBe("Ping the CEO");
-  });
-
-  it("truncates the first line to 140 chars", () => {
-    const long = "x".repeat(200);
-    const title = nudgeTitle(long);
-    expect(title.length).toBe(140);
-    expect(title).toBe(long.slice(0, 140));
-  });
-
-  it("returns an empty string for empty input", () => {
-    expect(nudgeTitle("")).toBe("");
-  });
-
-  it("skips a leading blank line so a draft that starts with a newline still yields a title", () => {
-    expect(nudgeTitle("\nActual title\nmore detail")).toBe("Actual title");
-    expect(nudgeTitle("\n\n  Ping the CEO  ")).toBe("Ping the CEO");
-  });
-
-  it("returns an empty string for whitespace-only input", () => {
-    expect(nudgeTitle("   \n  \n  ")).toBe("");
-  });
-});
 
 describe("sparklineDays", () => {
   const day = (date: string, succeeded: number, failed: number): DashboardRunActivityDay =>
@@ -643,9 +621,8 @@ describe("deriveCompanyStats", () => {
   const base = {
     summary: {
       agents: { active: 9, running: 6, paused: 0, error: 0 },
-      tasks: { open: 1, inProgress: 23, blocked: 0, done: 0 },
+      tasks: { open: 30, inProgress: 23, blocked: 4, done: 0 },
     },
-    badges: { inbox: 4 },
     tokens: 500,
     unavailable: false,
     nowMs: now,
@@ -673,9 +650,10 @@ describe("deriveCompanyStats", () => {
       ]),
     } as never);
     expect(stats).toMatchObject({
-      running: 6, active: 9, tasks: 23,
+      running: 6, active: 9,
+      tasksOpen: 30, tasksInProgress: 23, tasksBlocked: 4,
       needs: 3, critical: 1, failed: 2,
-      oldestMins: 900, inbox: 4, tokens: 500,
+      oldestMins: 900, tokens: 500,
     });
   });
 
@@ -841,3 +819,168 @@ describe("attentionRowTitle", () => {
   });
 });
 
+
+describe("deriveThroughput", () => {
+  const day = (succeeded: number, failed: number) => ({ date: "2026-08-01", succeeded, failed }) as never;
+
+  it("reports runs a day over the window, with the failure split", () => {
+    const result = deriveThroughput([day(3, 0), day(4, 1), day(2, 0), day(5, 2), day(1, 0), day(6, 1), day(0, 0)]);
+    expect(result).toMatchObject({ succeeded: 21, failed: 4, total: 25, failRatePct: 16 });
+    expect(result.perDay).toBeCloseTo(3.6, 5);
+  });
+
+  it("reads only the trailing window, however much history it is handed", () => {
+    const days = Array.from({ length: 30 }, (_, index) => day(index, 0));
+    expect(deriveThroughput(days).days).toHaveLength(7);
+    // The last seven days are 23..29 — older history must not dilute the rate.
+    expect(deriveThroughput(days).succeeded).toBe(23 + 24 + 25 + 26 + 27 + 28 + 29);
+  });
+
+  it("has no failure rate when nothing ran, rather than a misleading 0%", () => {
+    expect(deriveThroughput([day(0, 0), day(0, 0)]).failRatePct).toBeNull();
+    expect(deriveThroughput([]).failRatePct).toBeNull();
+  });
+
+  it("still divides by the full window when the company has less history than that", () => {
+    expect(deriveThroughput([day(7, 0)]).perDay).toBeCloseTo(1, 5);
+  });
+});
+
+describe("formatTokensMillions", () => {
+  it("rounds millions for figures a person scans", () => {
+    expect(formatTokensMillions(412_000_000)).toBe("412");
+    expect(formatTokensMillions(1_500_000)).toBe("2");
+  });
+
+  it("keeps a decimal below a million so a quiet company does not read as zero", () => {
+    expect(formatTokensMillions(400_000)).toBe("0.4");
+  });
+
+  it("treats nothing, negatives and junk as zero", () => {
+    expect(formatTokensMillions(0)).toBe("0");
+    expect(formatTokensMillions(-5)).toBe("0");
+    expect(formatTokensMillions(Number.NaN)).toBe("0");
+  });
+});
+
+describe("deriveHeat", () => {
+  const calm: Parameters<typeof deriveHeat>[0] = {
+    unavailable: false,
+    criticalOrHigh: false,
+    needs: 0,
+    oldestMins: null,
+    tasksBlocked: 0,
+    stalled: 0,
+    agentErrors: 0,
+    decisionsOpen: 0,
+    tokenState: "ok",
+  };
+
+  it("is zero for a company with nothing wrong", () => {
+    expect(deriveHeat(calm)).toBe(0);
+  });
+
+  it("puts an unreachable company at the top even though it reports nothing else", () => {
+    expect(deriveHeat({ ...calm, unavailable: true })).toBe(5);
+  });
+
+  it("ranks a company that is broken above one that is merely busy", () => {
+    const broken = deriveHeat({ ...calm, agentErrors: 1 });
+    const busy = deriveHeat({ ...calm, needs: 6 });
+    expect(broken).toBeGreaterThan(busy);
+  });
+
+  it("ranks one long-ignored item above several fresh ones", () => {
+    const stale = deriveHeat({ ...calm, needs: 1, oldestMins: 3 * 1440 });
+    const fresh = deriveHeat({ ...calm, needs: 6, oldestMins: 5 });
+    expect(stale).toBeGreaterThan(fresh);
+  });
+
+  it("counts a silent run, which no column on the board shows", () => {
+    expect(deriveHeat({ ...calm, stalled: 2 })).toBeGreaterThan(0);
+  });
+
+  it("counts open decisions", () => {
+    expect(deriveHeat({ ...calm, decisionsOpen: 1 })).toBeGreaterThan(0);
+  });
+
+  it("never exceeds the maximum however much is wrong at once", () => {
+    expect(
+      deriveHeat({
+        unavailable: false,
+        criticalOrHigh: true,
+        needs: 20,
+        oldestMins: 10 * 1440,
+        tasksBlocked: 9,
+        stalled: 4,
+        agentErrors: 3,
+        decisionsOpen: 2,
+        tokenState: "crit",
+      }),
+    ).toBe(PLICA_HEAT_MAX);
+  });
+});
+
+describe("deriveNeedsBreakdown", () => {
+  const feed = (items: Array<{ kind: string; dismissed?: boolean }>) =>
+    ({
+      items: items.map((item, index) => ({
+        id: `d${index}`,
+        sourceKind: item.kind,
+        severity: "medium",
+        dismissal: item.dismissed ? { dismissedAt: "x" } : null,
+        activityAt: null,
+      })),
+    }) as never;
+
+  it("splits the feed into the buckets the board has columns for", () => {
+    expect(
+      deriveNeedsBreakdown(
+        feed([
+          { kind: "issue_thread_interaction" },
+          { kind: "issue_thread_interaction" },
+          { kind: "blocker_attention" },
+          { kind: "review" },
+          { kind: "review" },
+          { kind: "review" },
+          { kind: "decision" },
+          { kind: "failed_run" },
+          { kind: "budget_alert" },
+        ]),
+      ),
+    ).toEqual({ questions: 2, blocked: 1, review: 3, decisions: 1, other: 2 });
+  });
+
+  it("excludes approvals, which deriveActionable already counts", () => {
+    const breakdown = deriveNeedsBreakdown(feed([{ kind: "approval" }, { kind: "approval" }, { kind: "review" }]));
+    expect(breakdown.other).toBe(0);
+    expect(breakdown.review).toBe(1);
+  });
+
+  it("ignores anything you have dismissed", () => {
+    expect(
+      deriveNeedsBreakdown(feed([{ kind: "review" }, { kind: "review", dismissed: true }])).review,
+    ).toBe(1);
+  });
+
+  it("is all zeros, not a crash, with no feed at all", () => {
+    expect(deriveNeedsBreakdown(undefined)).toEqual({ questions: 0, blocked: 0, review: 0, decisions: 0, other: 0 });
+  });
+
+  it("never totals more than the Need-you count it is a breakdown of", () => {
+    // The columns are slices of Need-you: if these could exceed it, the board
+    // would be showing more work than the rail says exists.
+    const items = feed([
+      { kind: "issue_thread_interaction" },
+      { kind: "blocker_attention" },
+      { kind: "review" },
+      { kind: "decision" },
+      { kind: "failed_run" },
+      { kind: "approval" },
+    ]);
+    const breakdown = deriveNeedsBreakdown(items);
+    const summed = breakdown.questions + breakdown.blocked + breakdown.review + breakdown.decisions + breakdown.other;
+    const needs = deriveActionable({ approvals: [], attention: items, ceoOverdue: false });
+    expect(summed).toBeLessThanOrEqual(needs.count);
+  });
+});

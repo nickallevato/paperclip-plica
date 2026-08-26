@@ -9,6 +9,7 @@ import type {
   RoutineListItem,
 } from "@paperclipai/shared";
 import type { LiveRunForIssue } from "../host/api";
+import { isRunActive, runPhase, type RunPhase } from "./runs";
 import {
   PLICA_ROUTINE_OVERDUE_GRACE_MS,
   attentionIssueId,
@@ -60,6 +61,8 @@ export type PlicaQueueItem =
   | (PlicaQueueItemBase & { kind: "routine"; routine: RoutineListItem; reason: "overdue" | "failed" });
 
 const BUCKET_ORDER: Record<PlicaQueueBucket, number> = { now: 0, soon: 1, later: 2 };
+
+const PHASE_ORDER: Record<RunPhase, number> = { working: 0, queued: 1 };
 
 function epochMs(iso: string | Date | null | undefined): number | null {
   if (!iso) return null;
@@ -393,9 +396,16 @@ export interface PlicaLiveEntry {
   run: LiveRunForIssue;
   issue: Issue | undefined;
   startedMs: number;
+  /** Working = an agent is on it; queued = waiting for a runner. */
+  phase: RunPhase;
 }
 
-/** Every queued/running run across companies, longest-running first. */
+/**
+ * Every queued/running run across companies. Runs actually being worked come
+ * first (longest-running first), then the queue behind them (longest-waiting
+ * first) — a run waiting on a runner is a different thing to look at than a
+ * run burning time on a ticket, so the two never interleave.
+ */
 export function flattenLiveRuns(
   entries: ReadonlyArray<{ company: Company; runs: ReadonlyArray<LiveRunForIssue>; issues: ReadonlyArray<Issue> }>,
 ): PlicaLiveEntry[] {
@@ -403,16 +413,19 @@ export function flattenLiveRuns(
   for (const { company, runs, issues } of entries) {
     const issueById = new Map(issues.map((issue) => [issue.id, issue]));
     for (const run of runs) {
-      if (run.status !== "queued" && run.status !== "running") continue;
+      if (!isRunActive(run)) continue;
       out.push({
         company,
         run,
         issue: run.issueId ? issueById.get(run.issueId) : undefined,
         startedMs: epochMs(run.startedAt ?? run.createdAt) ?? 0,
+        phase: runPhase(run),
       });
     }
   }
-  return out.sort((a, b) => a.startedMs - b.startedMs);
+  return out.sort(
+    (a, b) => PHASE_ORDER[a.phase] - PHASE_ORDER[b.phase] || a.startedMs - b.startedMs,
+  );
 }
 
 export interface PlicaUpcomingRoutine {
@@ -435,8 +448,7 @@ export interface PlicaUpcomingRoutine {
 export function upcomingRoutines(
   entries: ReadonlyArray<{ company: Company; routines: ReadonlyArray<RoutineListItem> }>,
   nowMs: number,
-  limit = 8,
-): { items: PlicaUpcomingRoutine[]; overflow: number } {
+): PlicaUpcomingRoutine[] {
   const out: PlicaUpcomingRoutine[] = [];
   for (const { company, routines } of entries) {
     for (const routine of routines) {
@@ -457,13 +469,19 @@ export function upcomingRoutines(
       out.push({ company, routine, trigger, atMs, state });
     }
   }
+  // Calendar order, Sunday through Saturday, then time of day — the rail reads
+  // like a week's schedule rather than a countdown queue. Urgency has not been
+  // lost: it moved into each row's colour and each company's summary line.
   out.sort((a, b) => {
-    const aLate = a.state === "overdue" ? 0 : 1;
-    const bLate = b.state === "overdue" ? 0 : 1;
-    if (aLate !== bLate) return aLate - bLate;
-    return a.atMs - b.atMs;
+    const aAt = new Date(a.atMs);
+    const bAt = new Date(b.atMs);
+    return (
+      aAt.getDay() - bAt.getDay() ||
+      aAt.getHours() * 60 + aAt.getMinutes() - (bAt.getHours() * 60 + bAt.getMinutes()) ||
+      a.routine.title.localeCompare(b.routine.title)
+    );
   });
-  return { items: out.slice(0, limit), overflow: Math.max(0, out.length - limit) };
+  return out;
 }
 
 // ---------------------------------------------------------------------------
@@ -472,8 +490,12 @@ export function upcomingRoutines(
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
+/**
+ * A wall-clock time the way the reader's locale writes one — "9:00 AM" rather
+ * than the cron's own "09:00". The date is a throwaway carrier for the time.
+ */
 function clock(hour: number, minute: number): string {
-  return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+  return new Date(2000, 0, 1, hour, minute).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
 }
 
 function dayList(field: string): string | null {
@@ -485,8 +507,8 @@ function dayList(field: string): string | null {
 }
 
 /**
- * The common cron shapes in plain words — "daily 08:00", "weekdays 09:30",
- * "every 30m", "Mon 07:00". Anything fancier returns null and the caller
+ * The common cron shapes in plain words — "daily 8:00 AM", "weekdays 9:30 AM",
+ * "every 30m", "Mon 7:00 AM". Anything fancier returns null and the caller
  * falls back to the trigger's own label or the raw expression.
  */
 export function describeCron(expression: string | null | undefined): string | null {
@@ -554,8 +576,7 @@ function targetDateMs(targetDate: string | null): number | null {
 export function upcomingProjects(
   entries: ReadonlyArray<{ company: Company; projects: ReadonlyArray<Project>; issues: ReadonlyArray<Issue> }>,
   nowMs: number,
-  limit = 8,
-): { items: PlicaProjectEntry[]; overflow: number } {
+): PlicaProjectEntry[] {
   const all: PlicaProjectEntry[] = [];
   for (const { company, projects, issues } of entries) {
     const counts = new Map<string, { open: number; inProgress: number; blocked: number }>();
@@ -580,5 +601,216 @@ export function upcomingProjects(
     if ((a.dueMs === null) !== (b.dueMs === null)) return a.dueMs === null ? 1 : -1;
     return b.open - a.open || a.project.name.localeCompare(b.project.name);
   });
-  return { items: all.slice(0, limit), overflow: Math.max(0, all.length - limit) };
+  return all;
 }
+
+
+/**
+ * One group per company.
+ *
+ * `order` is the board's own company order — watched first, then hot-first or
+ * the user's sidebar order — and the rails follow it so the same company sits
+ * in the same place in every list on the page. Without it the rails would
+ * order themselves by whichever company happened to hold the most urgent item,
+ * and the three lists would disagree with the board and with each other.
+ *
+ * Companies absent from `order` keep their first-appearance position at the
+ * end rather than being dropped.
+ */
+export interface PlicaCompanyGroup<T> {
+  company: Company;
+  items: T[];
+}
+
+export function groupByCompany<T extends { company: Company }>(
+  items: ReadonlyArray<T>,
+  order: ReadonlyArray<Company> = [],
+): PlicaCompanyGroup<T>[] {
+  const groups = new Map<string, PlicaCompanyGroup<T>>();
+  for (const item of items) {
+    const group = groups.get(item.company.id);
+    if (group) group.items.push(item);
+    else groups.set(item.company.id, { company: item.company, items: [item] });
+  }
+  const rank = new Map(order.map((company, index) => [company.id, index]));
+  return [...groups.values()].sort(
+    (a, b) => (rank.get(a.company.id) ?? Number.MAX_SAFE_INTEGER) - (rank.get(b.company.id) ?? Number.MAX_SAFE_INTEGER),
+  );
+}
+
+
+// ---------------------------------------------------------------------------
+// Routine cycle heat
+// ---------------------------------------------------------------------------
+
+/** A routine is "live" for the hour after it fires. */
+export const PLICA_ROUTINE_LIVE_MS = 60 * 60_000;
+/** How far out a routine starts warming toward live. */
+export const PLICA_ROUTINE_APPROACH_MS = 24 * 60 * 60_000;
+/** Approaching never quite reaches live, so a running routine still stands out. */
+const APPROACH_CEILING = 0.85;
+
+export type PlicaRoutinePhase = "running" | "approaching" | "resting";
+
+export interface PlicaRoutineHeat {
+  phase: PlicaRoutinePhase;
+  /** 0 = at rest (muted grey), 1 = live. Drives the row's colour mix. */
+  intensity: number;
+}
+
+const clamp01 = (value: number) => Math.min(1, Math.max(0, value));
+
+/**
+ * Where a routine sits in its own cycle, as a single 0–1 number.
+ *
+ * The rail colours every row by this, so the *shape* of the week is visible
+ * before any text is read: rows brighten toward live blue over the day before
+ * they fire, burn full blue for the hour they run, then drop straight back to
+ * muted grey.
+ *
+ * The drop is deliberately hard rather than a fade. A routine that has just
+ * finished is finished — how it *went* is carried by its outcome mark, which
+ * is a fact rather than a temperature, and a lingering glow would compete
+ * with the rows that are genuinely about to fire.
+ */
+export function routineHeat(input: {
+  nextAtMs: number | null;
+  lastFiredAtMs: number | null;
+  nowMs: number;
+}): PlicaRoutineHeat {
+  const { nextAtMs, lastFiredAtMs, nowMs } = input;
+
+  const sinceFired = lastFiredAtMs === null ? null : nowMs - lastFiredAtMs;
+  if (sinceFired !== null && sinceFired >= 0 && sinceFired < PLICA_ROUTINE_LIVE_MS) {
+    return { phase: "running", intensity: 1 };
+  }
+
+  const untilNext = nextAtMs === null ? null : nextAtMs - nowMs;
+  const approaching = untilNext !== null && untilNext >= 0 && untilNext < PLICA_ROUTINE_APPROACH_MS
+    ? clamp01(1 - untilNext / PLICA_ROUTINE_APPROACH_MS) * APPROACH_CEILING
+    : 0;
+
+  return approaching === 0 ? { phase: "resting", intensity: 0 } : { phase: "approaching", intensity: approaching };
+}
+
+// ---------------------------------------------------------------------------
+// Routine outcome
+// ---------------------------------------------------------------------------
+
+/**
+ * How the routine's last run ended, as one mark the rail can render.
+ *
+ * `ok` is the quiet, colourless case — a tick and nothing more. The rest are
+ * reasons to look, and each carries the issue to open so the mark is a way in
+ * rather than just a verdict.
+ */
+export type PlicaRoutineOutcomeState = "ok" | "failed" | "blocked" | "working" | "skipped" | "never";
+
+/**
+ * The issue fields the outcome mark needs. Declared structurally because
+ * `RoutineIssueSummary` is not re-exported from the shared package index;
+ * this is the subset both `lastRun.linkedIssue` and `activeIssue` carry.
+ */
+export interface PlicaOutcomeIssue {
+  id: string;
+  identifier: string | null;
+  title: string;
+  status: string;
+}
+
+export interface PlicaRoutineOutcome {
+  state: PlicaRoutineOutcomeState;
+  /** Plain-language reading, used as the mark's tooltip. */
+  label: string;
+  /** The issue the run produced or stalled on, when there is one to open. */
+  issue: PlicaOutcomeIssue | null;
+}
+
+const CLOSED = new Set(["done", "cancelled"]);
+
+export function routineOutcome(routine: RoutineListItem): PlicaRoutineOutcome {
+  const run = routine.lastRun;
+  // The run's own linked issue first; `activeIssue` is the routine's current
+  // one, which is the right fallback when the run only recorded an id.
+  const issue = run?.linkedIssue ?? routine.activeIssue ?? null;
+  if (!run) return { state: "never", label: "has not run yet", issue: null };
+
+  switch (run.status) {
+    case "failed":
+      return {
+        state: "failed",
+        label: run.failureReason?.trim() ? `last run failed — ${run.failureReason.trim()}` : "last run failed",
+        issue,
+      };
+    case "skipped":
+    case "coalesced":
+      return { state: "skipped", label: `last run ${run.status}`, issue };
+    case "received":
+      return { state: "working", label: "run received, not finished yet", issue };
+    case "issue_created":
+    case "completed":
+    default: {
+      if (issue && issue.status === "blocked") {
+        return { state: "blocked", label: `blocked on ${issue.identifier ?? issue.title}`, issue };
+      }
+      if (run.status === "completed" || (issue && CLOSED.has(issue.status))) {
+        return { state: "ok", label: "last run completed", issue };
+      }
+      return {
+        state: "working",
+        label: issue ? `working on ${issue.identifier ?? issue.title}` : "run in progress",
+        issue,
+      };
+    }
+  }
+}
+
+
+/**
+ * The cadence with no day in it: a clock time, or an interval.
+ *
+ * The rail already has a weekday column, so this column must never also talk
+ * about days — otherwise some rows read "Mon 9:00 AM" and others "9:00 AM"
+ * and the column means two different things down its own length. Every row
+ * answers exactly one question here: at what time, or how often.
+ */
+export function describeCronClock(expression: string | null | undefined): string | null {
+  if (!expression) return null;
+  const parts = expression.trim().split(/\s+/);
+  if (parts.length !== 5) return null;
+  const [min, hour] = parts;
+  const every = (field: string) => (field.startsWith("*/") ? Number(field.slice(2)) : null);
+  const num = (field: string) => (/^\d+$/.test(field) ? Number(field) : null);
+
+  const everyMin = every(min);
+  if (everyMin && hour === "*") return `every ${everyMin}m`;
+  const everyHour = every(hour);
+  if (everyHour) return everyHour === 1 ? "hourly" : `every ${everyHour}h`;
+  if (hour === "*") return "hourly";
+
+  const minute = num(min);
+  const hourNum = num(hour);
+  return minute !== null && hourNum !== null ? clock(hourNum, minute) : null;
+}
+
+/**
+ * A trigger label worth showing beside the routine's own title.
+ *
+ * Trigger labels are often prose restating the routine ("Series release" under
+ * "Series Content Release"), which reads as the row saying the same thing
+ * twice. Only a label that adds something survives.
+ */
+export function distinctLabel(label: string | null | undefined, title: string): string | null {
+  const text = label?.trim();
+  if (!text) return null;
+  const words = (value: string) =>
+    new Set(value.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean));
+  const a = words(text);
+  const b = words(title);
+  if (a.size === 0) return null;
+  // Word-subset, not substring: "Series release" is not a substring of
+  // "Series Content Release" but says nothing the title has not already said.
+  const subset = (small: Set<string>, large: Set<string>) => [...small].every((word) => large.has(word));
+  return subset(a, b) || subset(b, a) ? null : text;
+}
+

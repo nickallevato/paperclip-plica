@@ -1,0 +1,503 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Plica Board v2 — design preview</title>
+<style>
+/* SCADA / ISA-101 influence: grey field, low-chroma alarm colour only. */
+:root{
+  --bg:#e9e7e3; --card:#f6f5f3; --border:#d5d2cd; --border-soft:#e2dfda; --rule:#cfccc6;
+  --fg:#22201d; --muted:#77736d; --muted-bg:#e4e1dc;
+  --idle:#c3bfb9;
+  --live:#5a7d9a;   --live-dim:#5a7d9a2e;
+  --wait:#9c8340;   --wait-dim:#9c834028;
+  --alarm:#a1564e;  --alarm-dim:#a1564e26;
+  --ok:#5f7d5a;
+  --shadow:0 1px 2px rgba(0,0,0,.06);
+}
+:root[data-theme="dark"]{
+  --bg:#121211; --card:#1b1a18; --border:#2c2a27; --border-soft:#232120; --rule:#332f2b;
+  --fg:#e8e5e0; --muted:#8f8a83; --muted-bg:#26241f;
+  --idle:#48443f;
+  --live:#7396b4;   --live-dim:#7396b42e;
+  --wait:#b89b56;   --wait-dim:#b89b5626;
+  --alarm:#bd7d74;  --alarm-dim:#bd7d7424;
+  --ok:#7d9a76;
+  --shadow:0 1px 2px rgba(0,0,0,.5);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);
+  font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Inter,sans-serif;
+  font-size:14px;line-height:1.45;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1400px;margin:0 auto;padding:20px 20px 80px}
+header.top{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-bottom:16px}
+h1{font-size:17px;font-weight:650;letter-spacing:-.01em;margin:0}
+.sub{color:var(--muted);font-size:12px}
+.spacer{flex:1}
+.seg{display:inline-flex;border:1px solid var(--border);border-radius:7px;padding:2px;background:var(--card);gap:2px}
+.seg .lbl{font-size:11px;color:var(--muted);padding:4px 6px 4px 8px;text-transform:uppercase;letter-spacing:.04em;align-self:center}
+.seg button{border:0;background:transparent;color:var(--muted);font:inherit;font-size:12px;padding:4px 9px;border-radius:5px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--muted-bg);color:var(--fg);font-weight:600}
+.card{border:1px solid var(--border);border-radius:8px;background:var(--card);box-shadow:var(--shadow);overflow-x:auto}
+table{width:100%;border-collapse:collapse}
+th{font-size:10px;line-height:1.4;font-weight:600;text-transform:uppercase;letter-spacing:.05em;
+  color:var(--muted);padding:8px 12px;text-align:left;white-space:nowrap}
+th.r{text-align:right}
+td{padding:10px 12px;vertical-align:middle;border-top:1px solid var(--border-soft)}
+td.r{text-align:right}
+.gsep{border-left:1px solid var(--rule)}
+tbody tr:hover{background:color-mix(in srgb,var(--muted-bg) 50%,transparent)}
+.num{font-size:18px;line-height:1.15;font-weight:600;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.micro{font-size:10.5px;line-height:1.35}
+.mut{color:var(--muted)}
+.dash,.zero{color:color-mix(in srgb,var(--muted) 42%,transparent)}
+.stack{display:flex;flex-direction:column;gap:2px}
+.stackR{display:flex;flex-direction:column;align-items:flex-end;gap:2px}
+
+/* ---- company cell now carries the running strip, hard left with the name ---- */
+td.company{border-left:4px solid var(--accent);padding-left:13px}
+.co{display:flex;align-items:center;gap:10px}
+.avatar{width:30px;height:30px;border-radius:6px;flex:0 0 auto;display:grid;place-items:center;
+  font-size:11px;font-weight:700;color:#fff;position:relative}
+.coName{font-size:15px;font-weight:600;letter-spacing:-.01em;line-height:1.25;white-space:nowrap}
+.coSub{display:flex;align-items:center;gap:8px;min-height:13px}
+.ceo{font-size:10.5px;color:var(--muted);white-space:nowrap}
+.pill{display:inline-flex;align-items:center;font-size:10px;line-height:1.3;padding:1px 6px;border-radius:4px;border:1px solid;white-space:nowrap}
+.pill.alarm{border-color:color-mix(in srgb,var(--alarm) 45%,transparent);background:var(--alarm-dim);color:var(--alarm)}
+.pill.wait{border-color:color-mix(in srgb,var(--wait) 45%,transparent);background:var(--wait-dim);color:var(--wait)}
+
+.strip{display:inline-flex;gap:3px;align-items:center}
+.sq{width:10px;height:10px;border-radius:2px;background:var(--idle);flex:0 0 auto;cursor:default;
+  border:1px solid transparent;transition:transform .12s ease}
+.sq:hover{transform:scale(1.35)}
+.sq.working{background:var(--live);animation:breathe 3s ease-in-out infinite}
+.sq.queued{background:transparent;border-color:var(--live)}
+.sq.stalled{background:var(--wait-dim);border-color:var(--wait)}
+.sq.error{background:var(--alarm)}
+@keyframes breathe{0%,100%{box-shadow:0 0 0 0 color-mix(in srgb,var(--live) 50%,transparent)}
+  50%{box-shadow:0 0 0 3px color-mix(in srgb,var(--live) 0%,transparent)}}
+@media (prefers-reduced-motion:reduce){.sq.working{animation:none}}
+.stripMore{font-size:10px;color:var(--muted);font-variant-numeric:tabular-nums}
+
+.spark{display:inline-flex;align-items:flex-end;gap:2px;height:16px}
+.sparkCol{display:flex;flex-direction:column-reverse;gap:1px;cursor:default}
+.spark span{width:4px;border-radius:1px;background:color-mix(in srgb,var(--muted) 32%,transparent);display:block}
+.spark span.fail{background:color-mix(in srgb,var(--alarm) 75%,transparent)}
+.spark span.zero{height:1px!important;background:color-mix(in srgb,var(--muted) 20%,transparent)}
+.trendRow{display:flex;align-items:center;gap:8px;cursor:default}
+.trendNum{font-size:16px;font-weight:600;font-variant-numeric:tabular-nums;letter-spacing:-.02em;line-height:1;white-space:nowrap}
+.trendNum small{font-size:10.5px;font-weight:500;color:var(--muted);margin-left:2px}
+svg.line{display:block;overflow:visible}
+svg.line path.area{fill:currentColor;opacity:.13;stroke:none}
+svg.line path.ln{fill:none;stroke:currentColor;stroke-width:1.25;stroke-linejoin:round;stroke-linecap:round}
+svg.line circle{fill:currentColor}
+svg.line line.mid{stroke:currentColor;opacity:.22;stroke-width:1;stroke-dasharray:2 3}
+
+
+.waitT{color:var(--wait)} .alarmT{color:var(--alarm)} .liveT{color:var(--live)}
+.iconbtn{color:var(--muted);text-decoration:none;font-size:13px}
+tfoot td{border-top:1px solid var(--border);font-size:10.5px;color:var(--muted);
+  text-transform:uppercase;letter-spacing:.04em;font-variant-numeric:tabular-nums}
+.legend{margin-top:16px;display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(290px,1fr))}
+.legend section{border:1px solid var(--border);border-radius:8px;background:var(--card);padding:12px 14px}
+.legend h3{margin:0 0 8px;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+.legend ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:6px;font-size:12px}
+.legend li{display:flex;gap:8px;align-items:flex-start}
+.swatch{width:11px;height:11px;border-radius:2px;flex:0 0 auto;margin-top:3px;border:1px solid transparent}
+.legend code{font-size:11px;background:var(--muted-bg);padding:1px 4px;border-radius:3px}
+#tip{position:fixed;z-index:50;max-width:340px;border:1px solid var(--border);background:var(--card);
+  border-radius:7px;box-shadow:0 8px 24px rgba(0,0,0,.22);padding:10px 12px;font-size:13px;
+  pointer-events:none;opacity:0;transition:opacity .1s ease}
+#tip.on{opacity:1}
+#tip .t{font-weight:600;margin-bottom:3px}
+#tip .m{color:var(--muted);font-size:11px}
+#tip p{margin:5px 0 0}
+.hint{font-size:12px;color:var(--muted);margin:0 0 10px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <div>
+    <h1>Plica board — design preview</h1>
+    <div class="sub">Placeholder data. Brand accent kept on the left edge; SCADA-muted palette elsewhere.</div>
+  </div>
+  <div class="spacer"></div>
+  <div class="seg" role="group" aria-label="Version">
+    <button id="bProposed" aria-pressed="true">Proposed</button>
+    <button id="bCurrent" aria-pressed="false">Current</button>
+  </div>
+  <div class="seg" role="group" aria-label="Theme">
+    <button id="bDark" aria-pressed="true">Dark</button>
+    <button id="bLight" aria-pressed="false">Light</button>
+  </div>
+</header>
+
+<p class="hint" id="hint"></p>
+<div class="card"><table id="board"></table></div>
+<div class="legend" id="legend"></div>
+</div>
+<div id="tip" role="tooltip"></div>
+
+<script>
+const COMPANIES = [
+  { name:"Clover Apiary", short:"BB", accent:"#e8a33d", prefix:"BEE", ceo:"Marlow · beat 3m",
+    agents:[ {n:"Marlow",s:"working",t:"Rewrite the hive intake flow",id:"CLV-412",e:"22m",say:"Reading the existing intake handler before I touch the schema."},
+             {n:"Pike",s:"stalled",t:"Migrate pollen ledger",id:"CLV-398",e:"41m",say:"No output for 41m — last useful action was a git fetch."},
+             {n:"Ash",s:"stalled",t:"Backfill apiary rows",id:"CLV-401",e:"36m",say:"No output for 36m — still holding a runner."},
+             {n:"Wren",s:"idle"}, {n:"Sable",s:"idle"} ],
+    inbox:7, open:31, prog:14, blocked:3,
+    needs:5, oldest:"2d", oldestFull:"oldest item waiting 2d 4h — approval on CLV-377",
+    dec:{pending:4, today:2, week:1, whenever:1, expired:1, accepted:11, rejected:3},
+    runs:[[6,0],[9,1],[4,0],[11,2],[7,0],[3,4],[8,1]],
+    tokM:412, tok:[22,26,24,31,28,34,30,38,36,41,39,44,48,52], tokState:"crit",
+    heat:5, heatTone:"alarm",
+    heatWhy:["2 runs stalled >20m","1 approval waiting 2d 4h","1 decision expired undecided","3 tasks blocked","412M tokens — over your 250M warn line"] },
+
+  { name:"Northwind Partners", short:"CS", accent:"#4a7fb5", prefix:"CSC", ceo:"Juniper · beat 1m",
+    agents:[ {n:"Juniper",s:"working",t:"Draft Q3 client brief",id:"NWP-88",e:"6m",say:"Pulling last quarter's numbers into the brief outline."},
+             {n:"Tam",s:"working",t:"Refactor billing export",id:"NWP-91",e:"14m",say:"Tests green on the new exporter; wiring the CSV path now."},
+             {n:"Bly",s:"working",t:"Fix invoice rounding",id:"NWP-93",e:"2m",say:"Reproducing the half-cent case."},
+             {n:"Odell",s:"idle"} ],
+    inbox:0, open:18, prog:9, blocked:0, needs:0, oldest:null,
+    dec:{pending:1, today:0, week:1, whenever:0, expired:0, accepted:24, rejected:2},
+    runs:[[5,0],[7,0],[6,1],[8,0],[9,0],[6,0],[7,0]],
+    tokM:88, tok:[9,11,10,12,9,13,11,12,10,14,12,13,11,13], tokState:"ok",
+    heat:1, heatTone:"live", heatWhy:["3 agents working","nothing waiting on you"] },
+
+  { name:"Ridgeline Labs", short:"RL", accent:"#7c6bb0", prefix:"RDG", ceo:null, unreachable:true,
+    agents:[], inbox:null, open:null, prog:null, blocked:null, needs:null, oldest:null, dec:null, runs:null, tokM:null,
+    heat:5, heatTone:"alarm", heatWhy:["company unreachable — summary endpoint failing since 09:12"] },
+
+  { name:"Harborview", short:"HV", accent:"#3f9e8c", prefix:"HBV", ceo:"Reyes · beat 2m",
+    agents:[ {n:"Reyes",s:"idle"},
+             {n:"Colm",s:"queued",t:"Reconcile berth schedule",id:"HBV-204",e:"18m",say:"Queued 18m — waiting for a runner, no agent on it yet."},
+             {n:"Ines",s:"queued",t:"Import tide tables",id:"HBV-207",e:"11m",say:"Queued 11m — waiting for a runner."},
+             {n:"Wick",s:"idle"}, {n:"Nol",s:"idle"}, {n:"Perr",s:"idle"} ],
+    inbox:2, open:22, prog:6, blocked:1,
+    needs:3, oldest:"6h", oldestFull:"oldest item waiting 6h 20m — question on HBV-198",
+    dec:{pending:3, today:1, week:2, whenever:0, expired:0, accepted:8, rejected:5},
+    runs:[[3,0],[4,0],[2,1],[5,0],[1,0],[4,1],[2,0]],
+    tokM:196, tok:[14,16,15,18,17,19,18,21,20,22,21,24,23,25], tokState:"ok",
+    heat:4, heatTone:"wait",
+    heatWhy:["2 runs queued with no runner","3 items waiting, oldest 6h","1 decision due today","1 task blocked"] },
+
+  { name:"Kestrel Media", short:"KM", accent:"#c25e5e", prefix:"KES", ceo:"Fen · beat 4m",
+    agents:[ {n:"Fen",s:"working",t:"Re-cut the launch reel",id:"KES-55",e:"9m",say:"Rendering pass 2 of the 30s cut."},
+             {n:"Bram",s:"error"}, {n:"Lys",s:"idle"} ],
+    inbox:1, open:26, prog:11, blocked:0,
+    needs:2, oldest:"25m", oldestFull:"oldest item waiting 25m — failed run on KES-51",
+    dec:{pending:0, today:0, week:0, whenever:0, expired:0, accepted:6, rejected:1},
+    runs:[[4,3],[3,4],[5,2],[2,5],[4,3],[6,2],[3,4]], failRate:"41%",
+    tokM:268, tok:[30,44,28,51,33,47,29,55,31,49,34,52,30,46], tokState:"warn",
+    heat:3, heatTone:"alarm", heatWhy:["1 agent in error","41% run failure rate over 7d","2 items waiting","268M tokens — over your 250M warn line"] },
+
+  { name:"Tarn & Co", short:"TC", accent:"#8a8f5e", prefix:"TRN", ceo:"Ovid · beat 12m",
+    agents:[ {n:"Ovid",s:"idle"}, {n:"Sarn",s:"idle"}, {n:"Mek",s:"idle"}, {n:"Ily",s:"idle"} ],
+    inbox:0, open:3, prog:0, blocked:0, needs:0, oldest:null,
+    dec:{pending:0, today:0, week:0, whenever:0, expired:0, accepted:2, rejected:0},
+    runs:[[0,0],[1,0],[0,0],[0,0],[2,0],[0,0],[0,0]],
+    tokM:4, tok:[1,0,0,2,1,0,0,1,0,2,0,1,0,1], tokState:"ok",
+    heat:0, heatTone:"live", heatWhy:["idle and clear — 4 agents staffed, nothing running"] },
+
+  { name:"Nine Mile", short:"NM", accent:"#b07a4a", prefix:"NMI", ceo:"Dara · beat 2m", stale:true,
+    agents:[ {n:"Dara",s:"working",t:"Sync trailhead index",id:"NMI-140",e:"3m",say:"Fetching the updated trailhead feed."},
+             {n:"Bex",s:"queued",t:"Rebuild search index",id:"NMI-141",e:"4m",say:"Queued 4m — waiting for a runner."},
+             {n:"Ren",s:"idle"},{n:"Sol",s:"idle"},{n:"Vay",s:"idle"},{n:"Hux",s:"idle"},
+             {n:"Jem",s:"idle"},{n:"Kip",s:"idle"},{n:"Lark",s:"idle"},{n:"Moss",s:"idle"} ],
+    inbox:4, open:12, prog:5, blocked:0,
+    needs:1, oldest:"3m", oldestFull:"oldest item waiting 3m — question on NMI-138",
+    dec:{pending:2, today:0, week:0, whenever:2, expired:0, accepted:4, rejected:1},
+    runs:[[8,0],[6,0],[7,1],[9,0],[5,0],[8,0],[6,0]],
+    tokM:121, tok:[16,17,15,18,16,19,17,18,16,19,17,20,18,19], tokState:"ok",
+    heat:1, heatTone:"live", heatWhy:["1 item waiting 3m","1 run queued","2 decisions, none urgent"] },
+];
+
+const $=(s)=>document.querySelector(s), $$=(s)=>[...document.querySelectorAll(s)];
+const el=(t,c,h)=>{const n=document.createElement(t); if(c)n.className=c; if(h!==undefined)n.innerHTML=h; return n;};
+const esc=(s)=>String(s).replace(/[&<>]/g,(c)=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+const svg=(t,a)=>{const n=document.createElementNS("http://www.w3.org/2000/svg",t);for(const k in a)n.setAttribute(k,a[k]);return n;};
+
+const tip=$("#tip");
+function bindTip(node,html){
+  node.addEventListener("mouseenter",()=>{tip.innerHTML=html;tip.classList.add("on");});
+  node.addEventListener("mousemove",(e)=>{
+    const pad=14,w=tip.offsetWidth,h=tip.offsetHeight;
+    let x=e.clientX+pad,y=e.clientY+pad;
+    if(x+w>innerWidth-8)x=e.clientX-w-pad;
+    if(y+h>innerHeight-8)y=e.clientY-h-pad;
+    tip.style.left=x+"px";tip.style.top=y+"px";
+  });
+  node.addEventListener("mouseleave",()=>tip.classList.remove("on"));
+}
+
+const SQ_LABEL={working:"Working",queued:"Queued — no runner yet",stalled:"Live but silent",error:"Agent error",idle:"Idle"};
+
+/** The capacity strip, now a fragment so it can live inside the company cell. */
+function runStrip(c){
+  const wrap=el("span","strip");
+  if(c.unreachable){wrap.appendChild(el("span","micro dash","—"));return wrap;}
+  const shown=c.agents.slice(0,8),more=c.agents.length-shown.length;
+  for(const a of shown){
+    const sq=el("span","sq "+(a.s==="idle"?"":a.s));
+    const head=a.s==="idle"?`${esc(a.n)} — idle`:`${esc(a.n)} — ${SQ_LABEL[a.s]}`;
+    const body=a.s==="idle"?`<p class="m">Staffed, nothing assigned right now.</p>`
+      :a.s==="error"?`<p class="m">Run failed to start. Needs a look.</p>`
+      :`<p><span class="m">${esc(a.id)}</span> ${esc(a.t)}</p><p class="m">${esc(a.say)}</p><p class="m">${esc(a.n)} · ${esc(a.e)}</p>`;
+    bindTip(sq,`<div class="t">${head}</div>${body}`);
+    wrap.appendChild(sq);
+  }
+  if(more>0)wrap.appendChild(el("span","stripMore","+"+more));
+  return wrap;
+}
+
+function companyCell(c){
+  const td=el("td","company");
+  td.style.setProperty("--accent",c.accent);
+  const co=el("div","co");
+  const av=el("div","avatar",c.short); av.style.background=c.accent;
+  co.appendChild(av);
+  const s=el("div","stack"); s.style.minWidth="0";
+  const line=el("div"); line.style.cssText="display:flex;align-items:center;gap:6px";
+  line.appendChild(el("span","coName",esc(c.name)));
+  if(c.unreachable)line.appendChild(el("span","pill alarm","unreachable"));
+  if(c.stale)line.appendChild(el("span","pill wait","stale"));
+  s.appendChild(line);
+  // The running strip sits directly under the name, hard left with it — the
+  // company and who is working for it read as one unit, not two columns.
+  const sub=el("div","coSub");
+  sub.appendChild(runStrip(c));
+  if(c.ceo)sub.appendChild(el("span","ceo",esc(c.ceo)));
+  s.appendChild(sub);
+  co.appendChild(s); td.appendChild(co);
+  return td;
+}
+
+/** Open tasks. In-progress and blocked live in the hover, not under the number. */
+function tasksCell(c){
+  const td=el("td","r");
+  if(c.open===null){td.appendChild(el("span","dash","—"));return td;}
+  const n=el("span","num"+(c.open===0?" zero":c.blocked>0?" waitT":""),String(c.open));
+  bindTip(n,`<div class="t">${c.open} open tasks</div>
+    <p class="m">${c.prog} in progress · ${c.blocked} blocked · ${c.open-c.prog-c.blocked} not started</p>`);
+  td.appendChild(n);return td;
+}
+
+/** Runs completed per day, ok stacked over failed. */
+function throughputCell(c){
+  const td=el("td");
+  if(!c.runs){td.appendChild(el("span","dash","—"));return td;}
+  const max=Math.max(1,...c.runs.map(([s,f])=>s+f));
+  const box=el("span","spark");
+  const days=["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+  c.runs.forEach(([s,f],i)=>{
+    const col=el("span","sparkCol");
+    if(s+f===0)col.appendChild(el("span","zero"));
+    else{
+      if(f>0){const b=el("span","fail");b.style.height=Math.max(2,(f/max)*16)+"px";col.appendChild(b);}
+      if(s>0){const b=el("span");b.style.height=Math.max(2,(s/max)*16)+"px";col.appendChild(b);}
+    }
+    bindTip(col,`<div class="t">${days[i]}</div><p class="m">${s} run${s===1?"":"s"} ok, ${f} failed</p>`);
+    box.appendChild(col);
+  });
+  const ok=c.runs.reduce((a,[s])=>a+s,0),fails=c.runs.reduce((a,[,f])=>a+f,0);
+  const rate=Math.round((ok+fails)/7*10)/10;
+  const row=el("div","trendRow",`<span class="trendNum${c.failRate?" alarmT":""}">${rate}<small>/day</small></span>`);
+  row.appendChild(box);
+  bindTip(row,`<div class="t">${ok+fails} runs over 7 days</div>
+    <p class="m">${ok} succeeded · ${fails} failed${c.failRate?` (${c.failRate})`:""}</p>
+    <p class="m">${rate} runs a day on average</p>`);
+  td.appendChild(row);return td;
+}
+
+/** 14-day token line, millions. */
+function tokensCell(c){
+  const td=el("td");
+  if(c.tokM===null){td.appendChild(el("span","dash","—"));return td;}
+  const W=96,H=22,pad=2;
+  const max=Math.max(1,...c.tok), min=Math.min(...c.tok);
+  const x=(i)=>pad+(i/(c.tok.length-1))*(W-pad*2);
+  const y=(v)=>H-pad-((v-min)/Math.max(1,max-min))*(H-pad*2);
+  const pts=c.tok.map((v,i)=>[x(i),y(v)]);
+  const line=pts.map((p,i)=>(i?"L":"M")+p[0].toFixed(1)+" "+p[1].toFixed(1)).join(" ");
+  const area=`${line} L${x(c.tok.length-1).toFixed(1)} ${H} L${pad} ${H} Z`;
+  const g=svg("svg",{class:"line",width:W,height:H,viewBox:`0 0 ${W} ${H}`});
+  const mid=c.tok.slice(0,7).reduce((a,b)=>a+b,0)/7;
+  g.appendChild(svg("line",{class:"mid",x1:pad,x2:W-pad,y1:y(mid).toFixed(1),y2:y(mid).toFixed(1)}));
+  g.appendChild(svg("path",{class:"area",d:area}));
+  g.appendChild(svg("path",{class:"ln",d:line}));
+  g.appendChild(svg("circle",{cx:pts[pts.length-1][0].toFixed(1),cy:pts[pts.length-1][1].toFixed(1),r:2}));
+  const tone=c.tokState==="crit"?"alarmT":c.tokState==="warn"?"waitT":"";
+  g.style.color=c.tokState==="crit"?"var(--alarm)":c.tokState==="warn"?"var(--wait)":"var(--muted)";
+  const wrap=el("div","trendRow",`<span class="trendNum ${tone}">${c.tokM}<small>M</small></span>`);
+  wrap.appendChild(g);
+  const first7=c.tok.slice(0,7).reduce((a,b)=>a+b,0), last7=c.tok.slice(7).reduce((a,b)=>a+b,0);
+  const delta=first7===0?null:Math.round(((last7-first7)/first7)*100);
+  const state=c.tokState==="crit"?"over your 500M crit line":c.tokState==="warn"?"over your 250M warn line":"under your 250M warn line";
+  bindTip(wrap,`<div class="t">${c.tokM}M tokens month to date</div><p class="m">${state}</p>
+    <p class="m">Last 14 days: peak ${max}M/day, today ${c.tok[c.tok.length-1]}M</p>
+    ${delta===null?"":`<p class="m">Second week ${delta>=0?"+":""}${delta}% vs first — dashed line is the first-week average</p>`}`);
+  td.appendChild(wrap);return td;
+}
+
+function inboxCell(c){
+  const td=el("td","r");
+  if(c.inbox===null){td.appendChild(el("span","dash","—"));return td;}
+  const n=el("span","num"+(c.inbox===0?" zero":""),String(c.inbox));
+  bindTip(n,`<div class="t">${c.inbox} unread in the inbox</div><p class="m">Messages and mentions you have not opened.</p>`);
+  td.appendChild(n);return td;
+}
+
+function needsCell(c){
+  const td=el("td","r");
+  if(c.needs===null){td.appendChild(el("span","dash","—"));return td;}
+  const n=el("span","num "+(c.needs===0?"zero":c.heatTone==="alarm"?"alarmT":"waitT"),String(c.needs));
+  if(c.needs)bindTip(n,`<div class="t">${c.needs} waiting on you</div><p class="m">${esc(c.oldestFull)}</p>`);
+  td.appendChild(n);return td;
+}
+
+function decisionsCell(c){
+  const td=el("td","r");
+  if(c.dec===null){td.appendChild(el("span","dash","—"));return td;}
+  const d=c.dec;
+  const n=el("span","num"+(d.pending===0?" zero":d.expired>0?" alarmT":""),String(d.pending));
+  bindTip(n,`<div class="t">${d.pending} decision${d.pending===1?"":"s"} open</div>
+    ${d.expired>0?`<p class="m">${d.expired} expired undecided</p>`:""}
+    <p class="m">Last 7d: ${d.accepted} accepted · ${d.rejected} rejected</p>`);
+  td.appendChild(n);return td;
+}
+
+const COLS=[["Company",""],["Need you","r"],["Decisions","r"],["Inbox","r"],["Tasks","r"],
+            ["Throughput",""],["Tokens",""],["",""]];
+
+function proposed(){
+  const t=$("#board"); t.innerHTML="";
+  const head=el("thead"),hr=el("tr");
+  COLS.forEach(([l,cls])=>hr.appendChild(el("th",cls,l)));
+  head.appendChild(hr); t.appendChild(head);
+  const body=el("tbody");
+  for(const c of [...COMPANIES].sort((a,b)=>b.heat-a.heat)){
+    const tr=el("tr");
+    tr.appendChild(companyCell(c));
+    tr.appendChild(needsCell(c));
+    tr.appendChild(decisionsCell(c));
+    tr.appendChild(inboxCell(c));
+    tr.appendChild(tasksCell(c));
+    tr.appendChild(throughputCell(c));
+    tr.appendChild(tokensCell(c));
+    tr.appendChild(el("td","r","<a class='iconbtn' href='#' onclick='return false'>&#8599;</a>"));
+    body.appendChild(tr);
+  }
+  t.appendChild(body);
+  const sum=(f)=>COMPANIES.reduce((s,c)=>s+(f(c)||0),0);
+  const working=COMPANIES.flatMap(c=>c.agents||[]).filter(a=>a.s==="working").length;
+  const staffed=COMPANIES.flatMap(c=>c.agents||[]).length;
+  const runs=sum(c=>(c.runs||[]).reduce((a,[s,f])=>a+s+f,0));
+  const tf=el("tfoot"),fr=el("tr");
+  fr.innerHTML=`<td>All companies · ${working} of ${staffed} agents working</td>
+    <td class="r">${sum(c=>c.needs)}</td><td class="r">${sum(c=>c.dec&&c.dec.pending)}</td>
+    <td class="r">${sum(c=>c.inbox)}</td><td class="r">${sum(c=>c.open)}</td>
+    <td>${Math.round(runs/7*10)/10} /day</td><td>${sum(c=>c.tokM)}M</td><td></td>`;
+  tf.appendChild(fr); t.appendChild(tf);
+  $("#hint").textContent="Seven columns. Hover the squares, the numbers and the graph. Rows are ordered by heat — computed, never drawn.";
+  drawLegend(true);
+}
+
+function currentBoard(){
+  const t=$("#board"); t.innerHTML="";
+  const head=el("thead"),hr=el("tr");
+  [["Company",""],["Running","r"],["Tasks","r"],["Need you","r"],["Routines",""],["Spend",""],["7d",""],["",""]]
+    .forEach(([l,cls])=>hr.appendChild(el("th",cls,l)));
+  head.appendChild(hr); t.appendChild(head);
+  const body=el("tbody");
+  const RT={"Clover Apiary":[6,1,0,"in 40m"],"Northwind Partners":[4,0,0,"in 3h"],"Ridgeline Labs":null,
+    "Harborview":[3,2,1,"in 12m"],"Kestrel Media":[2,0,0,"in 1d"],"Tarn & Co":[1,0,0,"in 5d"],"Nine Mile":[8,0,0,"in 22m"]};
+  const SP={"Clover Apiary":["$412","$500",82],"Northwind Partners":["$96","$400",24],"Ridgeline Labs":null,
+    "Harborview":["$188","$250",75],"Kestrel Media":["$240","$300",80],"Tarn & Co":["$8","$150",5],"Nine Mile":["$64","",0]};
+  for(const c of COMPANIES){
+    const tr=el("tr");
+    const td=el("td","company"); td.style.setProperty("--accent",c.accent);
+    const co=el("div","co");
+    const av=el("div","avatar",c.short); av.style.background=c.accent; co.appendChild(av);
+    const s=el("div","stack");
+    const line=el("div"); line.style.cssText="display:flex;align-items:center;gap:6px";
+    line.appendChild(el("span","coName",esc(c.name)));
+    const health=c.unreachable||c.heatTone==="alarm"?"var(--alarm)":(c.needs?"var(--wait)":"var(--ok)");
+    const dot=el("span"); dot.style.cssText=`width:8px;height:8px;border-radius:999px;background:${health};flex:0 0 auto`;
+    line.appendChild(dot);
+    if(c.unreachable)line.appendChild(el("span","pill alarm","unreachable"));
+    if(c.stale)line.appendChild(el("span","pill wait","stale"));
+    s.appendChild(line);
+    s.appendChild(el("div","ceo",c.ceo?esc(c.ceo):"<span class='dash'>—</span>"));
+    co.appendChild(s); td.appendChild(co); tr.appendChild(td);
+    const run=el("td","r");
+    if(c.unreachable)run.appendChild(el("span","dash","—"));
+    else{
+      const w=(c.agents||[]).filter(a=>a.s==="working").length;
+      const d=w>0?`<span style="display:inline-block;width:8px;height:8px;border-radius:999px;background:var(--live);margin-right:6px"></span>`:"";
+      run.innerHTML=`${d}<span class="num">${w}<span class="micro mut">/${(c.agents||[]).length}</span></span>`;
+    }
+    tr.appendChild(run);
+    tr.appendChild(el("td","r "+(c.prog?"num":"num zero"),c.prog===null?"—":String(c.prog)));
+    const nd=el("td","r");
+    nd.innerHTML=c.needs?`<span class="num ${c.heatTone==="alarm"?"alarmT":"waitT"}">${c.needs}</span>`:`<span class="num zero">—</span>`;
+    tr.appendChild(nd);
+    const r=RT[c.name],rt=el("td");
+    rt.innerHTML=!r?`<span class="dash">—</span>`
+      :`<div class="stack"><span style="font-variant-numeric:tabular-nums" class="${r[1]||r[2]?"waitT":""}">${r[0]}${r[1]?` · ${r[1]} overdue`:""}${r[2]?` <span class="alarmT">· ${r[2]} failed</span>`:""}</span><span class="micro mut">next ${r[3]}</span></div>`;
+    tr.appendChild(rt);
+    const p=SP[c.name],sp=el("td");
+    sp.innerHTML=!p?`<span class="dash">—</span>`
+      :`<span style="font-variant-numeric:tabular-nums" class="${p[2]>=80?"waitT":""}">${p[0]}${p[1]?`<span class="micro mut"> / ${p[1]}</span>`:""}</span>`;
+    tr.appendChild(sp);
+    tr.appendChild(throughputCell(c));
+    tr.appendChild(el("td","r","<a class='iconbtn' href='#' onclick='return false'>&#8599;</a>"));
+    body.appendChild(tr);
+  }
+  t.appendChild(body);
+  $("#hint").textContent="Today's board. Eight columns, and the two that matter most — what is waiting on you — are buried in the middle.";
+  drawLegend(false);
+}
+
+function drawLegend(isProposed){
+  const L=$("#legend"); L.innerHTML="";
+  if(!isProposed){
+    L.appendChild(el("section",null,`<h3>What this view spends its columns on</h3><ul>
+      <li>Running is its own column, detached from the company it belongs to</li>
+      <li>"Need you" sits mid-row, competing with Routines and Spend for attention</li>
+      <li>One "Tasks" number that is really just <code>tasks.inProgress</code></li>
+      <li>No inbox, no decisions</li>
+      <li>"7d" names a window, not a measure</li></ul>`));
+    return;
+  }
+  L.appendChild(el("section",null,`<h3>What consolidated</h3><ul>
+    <li><div><b>Running folded into the company cell.</b> The strip sits directly under the name, hard left with it, so a company and who is working for it read as one unit. Its column is gone.</div></li>
+    <li><div><b>Inbox / Open / In prog / Blocked</b> collapsed from four columns to two: <b>Inbox</b>, and <b>Tasks</b> showing open with in-progress and blocked as a quiet second line.</div></li>
+    <li><div><b>Waiting on you leads the numbers</b> — Need you and Decisions sit immediately right of the company, ahead of the rule, so the first figures you read are the ones you can act on.</div></li>
+    <li><div><b>Heat is computed but never drawn.</b> Need you already answers "does this company want me", so a heat mark beside it was a second opinion on the same question. Heat survives as the row order only — it still folds in stalled runs, blocked work and agent errors that no single column shows.</div></li>
+    <li><div><b>The numbers stand alone.</b> No second line under Need you, Decisions or Tasks — the oldest wait, the expired count and the in-progress/blocked split all live in the hover. One figure per cell, one row height, nothing to read twice.</div></li>
+    <li><div><b>Colour still marks the exception:</b> Need you goes ochre or brick when something is waiting, Tasks goes ochre when any of it is blocked, Decisions goes brick when one has expired. A quiet company is entirely grey.</div></li>
+    <li><div>Group header row dropped. Seven columns need one rule, not three labels.</div></li></ul>`));
+  L.appendChild(el("section",null,`<h3>Palette — SCADA discipline</h3><ul>
+    <li><span class="swatch" style="background:var(--idle)"></span><div><b>Grey field.</b> Normal is colourless; a zero is greyer still.</div></li>
+    <li><span class="swatch" style="background:var(--live)"></span><div><b>Steel — happening now.</b> Working agents, in-progress tasks.</div></li>
+    <li><span class="swatch" style="background:var(--wait)"></span><div><b>Ochre — waiting.</b> On you, on a runner, on a clock.</div></li>
+    <li><span class="swatch" style="background:var(--alarm)"></span><div><b>Brick — broken.</b> Errors, unreachable, expired decisions, failing runs.</div></li>
+    <li><span class="swatch" style="background:#e8a33d"></span><div><b>Brand colour — the only saturated thing.</b> Left edge and avatar, never a value.</div></li></ul>`));
+  L.appendChild(el("section",null,`<h3>The two trend columns</h3><ul>
+    <li><div><b>Throughput</b> — runs completed per day (<code>summary.runActivity</code>), ok over failed. The old <code>7d</code> named a window, not a measure. Terser alternatives: <b>Runs/d</b>, <b>Output</b>.</div></li>
+    <li><div><b>Tokens</b> — millions month to date, 14-day line, dot on today, dashed first-week average behind it. Ochre past 250M warn, brick past 500M crit.</div></li>
+    <li><div><b>Data gap:</b> no daily-token endpoint. <code>costs/by-agent</code> is a ranged total; <code>costs/window-spend</code> gives rolling buckets. This column wants a <code>costs/by-day</code> route server-side.</div></li></ul>`));
+}
+
+let mode="proposed";
+function render(){ mode==="proposed"?proposed():currentBoard(); }
+$("#bProposed").onclick=()=>{mode="proposed";$("#bProposed").ariaPressed="true";$("#bCurrent").ariaPressed="false";render();};
+$("#bCurrent").onclick =()=>{mode="current"; $("#bProposed").ariaPressed="false";$("#bCurrent").ariaPressed="true";render();};
+$("#bDark").onclick =()=>{document.documentElement.dataset.theme="dark"; $("#bDark").ariaPressed="true"; $("#bLight").ariaPressed="false";};
+$("#bLight").onclick=()=>{document.documentElement.dataset.theme="light";$("#bDark").ariaPressed="false";$("#bLight").ariaPressed="true";};
+render();
+</script>
+</body>
+</html>

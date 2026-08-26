@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
-import { useQueries, useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { Bell, BellOff, Layers, Maximize, Minimize, Settings, TriangleAlert } from "lucide-react";
-import type { DashboardSummary } from "@paperclipai/shared";
-import { authApi, dashboardApi } from "./host/api";
+import { authApi } from "./host/api";
 import { companiesListQueryOptions } from "./host/companies-query";
 import { useBreadcrumbs } from "./host/shims";
 import { useCompanyOrder } from "./host/useCompanyOrder";
+import { countCapacity, deriveCapacity } from "./lib/capacity";
+import { releaseStrandedPointerEvents } from "./lib/drafts";
 import { PlicaBoardPage } from "./components/PlicaBoardPage";
 import { PlicaBriefing } from "./components/PlicaBriefing";
 import { PlicaTokenSettingsPanel } from "./components/PlicaTokenSettings";
@@ -22,7 +23,10 @@ import {
   normalizePinnedIds,
   normalizeSortMode,
   normalizeTokenSettings,
-  partitionHotFirst,
+  PLICA_FREEZE,
+  deriveHeat,
+  thresholdsFor,
+  tokenState,
   plicaRefetchInterval,
   shouldShowBriefing,
   type PlicaActionable,
@@ -125,6 +129,9 @@ export function PlicaHud() {
   // persisted — always starts off; `fullscreenchange` is the source of truth
   // since fullscreen can also be exited via Esc or browser chrome.
   const rootRef = useRef<HTMLDivElement>(null);
+  // Last line of defence: whatever happened inside the HUD, navigating away
+  // from it must not leave the host's own chrome unable to take a click.
+  useEffect(() => () => void releaseStrandedPointerEvents(), []);
   const [isKiosk, setIsKiosk] = useState(false);
   useEffect(() => {
     const onFullscreenChange = () => {
@@ -182,8 +189,10 @@ export function PlicaHud() {
   useEffect(() => {
     const recordVisit = () => writeStored(PLICA_LAST_VISIT_STORAGE_KEY, new Date().toISOString());
     recordVisit();
-    const interval = setInterval(recordVisit, 5 * 60_000);
-    return () => clearInterval(interval);
+    const interval = PLICA_FREEZE ? null : setInterval(recordVisit, 5 * 60_000);
+    return () => {
+      if (interval) clearInterval(interval);
+    };
   }, []);
 
   // The ["companies"] cache entry is shared app-wide and holds a
@@ -201,13 +210,41 @@ export function PlicaHud() {
     companies: activeCompanies,
     userId: session?.user?.id ?? session?.session?.userId ?? null,
   });
-  const hotIds = useMemo(
-    () => new Set(orderedCompanies.filter((company) => actionableByCompany[company.id]?.criticalOrHigh).map((company) => company.id)),
-    [orderedCompanies, actionableByCompany],
-  );
+  // Heat is computed and never drawn: Need-you and Decisions already say
+  // whether a company wants you, so a heat mark beside them would restate it.
+  // Its job is the row order — the one thing those columns cannot do, because
+  // it folds in what none of them show (a silent run, an errored agent, an
+  // unreachable company).
+  const heatByCompany = useMemo(() => {
+    const now = Date.now();
+    const heat: Record<string, number> = {};
+    for (const company of orderedCompanies) {
+      const stats = statsByCompany[company.id];
+      const data = dataByCompany[company.id];
+      const actionable = actionableByCompany[company.id];
+      const tokens = stats?.tokens;
+      heat[company.id] = deriveHeat({
+        unavailable: data?.unavailable ?? false,
+        criticalOrHigh: actionable?.criticalOrHigh ?? false,
+        needs: actionable?.count ?? 0,
+        oldestMins: stats?.oldestMins ?? null,
+        tasksBlocked: stats?.tasksBlocked ?? 0,
+        stalled: countCapacity(deriveCapacity(data?.agents ?? [], data?.liveRuns ?? [], now)).stalled,
+        agentErrors: data?.summary?.agents.error ?? 0,
+        decisionsOpen: data?.needsBreakdown?.decisions ?? 0,
+        tokenState: tokens === undefined ? "ok" : tokenState(tokens, thresholdsFor(tokenSettings, company.id)),
+      });
+    }
+    return heat;
+  }, [orderedCompanies, statsByCompany, dataByCompany, actionableByCompany, tokenSettings]);
   const companies = useMemo(
-    () => (sortMode === "hot" ? partitionHotFirst(orderedCompanies, hotIds) : orderedCompanies),
-    [sortMode, orderedCompanies, hotIds],
+    () =>
+      sortMode === "hot"
+        // Stable: equal-heat companies keep the user's own order, so the board
+        // only reshuffles when a company's situation actually changes.
+        ? [...orderedCompanies].sort((a, b) => (heatByCompany[b.id] ?? 0) - (heatByCompany[a.id] ?? 0))
+        : orderedCompanies,
+    [sortMode, orderedCompanies, heatByCompany],
   );
   // Watched first, then the chosen order.
   const boardCompanies = useMemo(
@@ -215,23 +252,11 @@ export function PlicaHud() {
     [companies, pinnedIds],
   );
 
-  // Header totals come from the cheap summary endpoint so they show before
-  // every slot has finished its first full poll.
-  const summaries = useQueries({
-    queries: companies.map((company) => ({
-      queryKey: queryKeys.plica.summary(company.id),
-      queryFn: () => dashboardApi.summary(company.id),
-      refetchInterval: plicaRefetchInterval,
-      refetchIntervalInBackground: true,
-    })),
-  });
-  const loaded = summaries.map((query) => query.data).filter((summary): summary is DashboardSummary => summary !== undefined);
-  const totalRunning = loaded.reduce((sum, summary) => sum + summary.agents.running, 0);
-  const totalSpendCents = loaded.reduce((sum, summary) => sum + (summary.costs?.monthSpendCents ?? 0), 0);
-  const anyStale = summaries.some((query) => query.isError && query.dataUpdatedAt > 0);
+  // The board's own columns and totals row carry these numbers now, so the
+  // header no longer runs its own per-company summary fan-out. `anyStale` is
+  // kept from the slots' own reports rather than a second set of queries.
+  const anyStale = Object.values(dataByCompany).some((data) => data?.staleSince != null);
   // The rail's own total, so the number up top is the number you find below it.
-  const totalNeedsYou = companies.reduce((sum, company) => sum + (actionableByCompany[company.id]?.count ?? 0), 0);
-  const anyCriticalOrHigh = companies.some((company) => actionableByCompany[company.id]?.criticalOrHigh);
 
   return (
     <div ref={rootRef} className={cn("space-y-4", isKiosk && "plica-kiosk bg-background p-4")}>
@@ -242,30 +267,6 @@ export function PlicaHud() {
           <span className="text-[length:var(--plica-fs-body,14px)] leading-[1.45] text-muted-foreground">all companies</span>
         </div>
         <div className="ml-auto flex items-center gap-3 text-[length:var(--plica-fs-body,14px)] leading-[1.45] text-muted-foreground">
-          <span className="tabular-nums">
-            {companies.length} compan{companies.length === 1 ? "y" : "ies"}
-          </span>
-          <span className="tabular-nums">{totalRunning} running</span>
-          {totalNeedsYou > 0 ? (
-            <span className="inline-flex items-center gap-1.5 tabular-nums" title="Approvals, blockers and other items waiting on you">
-              <span
-                className={cn(
-                  "inline-flex min-w-5 items-center justify-center rounded-full px-1.5 text-[length:var(--plica-fs-micro,11px)] leading-[1.45] font-semibold text-white",
-                  anyCriticalOrHigh ? "bg-red-600" : "bg-amber-600",
-                )}
-              >
-                {totalNeedsYou}
-              </span>
-              need you
-            </span>
-          ) : (
-            <span className="text-emerald-600 dark:text-emerald-400">nothing needs you</span>
-          )}
-          {totalSpendCents > 0 && (
-            <span className="tabular-nums" title="Month-to-date spend across all companies">
-              ${(totalSpendCents / 100).toLocaleString(undefined, { maximumFractionDigits: 0 })} this month
-            </span>
-          )}
           {anyStale && (
             <span className="inline-flex items-center gap-1 text-amber-600 dark:text-amber-400">
               <TriangleAlert className="h-3.5 w-3.5" /> polling degraded

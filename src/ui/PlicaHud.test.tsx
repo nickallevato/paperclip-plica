@@ -80,7 +80,7 @@ describe("PlicaHud", () => {
     vi.clearAllMocks();
   });
 
-  it("renders the board: one slot row per active company, the queue rail, and header totals", async () => {
+  it("renders the board: one slot row per active company and the queue rail, with no header totals", async () => {
     const root = render();
     await vi.waitFor(() => {
       expect(container.querySelectorAll("[data-slot]").length).toBe(2);
@@ -91,10 +91,11 @@ describe("PlicaHud", () => {
     expect(container.querySelector('[data-view="board"]')).not.toBeNull();
     expect(container.querySelector("[data-plica-queue]")).not.toBeNull();
     expect(container.textContent).toContain("Needs you");
-    expect(container.textContent).toContain("2 companies");
-    await vi.waitFor(() => {
-      expect(container.textContent).toContain("3 running"); // 2 + 1
-    });
+    // The header no longer carries its own company/running/spend readout: the
+    // board's columns and totals row say all of it, and computing it cost a
+    // second per-company summary fan-out.
+    expect(container.textContent).not.toContain("2 companies");
+    expect(container.textContent).not.toContain("3 running");
     // No classic chrome survives.
     expect(container.querySelector('[aria-label="View mode"]')).toBeNull();
     expect(container.querySelector('[aria-label="Layout columns"]')).toBeNull();

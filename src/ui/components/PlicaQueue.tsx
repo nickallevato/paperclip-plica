@@ -21,7 +21,6 @@ import {
   type PlicaQueueItem,
   type PlicaQueueSummary,
 } from "../lib/queue";
-import { PlicaCeoNudge } from "./PlicaCeoNudge";
 import { PlicaAskBlock, PlicaInteractionActions, hasInlineInteraction } from "./PlicaInteractionActions";
 import { PlicaKindGlyph } from "./PlicaKindGlyph";
 import { PlicaLink } from "./PlicaLink";
@@ -208,10 +207,11 @@ export function PlicaQueueItemRow({
         </>
       );
       actions = (
-        <span className={cn("inline-flex items-center gap-1 rounded-md border pl-2 text-muted-foreground", MICRO)}>
-          Nudge
-          <PlicaCeoNudge company={company} ceo={item.ceo} onActed={onActed} />
-        </span>
+        <OpenLink
+          to={`/${company.issuePrefix}/agents/${item.ceo.urlKey ?? item.ceo.id}`}
+          companyId={company.id}
+          label="Open CEO"
+        />
       );
       break;
     }

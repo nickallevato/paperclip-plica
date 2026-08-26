@@ -18,7 +18,7 @@ export const PLUGIN_ID = "nickallevato.plugin-plica";
 const manifest: PaperclipPluginManifestV1 = {
   id: PLUGIN_ID,
   apiVersion: 1,
-  version: "0.1.0",
+  version: "0.2.0",
   displayName: "Plica",
   description: "Cross-company HUD: company panes, triage, approvals, attention, and briefing.",
   // The manifest schema has no homepage/repository fields — `author` is a plain

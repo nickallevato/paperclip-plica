@@ -5,6 +5,18 @@ export function isRunActive(run: LiveRunForIssue): boolean {
   return run.status === "queued" || run.status === "running";
 }
 
+/**
+ * The two states a live run can be in from a watcher's point of view: an
+ * agent actually at work, or a run waiting its turn for a runner. Both show
+ * up as "live", but only one of them is burning time on the ticket.
+ */
+export type RunPhase = "working" | "queued";
+
+export function runPhase(run: LiveRunForIssue): RunPhase {
+  return run.status === "queued" ? "queued" : "working";
+}
+
+/** How long a run has been working, or — when queued — how long it has waited. */
 export function elapsedLabel(run: LiveRunForIssue, nowMs = Date.now()): string {
   const started = run.startedAt ?? run.createdAt;
   const minutes = Math.max(0, Math.round((nowMs - new Date(started).getTime()) / 60_000));

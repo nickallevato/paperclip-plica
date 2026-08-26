@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { pluginManifestV1Schema } from "@paperclipai/shared";
 import manifest, { PLUGIN_ID } from "./manifest";
@@ -99,5 +100,18 @@ describe("plugin manifest", () => {
         `launcher "${launcher.id}" (${launcher.placementZone}) requires capability "${required}"`,
       ).toContain(required);
     }
+  });
+});
+
+describe("manifest version", () => {
+  it("matches package.json", async () => {
+    // The version lives in two files the host reads independently: package.json
+    // (what the installer sees) and the manifest (what the host records). They
+    // drift silently, and a release that ships mismatched versions is
+    // undiagnosable from either side — so a release pass fails here instead.
+    // Read from the project root: vitest runs there, and `import.meta.url` is
+    // not a file: URL under the jsdom environment this suite uses.
+    const pkg = JSON.parse(readFileSync("package.json", "utf8"));
+    expect(manifest.version).toBe(pkg.version);
   });
 });

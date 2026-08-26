@@ -1,0 +1,10 @@
+#!/bin/sh
+# Types and tests must pass before anything lands.
+#
+# Dependency-free: enabled with `pnpm hooks:install`, which points
+# core.hooksPath here. No husky, no lint-staged, nothing to keep in sync.
+set -e
+echo "pre-commit: typecheck"
+pnpm typecheck
+echo "pre-commit: test"
+pnpm test

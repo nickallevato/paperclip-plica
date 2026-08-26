@@ -1,6 +1,6 @@
 {
   "name": "paperclip-plugin-plica",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "private": true,
   "description": "Plica cross-company HUD for Paperclip.",
@@ -15,7 +15,8 @@
     "build": "node ./scripts/build-css.mjs && node ./esbuild.config.mjs",
     "dev": "node ./scripts/build-css.mjs && node ./esbuild.config.mjs --watch",
     "test": "vitest run --config ./vitest.config.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "hooks:install": "git config core.hooksPath .githooks"
   },
   "paperclipPlugin": {
     "manifest": "./dist/manifest.js",
