@@ -107,7 +107,11 @@ export function usePlicaCompanyData(companyId: string): PlicaCompanyData {
   });
   const liveRuns = useQuery({
     queryKey: queryKeys.plica.liveRuns(companyId),
-    queryFn: () => heartbeatsApi.liveRunsForCompany(companyId, { limit: 8 }),
+    // The capacity strip reads per-agent state out of this list, so it must
+    // cover every agent that could be running — a truncated list draws working
+    // agents as idle and hides stalls from the heat sort. The old "n running"
+    // count came from the summary endpoint and did not care.
+    queryFn: () => heartbeatsApi.liveRunsForCompany(companyId, { limit: 100 }),
     ...LIVE,
   });
   const projects = useQuery({

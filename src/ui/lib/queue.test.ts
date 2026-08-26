@@ -271,6 +271,34 @@ describe("upcomingRoutines", () => {
       ["tomorrow", "scheduled"],
     ]);
   });
+
+  it("orders the week Sunday through Saturday, not by which fires soonest", () => {
+    // NOW is a Friday. `sunday` is nearly two days out but belongs to the top
+    // of the week; `saturday` fires first by the clock yet sorts after it.
+    const dayAt = (dayOffset: number, hour: number) => {
+      const d = new Date(NOW);
+      d.setDate(d.getDate() + dayOffset);
+      d.setHours(hour, 0, 0, 0);
+      return d.toISOString();
+    };
+    const items = upcomingRoutines(
+      [
+        {
+          company: company("c1"),
+          routines: [
+            routine({ id: "saturday", triggers: [{ id: "t", kind: "cron", enabled: true, nextRunAt: dayAt(1, 9) }] }),
+            routine({ id: "sunday", triggers: [{ id: "t", kind: "cron", enabled: true, nextRunAt: dayAt(2, 9) }] }),
+            routine({ id: "sunday-late", triggers: [{ id: "t", kind: "cron", enabled: true, nextRunAt: dayAt(2, 17) }] }),
+          ],
+        },
+      ],
+      NOW,
+    );
+    const byDay = items.map((item) => [new Date(item.atMs).getDay(), item.routine.id] as const);
+    // Sunday (0) before Saturday (6); within Sunday, morning before evening.
+    expect(byDay).toEqual([[0, "sunday"], [0, "sunday-late"], [6, "saturday"]]);
+  });
+
 });
 
 describe("describeCron", () => {
@@ -362,32 +390,6 @@ describe("project grouping", () => {
   });
 });
 
-  it("orders the week Sunday through Saturday, not by which fires soonest", () => {
-    // NOW is a Friday. `sunday` is nearly two days out but belongs to the top
-    // of the week; `saturday` fires first by the clock yet sorts after it.
-    const dayAt = (dayOffset: number, hour: number) => {
-      const d = new Date(NOW);
-      d.setDate(d.getDate() + dayOffset);
-      d.setHours(hour, 0, 0, 0);
-      return d.toISOString();
-    };
-    const items = upcomingRoutines(
-      [
-        {
-          company: company("c1"),
-          routines: [
-            routine({ id: "saturday", triggers: [{ id: "t", kind: "cron", enabled: true, nextRunAt: dayAt(1, 9) }] }),
-            routine({ id: "sunday", triggers: [{ id: "t", kind: "cron", enabled: true, nextRunAt: dayAt(2, 9) }] }),
-            routine({ id: "sunday-late", triggers: [{ id: "t", kind: "cron", enabled: true, nextRunAt: dayAt(2, 17) }] }),
-          ],
-        },
-      ],
-      NOW,
-    );
-    const byDay = items.map((item) => [new Date(item.atMs).getDay(), item.routine.id] as const);
-    // Sunday (0) before Saturday (6); within Sunday, morning before evening.
-    expect(byDay).toEqual([[0, "sunday"], [0, "sunday-late"], [6, "saturday"]]);
-  });
 
 describe("upcomingProjects", () => {
   const project = (id: string, name: string, targetDate: string | null, status = "in_progress") =>
@@ -597,5 +599,28 @@ describe("groupByCompany", () => {
   it("falls back to first appearance with no order given", () => {
     const groups = groupByCompany([item("c2", "a"), item("c1", "b")]);
     expect(groups.map((group) => group.company.id)).toEqual(["c2", "c1"]);
+  });
+});
+
+describe("routineHeat overdue", () => {
+  it("makes an overdue routine the loudest row, not the dimmest", () => {
+    // Its next run is in the past, which used to score as "resting" — the
+    // faintest colour on the rail — burying the one row that needs a person.
+    const heat = routineHeat({ nextAtMs: NOW - 3 * 60 * 60_000, lastFiredAtMs: null, nowMs: NOW });
+    expect(heat.phase).toBe("overdue");
+    expect(heat.intensity).toBe(1);
+  });
+
+  it("does not call a routine overdue inside its grace window", () => {
+    const heat = routineHeat({ nextAtMs: NOW - 1000, lastFiredAtMs: null, nowMs: NOW });
+    expect(heat.phase).not.toBe("overdue");
+  });
+});
+
+describe("describeCronClock every-minute", () => {
+  it("reads a per-minute cron as every minute, not hourly", () => {
+    expect(describeCronClock("* * * * *")).toBe("every minute");
+    // A fixed minute past each hour is still hourly.
+    expect(describeCronClock("15 * * * *")).toBe("hourly");
   });
 });

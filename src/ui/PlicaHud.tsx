@@ -27,7 +27,6 @@ import {
   deriveHeat,
   thresholdsFor,
   tokenState,
-  plicaRefetchInterval,
   shouldShowBriefing,
   type PlicaActionable,
   type PlicaCompanyStats,

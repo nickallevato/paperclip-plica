@@ -114,6 +114,16 @@ tfoot td{border-top:1px solid var(--border);font-size:10.5px;color:var(--muted);
 #tip .m{color:var(--muted);font-size:11px}
 #tip p{margin:5px 0 0}
 .hint{font-size:12px;color:var(--muted);margin:0 0 10px}
+.viewport{display:flex;gap:0;align-items:stretch;margin-inline:auto;transition:max-width .15s ease}
+.viewport[data-constrained="true"]{outline:1px dashed color-mix(in srgb,var(--muted) 45%,transparent);
+  outline-offset:8px;border-radius:4px}
+.viewportBody{flex:1;min-width:0}
+.sidebarStub{flex:0 0 auto;display:none;align-items:center;justify-content:center;
+  writing-mode:vertical-rl;transform:rotate(180deg);
+  font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);
+  background:color-mix(in srgb,var(--muted-bg) 70%,transparent);
+  border:1px dashed color-mix(in srgb,var(--muted) 35%,transparent);border-radius:6px;margin-right:12px}
+.sidebarStub[data-on="true"]{display:flex}
 </style>
 </head>
 <body>
@@ -124,6 +134,20 @@ tfoot td{border-top:1px solid var(--border);font-size:10.5px;color:var(--muted);
     <div class="sub">Placeholder data. Brand accent kept on the left edge; SCADA-muted palette elsewhere.</div>
   </div>
   <div class="spacer"></div>
+  <div class="seg" role="group" aria-label="Viewport width">
+    <span class="lbl">Width</span>
+    <button data-w="744" aria-pressed="false">744</button>
+    <button data-w="820" aria-pressed="false">820</button>
+    <button data-w="1024" aria-pressed="false">1024</button>
+    <button data-w="1280" aria-pressed="false">1280</button>
+    <button data-w="0" aria-pressed="true">Full</button>
+  </div>
+  <div class="seg" role="group" aria-label="Host sidebar">
+    <span class="lbl">Sidebar</span>
+    <button data-sb="240" aria-pressed="true">240</button>
+    <button data-sb="64" aria-pressed="false">Rail</button>
+    <button data-sb="0" aria-pressed="false">None</button>
+  </div>
   <div class="seg" role="group" aria-label="Version">
     <button id="bProposed" aria-pressed="true">Proposed</button>
     <button id="bCurrent" aria-pressed="false">Current</button>
@@ -135,7 +159,12 @@ tfoot td{border-top:1px solid var(--border);font-size:10.5px;color:var(--muted);
 </header>
 
 <p class="hint" id="hint"></p>
-<div class="card"><table id="board"></table></div>
+<div id="viewport" class="viewport">
+  <aside id="sidebarStub" class="sidebarStub">host sidebar</aside>
+  <div class="viewportBody">
+    <div class="card"><table id="board"></table></div>
+  </div>
+</div>
 <div class="legend" id="legend"></div>
 </div>
 <div id="tip" role="tooltip"></div>
@@ -491,8 +520,38 @@ function drawLegend(isProposed){
     <li><div><b>Data gap:</b> no daily-token endpoint. <code>costs/by-agent</code> is a ranged total; <code>costs/window-spend</code> gives rolling buckets. This column wants a <code>costs/by-day</code> route server-side.</div></li></ul>`));
 }
 
+let vpWidth = 0, sidebarWidth = 240;
+function applyViewport(){
+  const vp = document.getElementById("viewport");
+  const stub = document.getElementById("sidebarStub");
+  stub.dataset.on = String(sidebarWidth > 0 && vpWidth !== 0);
+  stub.style.width = sidebarWidth + "px";
+  stub.textContent = sidebarWidth === 64 ? "rail" : "host sidebar";
+  if (vpWidth === 0) {
+    vp.style.maxWidth = "";
+    vp.dataset.constrained = "false";
+  } else {
+    // The preset is the whole device viewport; the board only gets what is
+    // left after the host's own chrome, which is the honest comparison.
+    vp.style.maxWidth = vpWidth + "px";
+    vp.dataset.constrained = "true";
+  }
+}
+
 let mode="proposed";
 function render(){ mode==="proposed"?proposed():currentBoard(); }
+$$("[data-w]").forEach(b=>b.onclick=()=>{
+  vpWidth = Number(b.dataset.w);
+  $$("[data-w]").forEach(x=>x.setAttribute("aria-pressed",String(x===b)));
+  applyViewport();
+});
+$$("[data-sb]").forEach(b=>b.onclick=()=>{
+  sidebarWidth = Number(b.dataset.sb);
+  $$("[data-sb]").forEach(x=>x.setAttribute("aria-pressed",String(x===b)));
+  applyViewport();
+});
+applyViewport();
+
 $("#bProposed").onclick=()=>{mode="proposed";$("#bProposed").ariaPressed="true";$("#bCurrent").ariaPressed="false";render();};
 $("#bCurrent").onclick =()=>{mode="current"; $("#bProposed").ariaPressed="false";$("#bCurrent").ariaPressed="true";render();};
 $("#bDark").onclick =()=>{document.documentElement.dataset.theme="dark"; $("#bDark").ariaPressed="true"; $("#bLight").ariaPressed="false";};

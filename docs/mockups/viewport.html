@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Plica — viewport probe</title>
+<style>
+:root{color-scheme:dark light}
+body{margin:0;min-height:100vh;display:grid;place-items:center;
+  font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Inter,sans-serif;
+  background:#121211;color:#e8e5e0}
+@media (prefers-color-scheme:light){body{background:#e9e7e3;color:#22201d}}
+.card{width:min(92vw,640px);border:1px solid #3a3733;border-radius:10px;padding:20px 22px;
+  background:#1b1a18}
+@media (prefers-color-scheme:light){.card{background:#f6f5f3;border-color:#d5d2cd}}
+h1{margin:0 0 2px;font-size:15px}
+p.sub{margin:0 0 16px;font-size:12px;opacity:.65}
+dl{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;margin:0;font-size:14px}
+dt{opacity:.65}
+dd{margin:0;font-variant-numeric:tabular-nums;font-weight:600}
+.big{font-size:30px;letter-spacing:-.02em}
+.verdict{margin-top:16px;padding:10px 12px;border-radius:8px;font-size:13px;line-height:1.5;
+  border:1px solid #3a3733}
+@media (prefers-color-scheme:light){.verdict{border-color:#d5d2cd}}
+.ok{color:#7d9a76}.warn{color:#b89b56}.bad{color:#bd7d74}
+code{font-size:12px;opacity:.8}
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>Plica viewport probe</h1>
+  <p class="sub">Open on the tablet. Rotate to read both orientations. Values update live.</p>
+  <dl>
+    <dt>CSS viewport</dt><dd class="big" id="vp">–</dd>
+    <dt>Orientation</dt><dd id="orient">–</dd>
+    <dt>Device pixel ratio</dt><dd id="dpr">–</dd>
+    <dt>Screen (device px)</dt><dd id="screen">–</dd>
+    <dt>Tailwind breakpoint</dt><dd id="bp">–</dd>
+    <dt>Host sidebar</dt><dd id="sidebar">–</dd>
+    <dt>Width left for board</dt><dd id="board">–</dd>
+  </dl>
+  <div class="verdict" id="verdict"></div>
+</div>
+<script>
+// Tailwind's defaults, which is what both the host and Plica are built on.
+const BP = [["2xl",1536],["xl",1280],["lg",1024],["md",768],["sm",640]];
+const SIDEBAR = 240, RAIL = 64, PAD = 32, MOBILE = 768;
+
+function read() {
+  const w = window.innerWidth, h = window.innerHeight;
+  const bp = BP.find(([, min]) => w >= min);
+  const drawer = w < MOBILE;
+  const sidebar = drawer ? 0 : SIDEBAR;
+  const board = w - sidebar - PAD;
+  const boardRail = w - (drawer ? 0 : RAIL) - PAD;
+
+  document.getElementById("vp").textContent = `${w} × ${h}`;
+  document.getElementById("orient").textContent = w >= h ? "landscape" : "portrait";
+  document.getElementById("dpr").textContent = String(window.devicePixelRatio);
+  document.getElementById("screen").textContent = `${screen.width} × ${screen.height}`;
+  document.getElementById("bp").textContent = bp ? `${bp[0]} (≥${bp[1]})` : "below sm (<640)";
+  document.getElementById("sidebar").textContent = drawer
+    ? "drawer — costs no width (<768)"
+    : `${SIDEBAR}px expanded · ${RAIL}px collapsed`;
+  document.getElementById("board").textContent = drawer
+    ? `${board}px`
+    : `${board}px expanded · ${boardRail}px collapsed`;
+
+  const twoCol = w >= 1024;
+  const sparkline = w >= 1280;
+  const lines = [];
+  lines.push(twoCol
+    ? `<span class="ok">✓</span> Board is two-column: rails beside the ledger.`
+    : `<span class="warn">•</span> Below <code>lg</code> (1024): rails stack <em>above</em> the board, full width.`);
+  lines.push(sparkline
+    ? `<span class="ok">✓</span> At <code>xl</code>: the Runs/d sparkline shows.`
+    : `<span class="warn">•</span> Below <code>xl</code> (1280): Runs/d sparkline is hidden.`);
+  const usable = twoCol ? board - 420 - 16 : board;
+  lines.push(usable < 620
+    ? `<span class="bad">✗</span> Only <b>${Math.round(usable)}px</b> for the ledger table — today that <b>clips</b> columns rather than dropping them. This is the case to fix.`
+    : `<span class="ok">✓</span> <b>${Math.round(usable)}px</b> for the ledger table — enough for the full column set.`);
+  document.getElementById("verdict").innerHTML = lines.join("<br>");
+}
+
+read();
+addEventListener("resize", read);
+addEventListener("orientationchange", () => setTimeout(read, 300));
+</script>
+</body>
+</html>

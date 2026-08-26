@@ -150,9 +150,9 @@ export function PlicaBoardPage({
       const actionable = actionableByCompany[company.id];
       return {
         needs: sum.needs + (actionable?.count ?? 0),
-        questions: sum.questions + deriveNeedsBreakdown(data?.attention).questions,
-        blocked: sum.blocked + deriveNeedsBreakdown(data?.attention).blocked,
-        review: sum.review + deriveNeedsBreakdown(data?.attention).review,
+        questions: sum.questions + (data?.needsBreakdown?.questions ?? 0),
+        blocked: sum.blocked + (data?.needsBreakdown?.blocked ?? 0),
+        review: sum.review + (data?.needsBreakdown?.review ?? 0),
         tasksOpen: sum.tasksOpen + (stats?.tasksOpen ?? 0),
         runs: sum.runs + deriveThroughput(data?.summary?.runActivity ?? []).total,
         tokens: sum.tokens + (stats?.tokens ?? 0),

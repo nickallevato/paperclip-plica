@@ -48,8 +48,10 @@ const OUTCOME_TONE: Record<PlicaRoutineOutcomeState, string> = {
  * warming toward live blue as the run approaches, full blue while live.
  * Inline because the mix is continuous — there is no utility class for 37%.
  */
-function heatStyle(intensity: number): { color: string } {
-  return { color: `color-mix(in oklab, var(--plica-live) ${Math.round(intensity * 100)}%, var(--plica-rest))` };
+function heatStyle(heat: { phase: string; intensity: number }): { color: string } {
+  // Overdue is a waiting state, not a live one, so it mixes toward ochre.
+  const hue = heat.phase === "overdue" ? "var(--plica-wait)" : "var(--plica-live)";
+  return { color: `color-mix(in oklab, ${hue} ${Math.round(heat.intensity * 100)}%, var(--plica-rest))` };
 }
 
 /** When the trigger last fired, as epoch ms — the anchor for live and afterglow. */
@@ -64,7 +66,11 @@ function lastFiredMs(item: PlicaUpcomingRoutine): number | null {
 function summarize(items: PlicaUpcomingRoutine[], nowMs: number): { text: string; tone: "quiet" | "wait" | "alarm" } {
   const overdue = items.filter((item) => item.state === "overdue").length;
   const failed = items.filter((item) => item.state === "failed").length;
-  const next = items.find((item) => item.state !== "overdue");
+  // Soonest by clock, not first in the list: the rail is sorted by weekday
+  // now, so a Monday routine sits above a Saturday one that fires tomorrow.
+  const next = items
+    .filter((item) => item.state !== "overdue")
+    .reduce<PlicaUpcomingRoutine | null>((soonest, item) => (soonest === null || item.atMs < soonest.atMs ? item : soonest), null);
   const parts: string[] = [];
   if (overdue > 0) parts.push(`${overdue} overdue`);
   if (failed > 0) parts.push(`${failed} failed`);
@@ -78,9 +84,9 @@ function summarize(items: PlicaUpcomingRoutine[], nowMs: number): { text: string
 /**
  * Routines by company, each foldable.
  *
- * Companies keep the order the flat sort gave them — overdue first, then
- * soonest — so the company with the latest schedule still leads the rail.
- * Nothing is capped: a long company is folded, not truncated.
+ * Companies follow the board's own order, so the same company sits in the
+ * same place in every list on the page. Nothing is capped: a long company is
+ * folded, not truncated.
  */
 export function PlicaRoutinesList({
   items,
@@ -132,7 +138,7 @@ export function PlicaRoutinesList({
                 data-routine-phase={heat.phase}
                 data-routine-outcome={outcome.state}
                 className="flex items-center gap-2 py-0.5 pl-2 text-[length:var(--plica-fs-body,14px)] leading-[1.45]"
-                style={heatStyle(heat.intensity)}
+                style={heatStyle(heat)}
               >
                 <span className={cn(MICRO, "w-7 shrink-0 text-muted-foreground")}>{weekday}</span>
                 <PlicaLink

@@ -36,7 +36,7 @@ export const PLICA_BOARD_COLUMNS: ReadonlyArray<{ key: string; label: string; al
   { key: "open", label: "Open", align: "right" },
   { key: "throughput", label: "Runs/d", align: "left" },
   { key: "tokens", label: "Tokens", align: "left" },
-  { key: "open", label: "", align: "right" },
+  { key: "actions", label: "", align: "right" },
 ];
 
 const NUM = "text-[length:var(--plica-fs-title,20px)] leading-[1.15] font-semibold tabular-nums tracking-tight";

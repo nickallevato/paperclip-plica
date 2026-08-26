@@ -862,7 +862,11 @@ export function deriveThroughput(runActivity: ReadonlyArray<DashboardRunActivity
   const days = runActivity.slice(-window);
   const succeeded = days.reduce((sum, day) => sum + day.succeeded, 0);
   const failed = days.reduce((sum, day) => sum + day.failed, 0);
-  const total = succeeded + failed;
+  // The server's own `total` also counts `recovered` (failed, then a retry
+  // succeeded) and `other`. Summing succeeded+failed alone undercounts the
+  // day's work — a company whose restart-killed runs all recovered would show
+  // none of them — and inflates the failure rate by shrinking its denominator.
+  const total = days.reduce((sum, day) => sum + (day.total ?? day.succeeded + day.failed), 0);
   return {
     // One decimal: "4.7 /day" reads as a rate, "5 /day" reads as a count.
     perDay: Math.round((total / Math.max(1, window)) * 10) / 10,

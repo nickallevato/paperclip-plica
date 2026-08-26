@@ -99,7 +99,9 @@ describe("PlicaCapacityStrip", () => {
         nowMs={NOW}
       />,
     );
-    const label = container.querySelector("[data-capacity-strip]")?.getAttribute("aria-label");
+    // The summary rides in an sr-only span rather than an aria-label, so the
+    // squares stay reachable as their own hover targets.
+    const label = container.querySelector("[data-capacity-strip] .sr-only")?.textContent ?? "";
     expect(label).toContain("1 working");
     expect(label).toContain("of 3 agents");
     expect(label).toContain("1 in error");

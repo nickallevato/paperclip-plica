@@ -197,7 +197,11 @@ export function PlicaCapacityStrip({
     (counts.error > 0 ? ` · ${counts.error} in error` : "");
 
   return (
-    <span data-capacity-strip className="inline-flex items-center gap-[3px]" role="img" aria-label={summary}>
+    <span data-capacity-strip className="inline-flex items-center gap-[3px]">
+      {/* Not role="img": the squares are hover targets and `lead` holds a link,
+          and an img role would make the whole subtree presentational. The
+          summary rides alongside them instead. */}
+      <span className="sr-only">{summary}</span>
       {leadSquare && renderSquare(leadSquare)}
       {/* The lead block is a fixed width so the team's squares start at the
           same x on every row — they stay beside the chief, but they tab out

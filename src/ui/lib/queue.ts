@@ -650,7 +650,7 @@ export const PLICA_ROUTINE_APPROACH_MS = 24 * 60 * 60_000;
 /** Approaching never quite reaches live, so a running routine still stands out. */
 const APPROACH_CEILING = 0.85;
 
-export type PlicaRoutinePhase = "running" | "approaching" | "resting";
+export type PlicaRoutinePhase = "running" | "overdue" | "approaching" | "resting";
 
 export interface PlicaRoutineHeat {
   phase: PlicaRoutinePhase;
@@ -686,6 +686,12 @@ export function routineHeat(input: {
   }
 
   const untilNext = nextAtMs === null ? null : nextAtMs - nowMs;
+  // A schedule that should already have fired is the loudest thing this rail
+  // reports. Without this it scores as "resting" — the dimmest row on screen —
+  // because its next run is in the past and nothing is approaching.
+  if (untilNext !== null && untilNext < -PLICA_ROUTINE_OVERDUE_GRACE_MS) {
+    return { phase: "overdue", intensity: 1 };
+  }
   const approaching = untilNext !== null && untilNext >= 0 && untilNext < PLICA_ROUTINE_APPROACH_MS
     ? clamp01(1 - untilNext / PLICA_ROUTINE_APPROACH_MS) * APPROACH_CEILING
     : 0;
@@ -786,7 +792,9 @@ export function describeCronClock(expression: string | null | undefined): string
   if (everyMin && hour === "*") return `every ${everyMin}m`;
   const everyHour = every(hour);
   if (everyHour) return everyHour === 1 ? "hourly" : `every ${everyHour}h`;
-  if (hour === "*") return "hourly";
+  // `* * * * *` is every minute, not hourly — only a fixed minute past each
+  // hour is hourly.
+  if (hour === "*") return min === "*" ? "every minute" : "hourly";
 
   const minute = num(min);
   const hourNum = num(hour);

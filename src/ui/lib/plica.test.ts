@@ -821,7 +821,8 @@ describe("attentionRowTitle", () => {
 
 
 describe("deriveThroughput", () => {
-  const day = (succeeded: number, failed: number) => ({ date: "2026-08-01", succeeded, failed }) as never;
+  const day = (succeeded: number, failed: number, recovered = 0, other = 0) =>
+    ({ date: "2026-08-01", succeeded, failed, recovered, other, total: succeeded + failed + recovered + other }) as never;
 
   it("reports runs a day over the window, with the failure split", () => {
     const result = deriveThroughput([day(3, 0), day(4, 1), day(2, 0), day(5, 2), day(1, 0), day(6, 1), day(0, 0)]);
@@ -982,5 +983,23 @@ describe("deriveNeedsBreakdown", () => {
     const summed = breakdown.questions + breakdown.blocked + breakdown.review + breakdown.decisions + breakdown.other;
     const needs = deriveActionable({ approvals: [], attention: items, ceoOverdue: false });
     expect(summed).toBeLessThanOrEqual(needs.count);
+  });
+});
+
+describe("deriveThroughput counts every run the day recorded", () => {
+  const day = (succeeded: number, failed: number, recovered = 0, other = 0) =>
+    ({ date: "2026-08-01", succeeded, failed, recovered, other, total: succeeded + failed + recovered + other }) as never;
+
+  it("includes recovered and other, not just succeeded plus failed", () => {
+    // A restart-killed run whose retry succeeded is real work; counting only
+    // succeeded+failed would hide it and shrink the fail-rate denominator.
+    const result = deriveThroughput([day(4, 1, 3, 2)]);
+    expect(result.total).toBe(10);
+    expect(result.failRatePct).toBe(10);
+  });
+
+  it("falls back to succeeded plus failed when a payload omits total", () => {
+    const legacy = [{ date: "2026-08-01", succeeded: 3, failed: 1 }] as never;
+    expect(deriveThroughput(legacy).total).toBe(4);
   });
 });

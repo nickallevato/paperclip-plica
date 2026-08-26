@@ -37,8 +37,8 @@ function summarize(items: PlicaProjectEntry[], nowMs: number): { text: string; t
  * Projects by company, each foldable — open work with how much of it is
  * moving, how much is stuck, and the nearest deadline first.
  *
- * Companies keep the order the flat sort gave them (nearest deadline first),
- * so the company with the closest due date leads the rail.
+ * Companies follow the board's own order, so the same company sits in the
+ * same place in every list on the page.
  */
 export function PlicaProjectsList({
   items,
