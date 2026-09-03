@@ -118,7 +118,7 @@ export function PlicaBoardRow({
         pulse && "animate-[pulse_3s_ease-in-out_infinite] bg-red-500/10 motion-reduce:animate-none",
       )}
     >
-      <td className="w-full min-w-0 border-l-4 py-2.5 pl-3 pr-2" style={{ borderLeftColor: companyAccentColor(company.name, company.brandColor) }}>
+      <td className="w-full min-w-0 border-l-4 py-2.5 pl-3 pr-2" style={{ borderLeftColor: companyAccentColor(company.name) }}>
         <div className="flex min-w-0 items-center gap-2.5">
           <button
             type="button"
@@ -136,7 +136,6 @@ export function PlicaBoardRow({
             <CompanyPatternIcon
               companyName={company.name}
               logoUrl={company.logoUrl}
-              brandColor={company.brandColor}
               className="size-7 shrink-0 rounded-md text-[10px]"
             />
           </button>

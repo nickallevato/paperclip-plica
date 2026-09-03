@@ -9,7 +9,7 @@ import { PlicaLiveStrip } from "./PlicaLiveStrip";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
 
-const company = { id: "c1", name: "Acme", issuePrefix: "ACM", logoUrl: null, brandColor: null } as never;
+const company = { id: "c1", name: "Acme", issuePrefix: "ACM", logoUrl: null } as never;
 const run = (overrides: Record<string, unknown>) =>
   ({
     id: "r1",

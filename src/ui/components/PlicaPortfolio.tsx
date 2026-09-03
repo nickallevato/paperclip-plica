@@ -83,7 +83,6 @@ function CompanyHeader({ company, totals }: { company: Company; totals: CompanyT
       <CompanyPatternIcon
         companyName={company.name}
         logoUrl={company.logoUrl}
-        brandColor={company.brandColor}
         className="size-4 shrink-0 rounded text-[7px]"
       />
       <span className="min-w-0 truncate font-semibold text-foreground">{company.name}</span>
@@ -206,7 +205,6 @@ export function PlicaPortfolio({
                       <CompanyPatternIcon
                         companyName={entry.company.name}
                         logoUrl={entry.company.logoUrl}
-                        brandColor={entry.company.brandColor}
                         className="size-3.5 shrink-0 rounded text-[7px]"
                       />
                     )}

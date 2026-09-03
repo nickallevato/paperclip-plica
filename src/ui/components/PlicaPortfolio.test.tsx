@@ -11,8 +11,8 @@ import { PlicaPortfolio } from "./PlicaPortfolio";
 
 const NOW = Date.UTC(2026, 7, 21, 12);
 const DAY = 86_400_000;
-const company = { id: "c1", name: "Acme", issuePrefix: "ACM", logoUrl: null, brandColor: null } as never;
-const globex = { id: "c2", name: "Globex", issuePrefix: "GLX", logoUrl: null, brandColor: null } as never;
+const company = { id: "c1", name: "Acme", issuePrefix: "ACM", logoUrl: null } as never;
+const globex = { id: "c2", name: "Globex", issuePrefix: "GLX", logoUrl: null } as never;
 
 const entry = (
   id: string,

@@ -71,7 +71,6 @@ export function PlicaRoutineExceptions({ items, nowMs }: { items: PlicaUpcomingR
                   <CompanyPatternIcon
                     companyName={company.name}
                     logoUrl={company.logoUrl}
-                    brandColor={company.brandColor}
                     className="size-4 shrink-0 rounded text-[7px]"
                   />
                   <PlicaLink

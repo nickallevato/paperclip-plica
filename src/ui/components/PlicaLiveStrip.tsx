@@ -83,7 +83,6 @@ function RunPill({ company, run, issue, phase }: PlicaLiveEntry) {
       <CompanyPatternIcon
         companyName={company.name}
         logoUrl={company.logoUrl}
-        brandColor={company.brandColor}
         className="size-4 shrink-0 rounded text-[7px]"
       />
       {queued ? <QueuedDot /> : <LiveDot />}

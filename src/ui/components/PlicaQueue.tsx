@@ -94,7 +94,6 @@ function Avatar({ company }: { company: Company }) {
     <CompanyPatternIcon
       companyName={company.name}
       logoUrl={company.logoUrl}
-      brandColor={company.brandColor}
       className="mt-0.5 size-5 shrink-0 rounded-md text-[8px]"
     />
   );
@@ -180,7 +179,7 @@ export function PlicaQueueItemRow({
     item.kind === "attention" && item.item.severity === "critical";
   // The edge says *whose* item this is (it matches the company avatar); how
   // urgent it is moves to a mark before the title so the two never compete.
-  const edgeColor = companyAccentColor(company.name, company.brandColor);
+  const edgeColor = companyAccentColor(company.name);
 
   let identifier: string | null = null;
   let title: string;
@@ -553,7 +552,6 @@ export function PlicaQueue({
           <CompanyPatternIcon
             companyName={filterCompany.name}
             logoUrl={filterCompany.logoUrl}
-            brandColor={filterCompany.brandColor}
             className="size-4 shrink-0 rounded text-[7px]"
           />
           <span className="min-w-0 truncate">
@@ -615,7 +613,6 @@ export function PlicaQueue({
                     <CompanyPatternIcon
                       companyName={group.company.name}
                       logoUrl={group.company.logoUrl}
-                      brandColor={group.company.brandColor}
                       className="size-4 shrink-0 rounded text-[7px]"
                     />
                   )}

@@ -11,7 +11,6 @@ const BAYER_4X4 = [
 interface CompanyPatternIconProps {
   companyName: string;
   logoUrl?: string | null;
-  brandColor?: string | null;
   className?: string;
   logoFit?: "cover" | "contain";
 }
@@ -75,31 +74,14 @@ function hslToRgb(h: number, s: number, l: number): [number, number, number] {
   ];
 }
 
-function hexToHue(hex: string): number {
-  const r = parseInt(hex.slice(1, 3), 16) / 255;
-  const g = parseInt(hex.slice(3, 5), 16) / 255;
-  const b = parseInt(hex.slice(5, 7), 16) / 255;
-  const max = Math.max(r, g, b);
-  const min = Math.min(r, g, b);
-  const d = max - min;
-  if (d === 0) return 0;
-  let h = 0;
-  if (max === r) h = ((g - b) / d) % 6;
-  else if (max === g) h = (b - r) / d + 2;
-  else h = (r - g) / d + 4;
-  return ((h * 60) + 360) % 360;
-}
-
 /**
- * A company's accent as a CSS colour: the brand colour itself when one is set
- * (a grey brand stays grey — it is not reduced to a hue), otherwise the same
- * name-seeded hue the pattern icon draws with, so edges and chips match the
- * avatar without a canvas.
+ * A company's accent as a CSS colour: the name-seeded hue the pattern icon
+ * draws with, so edges and chips match the avatar without a canvas.
+ *
+ * Paperclip removed per-company brand colours in upstream #12291 (the column
+ * is gone from the database), so the hue is derived from the name alone.
  */
-export function companyAccentColor(companyName: string, brandColor?: string | null): string {
-  const hex = brandColor?.trim() ?? "";
-  if (/^#[0-9a-f]{6}$/i.test(hex)) return hex;
-  if (/^#[0-9a-f]{3}$/i.test(hex)) return `#${hex[1]}${hex[1]}${hex[2]}${hex[2]}${hex[3]}${hex[3]}`;
+export function companyAccentColor(companyName: string): string {
   // Replay the icon's own draw sequence so the accent is the pattern's base
   // ("off") colour exactly — hue, then saturation, then lightness.
   const rand = mulberry32(hashString(companyName.trim().toLowerCase()));
@@ -109,7 +91,7 @@ export function companyAccentColor(companyName: string, brandColor?: string | nu
   return `hsl(${hue} ${saturation}% ${lightness}%)`;
 }
 
-function makeCompanyPatternDataUrl(seed: string, brandColor?: string | null, logicalSize = 22, cellSize = 2): string {
+function makeCompanyPatternDataUrl(seed: string, logicalSize = 22, cellSize = 2): string {
   if (typeof document === "undefined") return "";
 
   const canvas = document.createElement("canvas");
@@ -121,7 +103,7 @@ function makeCompanyPatternDataUrl(seed: string, brandColor?: string | null, log
 
   const rand = mulberry32(hashString(seed));
 
-  const hue = brandColor ? hexToHue(brandColor) : Math.floor(rand() * 360);
+  const hue = Math.floor(rand() * 360);
   const [offR, offG, offB] = hslToRgb(
     hue,
     54 + Math.floor(rand() * 14),
@@ -184,7 +166,6 @@ function makeCompanyPatternDataUrl(seed: string, brandColor?: string | null, log
 export function CompanyPatternIcon({
   companyName,
   logoUrl,
-  brandColor,
   className,
   logoFit = "cover",
 }: CompanyPatternIconProps) {
@@ -195,8 +176,8 @@ export function CompanyPatternIcon({
     setImageError(false);
   }, [logoUrl]);
   const patternDataUrl = useMemo(
-    () => makeCompanyPatternDataUrl(companyName.trim().toLowerCase(), brandColor),
-    [companyName, brandColor],
+    () => makeCompanyPatternDataUrl(companyName.trim().toLowerCase()),
+    [companyName],
   );
 
   return (

@@ -10,7 +10,7 @@ import { PlicaRoutineExceptions } from "./PlicaRoutineExceptions";
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
 
 const NOW = Date.UTC(2026, 7, 21, 12);
-const company = { id: "c1", name: "Acme", issuePrefix: "ACM", logoUrl: null, brandColor: null } as never;
+const company = { id: "c1", name: "Acme", issuePrefix: "ACM", logoUrl: null } as never;
 const at = (minsAgo: number) => new Date(NOW - minsAgo * 60_000).toISOString();
 const inMins = (mins: number) => new Date(NOW + mins * 60_000).toISOString();
 

@@ -10,8 +10,8 @@ import { PlicaTokenSettingsPanel } from "./PlicaTokenSettings";
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
 
 const companies = [
-  { id: "c1", name: "Acme Robotics", issuePrefix: "ACM", brandColor: "#123456" },
-  { id: "c2", name: "Beta Works", issuePrefix: "BET", brandColor: "#654321" },
+  { id: "c1", name: "Acme Robotics", issuePrefix: "ACM" },
+  { id: "c2", name: "Beta Works", issuePrefix: "BET" },
 ] as never as Array<{ id: string; name: string; issuePrefix: string }>;
 
 const statsById = {
