@@ -6,7 +6,14 @@ import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Company } from "@paperclipai/shared";
 import { PlicaQueue } from "./PlicaQueue";
-import { deriveQueueItems, groupQueue, summarizeQueue } from "../lib/queue";
+import {
+  countQueueByAge,
+  deriveQueueItems,
+  filterQueueByAge,
+  groupQueue,
+  summarizeQueue,
+  type PlicaQueueAgeFilter,
+} from "../lib/queue";
 
 const mockApprovalsApi = vi.hoisted(() => ({ approve: vi.fn(), reject: vi.fn(), listIssues: vi.fn() }));
 const mockIssuesApi = vi.hoisted(() => ({ acceptInteraction: vi.fn(), rejectInteraction: vi.fn(), listInteractions: vi.fn() }));
@@ -127,6 +134,7 @@ describe("PlicaQueue", () => {
   let container: HTMLDivElement;
   const onActed = vi.fn();
   const onGrouping = vi.fn();
+  const onSort = vi.fn();
 
   beforeEach(() => {
     container = document.createElement("div");
@@ -134,6 +142,7 @@ describe("PlicaQueue", () => {
     mockApprovalsApi.approve.mockResolvedValue({ id: "ap-1", status: "approved" });
     onActed.mockReset();
     onGrouping.mockReset();
+    onSort.mockReset();
   });
   afterEach(() => {
     document.body.innerHTML = "";
@@ -141,9 +150,17 @@ describe("PlicaQueue", () => {
   });
 
   const onClearFilter = vi.fn();
+  const onAgeFilter = vi.fn();
 
-  function render(grouping: "severity" | "company" = "severity", filterCompany: Company | null = null) {
-    const items = buildItems().filter((item) => !filterCompany || item.companyId === filterCompany.id);
+  function render(
+    grouping: "severity" | "company" = "severity",
+    filterCompany: Company | null = null,
+    ageFilter: PlicaQueueAgeFilter = "all",
+  ) {
+    const all = buildItems().filter((item) => !filterCompany || item.companyId === filterCompany.id);
+    // The page filters before it groups, so the harness has to as well —
+    // otherwise the chips would be tested against a rail nobody renders.
+    const items = filterQueueByAge(all, ageFilter, NOW);
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
     const root = createRoot(container);
     act(() => {
@@ -155,6 +172,11 @@ describe("PlicaQueue", () => {
               summary={summarizeQueue(items, NOW)}
               grouping={grouping}
               onGrouping={onGrouping}
+              sort="oldest"
+              onSort={onSort}
+              ageFilter={ageFilter}
+              onAgeFilter={onAgeFilter}
+              ageCounts={countQueueByAge(all, NOW)}
               companiesById={{ c1: acme, c2: globex }}
               nowMs={NOW}
               onActed={onActed}
@@ -252,6 +274,11 @@ describe("PlicaQueue", () => {
               summary={summarizeQueue(items, NOW)}
               grouping="kind"
               onGrouping={onGrouping}
+              sort="oldest"
+              onSort={onSort}
+              ageFilter="all"
+              onAgeFilter={onAgeFilter}
+              ageCounts={countQueueByAge(items, NOW)}
               companiesById={{ c1: acme, c2: globex }}
               nowMs={NOW}
               onActed={onActed}
@@ -280,6 +307,35 @@ describe("PlicaQueue", () => {
     act(() => root.unmount());
   });
 
+  it("folds any group from its header, with Later starting shut", () => {
+    const root = render();
+    const now = container.querySelector('[data-queue-group="now"]') as HTMLElement;
+    const later = container.querySelector('[data-queue-group="later"]') as HTMLElement;
+    expect(now.getAttribute("data-open")).toBe("true");
+    expect(later.getAttribute("data-open")).toBe("false");
+    expect(now.querySelectorAll("li").length).toBeGreaterThan(0);
+
+    act(() => {
+      (now.querySelector("button") as HTMLButtonElement).dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      (later.querySelector("button") as HTMLButtonElement).dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    expect(container.querySelector('[data-queue-group="now"]')?.getAttribute("data-open")).toBe("false");
+    expect(container.querySelector('[data-queue-group="now"]')?.querySelectorAll("li").length).toBe(0);
+    expect(container.querySelector('[data-queue-group="later"]')?.getAttribute("data-open")).toBe("true");
+    act(() => root.unmount());
+  });
+
+  it("flips the age sort from the header toggle", () => {
+    const root = render();
+    const toggle = container.querySelector('[aria-label="Sort newest first"]') as HTMLButtonElement;
+    expect(toggle.textContent).toContain("oldest");
+    act(() => {
+      toggle.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    expect(onSort).toHaveBeenCalledWith("newest");
+    act(() => root.unmount());
+  });
+
   it("approves from the rail and tells the owning company to refetch", async () => {
     const root = render();
     const approve = container.querySelector('[aria-label="Approve"]') as HTMLButtonElement;
@@ -303,6 +359,110 @@ describe("PlicaQueue", () => {
       );
     });
     expect(onClearFilter).toHaveBeenCalled();
+    act(() => root.unmount());
+  });
+});
+
+describe("PlicaQueue age chips", () => {
+  let container: HTMLDivElement;
+  beforeEach(() => {
+    container = document.createElement("div");
+    document.body.appendChild(container);
+  });
+  afterEach(() => {
+    document.body.innerHTML = "";
+    vi.clearAllMocks();
+  });
+
+  const onAgeFilter = vi.fn();
+
+  function renderChips(ageFilter: PlicaQueueAgeFilter = "all") {
+    const all = buildItems();
+    const items = filterQueueByAge(all, ageFilter, NOW);
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const root = createRoot(container);
+    act(() => {
+      root.render(
+        <QueryClientProvider client={queryClient}>
+          <MemoryRouter>
+            <PlicaQueue
+              groups={groupQueue(items, "severity", [acme, globex])}
+              summary={summarizeQueue(items, NOW)}
+              grouping="severity"
+              onGrouping={vi.fn()}
+              sort="oldest"
+              onSort={vi.fn()}
+              ageFilter={ageFilter}
+              onAgeFilter={onAgeFilter}
+              ageCounts={countQueueByAge(all, NOW)}
+              companiesById={{ c1: acme, c2: globex }}
+              nowMs={NOW}
+              onActed={vi.fn()}
+            />
+          </MemoryRouter>
+        </QueryClientProvider>,
+      );
+    });
+    return root;
+  }
+
+  const chip = (filter: string) => container.querySelector(`[data-age-chip="${filter}"]`) as HTMLButtonElement;
+
+  it("offers all five buckets, each carrying its own count", () => {
+    const root = renderChips();
+    const chips = [...container.querySelectorAll("[data-age-chip]")].map((node) => node.getAttribute("data-age-chip"));
+    expect(chips).toEqual(["all", "today", "yesterday", "week", "old"]);
+    // The fixture spans the buckets: four raised today, one yesterday, one
+    // from well over a week ago, and nothing in between.
+    expect(chip("all").textContent).toContain("6");
+    expect(chip("today").textContent).toContain("4");
+    expect(chip("yesterday").textContent).toContain("1");
+    expect(chip("week").textContent).toContain("0");
+    expect(chip("old").textContent).toContain("1");
+    act(() => root.unmount());
+  });
+
+  it("narrows the rail to the chosen bucket, opening Later so the slice is not hidden", () => {
+    // The one item older than a week is a low-priority notice, which normally
+    // sits folded. Asking for "Old" and being shown an apparently empty rail
+    // would be the filter lying about what it found.
+    const root = renderChips("old");
+    expect(container.querySelectorAll("[data-queue-item]")).toHaveLength(1);
+    act(() => root.unmount());
+  });
+
+  it("counts the whole queue, not the slice on screen, so a chip says what it is holding", () => {
+    // Standing in Today must not zero out the other chips — the counts are the
+    // only way to tell an empty bucket from a hidden one.
+    const root = renderChips("today");
+    expect(chip("all").textContent).toContain("6");
+    expect(chip("old").textContent).toContain("1");
+    expect(chip("today").getAttribute("aria-pressed")).toBe("true");
+    expect(chip("all").getAttribute("aria-pressed")).toBe("false");
+    act(() => root.unmount());
+  });
+
+  it("disables an empty bucket rather than removing it, so the chips never move", () => {
+    const root = renderChips();
+    expect(chip("week").disabled).toBe(true);
+    expect(chip("today").disabled).toBe(false);
+    expect(chip("old").disabled).toBe(false);
+    act(() => root.unmount());
+  });
+
+  it("reports the chosen bucket upward", () => {
+    const root = renderChips();
+    act(() => {
+      chip("yesterday").dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    expect(onAgeFilter).toHaveBeenCalledWith("yesterday");
+    act(() => root.unmount());
+  });
+
+  it("names the bucket you are standing in when it turns out to be empty", () => {
+    const root = renderChips("week");
+    expect(container.querySelectorAll("[data-queue-item]")).toHaveLength(0);
+    expect(container.textContent).toContain("Nothing here from the last week");
     act(() => root.unmount());
   });
 });

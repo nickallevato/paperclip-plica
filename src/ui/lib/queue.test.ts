@@ -7,8 +7,15 @@ import {
   flattenLiveRuns,
   groupQueue,
   ageTone,
+  countQueueByAge,
+  derivePortfolio,
+  normalizePortfolioSort,
+  routineExceptions,
+  filterQueueByAge,
+  normalizeQueueAgeFilter,
   queueItemAge,
   upcomingProjects,
+  type PlicaProjectEntry,
   normalizeQueueGrouping,
   summarizeQueue,
   upcomingRoutines,
@@ -188,6 +195,24 @@ describe("compareQueueItems / summarizeQueue / groupQueue", () => {
     ]);
   });
 
+  it("keeps severity first but flips the age tiebreaker when sorting newest first", () => {
+    const sorted = [...items].sort((a, b) => compareQueueItems(a, b, "newest")).map((item) => item.id);
+    expect(sorted).toEqual([
+      "attention:crit",
+      "approval:a1",
+      "heartbeat:agent-ceo",
+      "attention:high-new",
+      "attention:high-old",
+      "attention:low",
+    ]);
+  });
+
+  it("sorts newest first inside each severity group", () => {
+    const groups = groupQueue(items, "severity", [company("c1")], { sort: "newest" });
+    const soon = groups.find((group) => group.key === "soon");
+    expect(soon?.items.map((item) => item.id)).toEqual(["attention:high-new", "attention:high-old"]);
+  });
+
   it("summarises counts and the oldest Now/Soon age (Later is excluded from oldest)", () => {
     expect(summarizeQueue(items, NOW)).toEqual({ now: 3, soon: 2, later: 1, total: 6, oldestMins: 500 });
   });
@@ -345,12 +370,55 @@ describe("age grouping and ramp", () => {
         routines: [],
         nowMs: NOW,
       })[0];
+    // Buckets are calendar days, so the fixtures are measured from local
+    // midnight rather than from NOW — otherwise the test would pass or fail
+    // depending on the timezone the suite happens to run in.
+    const midnight = new Date(NOW);
+    midnight.setHours(0, 0, 0, 0);
+    const sinceMidnight = (NOW - midnight.getTime()) / 60_000;
+    const dayBefore = (days: number, mins = 60) => item(sinceMidnight + days * 24 * 60 + mins);
+
     expect(queueItemAge(item(30), NOW)).toBe("today");
-    expect(queueItemAge(item(3 * 24 * 60), NOW)).toBe("week");
-    expect(queueItemAge(item(10 * 24 * 60), NOW)).toBe("older");
-    expect(queueItemAge(item(45 * 24 * 60), NOW)).toBe("stale");
-    const groups = groupQueue([item(30), item(45 * 24 * 60), item(10 * 24 * 60)], "age", [company("c1")], { nowMs: NOW });
-    expect(groups.map((group) => group.key)).toEqual(["stale", "older", "today"]);
+    expect(queueItemAge(dayBefore(0), NOW)).toBe("yesterday");
+    expect(queueItemAge(dayBefore(2), NOW)).toBe("week");
+    expect(queueItemAge(dayBefore(6), NOW)).toBe("week");
+    expect(queueItemAge(dayBefore(7), NOW)).toBe("old");
+    expect(queueItemAge(dayBefore(45), NOW)).toBe("old");
+    // No timestamp is not evidence of age: it must not fall into "old", where
+    // a reader working today's slice would never see it.
+    expect(queueItemAge({ atMs: null }, NOW)).toBe("today");
+
+    const all = [item(30), dayBefore(0), dayBefore(2), dayBefore(45)];
+    const groups = groupQueue(all, "age", [company("c1")], { nowMs: NOW });
+    expect(groups.map((group) => group.key)).toEqual(["old", "week", "yesterday", "today"]);
+  });
+
+  it("filters to one bucket while every chip keeps its own unfiltered count", () => {
+    const item = (minsAgo: number) =>
+      deriveQueueItems({
+        companyId: "c1",
+        approvals: [{ id: `a-${minsAgo}`, type: "budget_increase", createdAt: new Date(at(minsAgo)), payload: {} }] as never,
+        attention: undefined,
+        agents: [],
+        routines: [],
+        nowMs: NOW,
+      })[0];
+    const midnight = new Date(NOW);
+    midnight.setHours(0, 0, 0, 0);
+    const sinceMidnight = (NOW - midnight.getTime()) / 60_000;
+    const dayBefore = (days: number) => item(sinceMidnight + days * 24 * 60 + 60);
+    const items = [item(30), item(90), dayBefore(0), dayBefore(3), dayBefore(20)];
+
+    expect(countQueueByAge(items, NOW)).toEqual({ all: 5, today: 2, yesterday: 1, week: 1, old: 1 });
+    expect(filterQueueByAge(items, "all", NOW)).toHaveLength(5);
+    expect(filterQueueByAge(items, "today", NOW)).toHaveLength(2);
+    expect(filterQueueByAge(items, "old", NOW)).toHaveLength(1);
+  });
+
+  it("falls back to showing everything when the stored filter is unreadable", () => {
+    expect(normalizeQueueAgeFilter(null)).toBe("all");
+    expect(normalizeQueueAgeFilter("older")).toBe("all");
+    expect(normalizeQueueAgeFilter("yesterday")).toBe("yesterday");
   });
 
   it("ramps grey → amber at a week → red at a month", () => {
@@ -622,5 +690,186 @@ describe("describeCronClock every-minute", () => {
     expect(describeCronClock("* * * * *")).toBe("every minute");
     // A fixed minute past each hour is still hourly.
     expect(describeCronClock("15 * * * *")).toBe("hourly");
+  });
+});
+
+describe("derivePortfolio", () => {
+  const DAY = 86_400_000;
+  const entry = (
+    id: string,
+    open: number,
+    inProgress: number,
+    blocked: number,
+    dueDays: number | null = null,
+  ): PlicaProjectEntry => ({
+    company: company("c1"),
+    project: { id, name: id, urlKey: id } as never,
+    open,
+    inProgress,
+    blocked,
+    dueMs: dueDays === null ? null : NOW + dueDays * DAY,
+    overdue: dueDays !== null && dueDays < 0,
+  });
+
+  it("splits each bar into moving / waiting / blocked, with waiting as the remainder", () => {
+    const { entries } = derivePortfolio([entry("p", 10, 3, 2)], NOW);
+    expect(entries[0]).toMatchObject({ inProgress: 3, blocked: 2, waiting: 5 });
+  });
+
+  it("never reports a negative segment when the snapshot over-counts", () => {
+    // in_review counts as in progress, so a stale poll can briefly report more
+    // moving + blocked than open; a negative width would paint past the track.
+    expect(derivePortfolio([entry("p", 2, 3, 1)], NOW).entries[0].waiting).toBe(0);
+  });
+
+  it("puts trouble first: latest overdue, then most stuck, then biggest", () => {
+    const { entries } = derivePortfolio(
+      [
+        entry("healthy", 20, 10, 0),
+        entry("stuck", 10, 0, 6),
+        entry("late", 4, 1, 0, -2),
+        entry("later", 4, 1, 0, -9),
+      ],
+      NOW,
+    );
+    expect(entries.map((e) => e.project.id)).toEqual(["later", "late", "stuck", "healthy"]);
+  });
+
+  it("counts how late an overdue project is, in whole days", () => {
+    const { entries, open, blocked, overdue } = derivePortfolio(
+      [entry("late", 3, 0, 1, -2), entry("fine", 5, 2, 0, 4)],
+      NOW,
+    );
+    expect(entries[0].lateDays).toBe(2);
+    expect(entries[1].lateDays).toBeNull();
+    expect({ open, blocked, overdue }).toEqual({ open: 8, blocked: 1, overdue: 1 });
+  });
+});
+
+describe("routineExceptions", () => {
+  const upcoming = (
+    id: string,
+    nextRunAt: string,
+    lastRun?: Record<string, unknown>,
+  ) =>
+    upcomingRoutines(
+      [
+        {
+          company: company("c1"),
+          routines: [routine({ id, lastRun, triggers: [{ id: "t", kind: "cron", enabled: true, nextRunAt }] })],
+        },
+      ],
+      NOW,
+    )[0];
+
+  it("keeps only the routines that want something, and counts the rest as healthy", () => {
+    const { items, healthy } = routineExceptions(
+      [
+        upcoming("fine", inMins(60), { status: "completed" }),
+        upcoming("also-fine", inMins(120), { status: "completed" }),
+        upcoming("broken", inMins(90), { status: "failed" }),
+        upcoming("late", at(24 * 60)),
+      ],
+      NOW,
+    );
+    expect(items.map((item) => [item.item.routine.id, item.kind])).toEqual([
+      ["broken", "failed"],
+      ["late", "overdue"],
+    ]);
+    expect(healthy).toBe(2);
+  });
+
+  it("calls a routine that both failed and ran late a failure, not two problems", () => {
+    const { items } = routineExceptions([upcoming("both", at(24 * 60), { status: "failed" })], NOW);
+    expect(items).toHaveLength(1);
+    expect(items[0].kind).toBe("failed");
+    expect(items[0].lateMs).toBeGreaterThan(0);
+  });
+
+  it("surfaces a run wedged on a blocked issue", () => {
+    const item = upcoming("wedged", inMins(60), {
+      status: "issue_created",
+      linkedIssue: { id: "i1", identifier: "ACME-1", title: "Wedged", status: "blocked" },
+    });
+    const { items } = routineExceptions([item], NOW);
+    expect(items.map((entry) => [entry.kind, entry.issue?.identifier])).toEqual([["blocked", "ACME-1"]]);
+  });
+
+  it("orders failures above blocks above the latest overdue", () => {
+    const { items } = routineExceptions(
+      [
+        upcoming("late-a", at(60)),
+        upcoming("late-b", at(600)),
+        upcoming("failed", inMins(60), { status: "failed" }),
+        upcoming("blocked", inMins(60), {
+          status: "issue_created",
+          linkedIssue: { id: "i1", identifier: "ACME-2", title: "b", status: "blocked" },
+        }),
+      ],
+      NOW,
+    );
+    expect(items.map((entry) => entry.item.routine.id)).toEqual(["failed", "blocked", "late-b", "late-a"]);
+  });
+
+  it("has nothing to draw when every routine is healthy", () => {
+    expect(routineExceptions([upcoming("fine", inMins(60), { status: "completed" })], NOW)).toEqual({
+      items: [],
+      healthy: 1,
+    });
+  });
+});
+
+describe("derivePortfolio company order", () => {
+  const entry = (id: string, companyId: string, open: number, blocked = 0): PlicaProjectEntry => ({
+    company: company(companyId),
+    project: { id, name: id, urlKey: id } as never,
+    open,
+    inProgress: 0,
+    blocked,
+    dueMs: null,
+    overdue: false,
+  });
+
+  const items = [
+    entry("c2-small", "c2", 2),
+    entry("c1-stuck", "c1", 10, 8),
+    entry("c2-big", "c2", 30),
+    entry("c1-quiet", "c1", 4),
+  ];
+
+  it("gathers each company's bars, worst first inside the company", () => {
+    const { entries } = derivePortfolio(items, NOW, {
+      sort: "company",
+      companies: [company("c1"), company("c2")],
+    });
+    expect(entries.map((e) => e.project.id)).toEqual(["c1-stuck", "c1-quiet", "c2-big", "c2-small"]);
+  });
+
+  it("follows the board's order, not the alphabet, so both panes agree", () => {
+    const { entries } = derivePortfolio(items, NOW, {
+      sort: "company",
+      companies: [company("c2"), company("c1")],
+    });
+    expect(entries.map((e) => e.company.id)).toEqual(["c2", "c2", "c1", "c1"]);
+  });
+
+  it("keeps trouble order across companies by default", () => {
+    const { entries } = derivePortfolio(items, NOW, { companies: [company("c1"), company("c2")] });
+    expect(entries.map((e) => e.project.id)).toEqual(["c1-stuck", "c2-big", "c1-quiet", "c2-small"]);
+  });
+
+  it("puts a company the board does not list at the end rather than dropping it", () => {
+    const { entries } = derivePortfolio([...items, entry("c9-orphan", "c9", 50)], NOW, {
+      sort: "company",
+      companies: [company("c1"), company("c2")],
+    });
+    expect(entries).toHaveLength(5);
+    expect(entries[entries.length - 1].project.id).toBe("c9-orphan");
+  });
+
+  it("falls back to trouble order when the stored preference is unreadable", () => {
+    expect(normalizePortfolioSort(null)).toBe("trouble");
+    expect(normalizePortfolioSort("due")).toBe("trouble");
+    expect(normalizePortfolioSort("company")).toBe("company");
   });
 });

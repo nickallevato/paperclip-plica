@@ -13,20 +13,25 @@ import {
   type PlicaTokenSettings,
 } from "../lib/plica";
 import {
+  countQueueByAge,
   deriveQueueItems,
+  filterQueueByAge,
   flattenLiveRuns,
   groupQueue,
   summarizeQueue,
   upcomingProjects,
   upcomingRoutines,
+  type PlicaPortfolioSort,
+  type PlicaQueueAgeFilter,
   type PlicaQueueGrouping,
+  type PlicaQueueSort,
 } from "../lib/queue";
 import { PLICA_BOARD_COLUMNS } from "./PlicaBoardRow";
 import { PlicaCompanySlot } from "./PlicaCompanySlot";
-import { PlicaLiveList } from "./PlicaLiveList";
-import { PlicaProjectsList } from "./PlicaProjectsList";
+import { PlicaLiveStrip } from "./PlicaLiveStrip";
+import { PlicaPortfolio } from "./PlicaPortfolio";
 import { PlicaQueue } from "./PlicaQueue";
-import { PlicaRoutinesList } from "./PlicaRoutinesList";
+import { PlicaRoutineExceptions } from "./PlicaRoutineExceptions";
 import type { PlicaCompanyData } from "./usePlicaCompanyData";
 
 const MICRO = "text-[length:var(--plica-fs-micro,11px)] leading-[1.45]";
@@ -65,6 +70,12 @@ export function PlicaBoardPage({
   onSortMode,
   grouping,
   onGrouping,
+  queueSort,
+  onQueueSort,
+  ageFilter,
+  onAgeFilter,
+  portfolioSort,
+  onPortfolioSort,
   footer,
 }: {
   /** Already ordered: watched first, then hot-first or the sidebar order. */
@@ -83,6 +94,12 @@ export function PlicaBoardPage({
   onSortMode: (mode: PlicaSortMode) => void;
   grouping: PlicaQueueGrouping;
   onGrouping: (grouping: PlicaQueueGrouping) => void;
+  queueSort: PlicaQueueSort;
+  onQueueSort: (sort: PlicaQueueSort) => void;
+  ageFilter: PlicaQueueAgeFilter;
+  onAgeFilter: (filter: PlicaQueueAgeFilter) => void;
+  portfolioSort: PlicaPortfolioSort;
+  onPortfolioSort: (sort: PlicaPortfolioSort) => void;
   footer?: ReactNode;
 }) {
   const nowMs = useNowMs();
@@ -125,11 +142,21 @@ export function PlicaBoardPage({
     [loaded, nowMs, focusCompanyId],
   );
   const projects = useMemo(() => loaded.flatMap(({ data }) => data.projects), [loaded]);
-  const groups = useMemo(
-    () => groupQueue(queueItems, grouping, companies, { projects, nowMs }),
-    [queueItems, grouping, companies, projects, nowMs],
+  // Counted before the filter is applied, so each chip can say how much it is
+  // holding back — a chip that reported its own post-filter count would read
+  // "0" for every bucket you are not standing in.
+  const ageCounts = useMemo(() => countQueueByAge(queueItems, nowMs), [queueItems, nowMs]);
+  const visibleItems = useMemo(
+    () => filterQueueByAge(queueItems, ageFilter, nowMs),
+    [queueItems, ageFilter, nowMs],
   );
-  const summary = useMemo(() => summarizeQueue(queueItems, nowMs), [queueItems, nowMs]);
+  const groups = useMemo(
+    () => groupQueue(visibleItems, grouping, companies, { projects, nowMs, sort: queueSort }),
+    [visibleItems, grouping, companies, projects, nowMs, queueSort],
+  );
+  // The badge counts what is on screen: a rail filtered to "today" that still
+  // claimed 137 would be describing a list the reader cannot see.
+  const summary = useMemo(() => summarizeQueue(visibleItems, nowMs), [visibleItems, nowMs]);
   const live = useMemo(
     () => flattenLiveRuns(loaded.map(({ company, data }) => ({ company, runs: data.liveRuns, issues: data.issues }))),
     [loaded],
@@ -162,11 +189,31 @@ export function PlicaBoardPage({
   );
 
   return (
-    <div data-view="board" className="grid gap-4 lg:grid-cols-[minmax(300px,380px)_minmax(0,1fr)] xl:grid-cols-[420px_minmax(0,1fr)] [.plica-kiosk_&]:gap-6 [.plica-kiosk_&]:xl:grid-cols-[540px_minmax(0,1fr)]">
-      <div className="flex min-w-0 flex-col gap-4">
-        <PlicaLiveList entries={live} />
-        <PlicaRoutinesList items={routines} companies={companies} nowMs={nowMs} />
-        <PlicaProjectsList items={projectEntries} companies={companies} nowMs={nowMs} />
+    <div data-view="board" className="flex flex-col gap-4">
+      {/* Live spans the whole width above the board. It is the one block whose
+          height would otherwise track the size of the fleet, so it is the one
+          block that must not be allowed a variable height: as a single row of
+          pills it cannot change size, and everything below it stays put. */}
+      <PlicaLiveStrip entries={live} />
+
+      <div className="grid gap-4 lg:grid-cols-[minmax(300px,380px)_minmax(0,1fr)] xl:grid-cols-[420px_minmax(0,1fr)] [.plica-kiosk_&]:gap-6 [.plica-kiosk_&]:xl:grid-cols-[540px_minmax(0,1fr)]">
+      {/* The rail is a sticky column capped at the viewport rather than pinned
+          to it. A fixed height had to guess how much chrome sat above it, and
+          guessed high — which pushed Routines off the bottom of the screen. A
+          cap cannot: the column is as tall as its contents until that would
+          overflow, and only then does Portfolio start scrolling inside itself.
+          Routines is `shrink-0`, so it is the one thing that can never be
+          squeezed out of view. */}
+      <div className="flex min-w-0 flex-col gap-4 lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:self-start">
+        <PlicaPortfolio
+          items={projectEntries}
+          nowMs={nowMs}
+          companies={companies}
+          sort={portfolioSort}
+          onSort={onPortfolioSort}
+          className="min-h-0 flex-1"
+        />
+        <PlicaRoutineExceptions items={routines} nowMs={nowMs} />
       </div>
 
       <div className="flex min-w-0 flex-col gap-4">
@@ -254,6 +301,11 @@ export function PlicaBoardPage({
           summary={summary}
           grouping={grouping}
           onGrouping={onGrouping}
+          sort={queueSort}
+          onSort={onQueueSort}
+          ageFilter={ageFilter}
+          onAgeFilter={onAgeFilter}
+          ageCounts={ageCounts}
           companiesById={companiesById}
           nowMs={nowMs}
           onActed={(companyId) => dataByCompany[companyId]?.invalidate()}
@@ -261,6 +313,7 @@ export function PlicaBoardPage({
           filterCompany={focusCompany}
           onClearFilter={() => setFocusCompanyId(null)}
         />
+      </div>
       </div>
     </div>
   );

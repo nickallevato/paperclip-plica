@@ -11,7 +11,20 @@ import { PlicaBoardPage } from "./components/PlicaBoardPage";
 import { PlicaBriefing } from "./components/PlicaBriefing";
 import { PlicaTokenSettingsPanel } from "./components/PlicaTokenSettings";
 import type { PlicaCompanyData } from "./components/usePlicaCompanyData";
-import { PLICA_QUEUE_GROUPING_STORAGE_KEY, normalizeQueueGrouping, type PlicaQueueGrouping } from "./lib/queue";
+import {
+  PLICA_PORTFOLIO_SORT_STORAGE_KEY,
+  PLICA_QUEUE_AGE_FILTER_STORAGE_KEY,
+  PLICA_QUEUE_GROUPING_STORAGE_KEY,
+  PLICA_QUEUE_SORT_STORAGE_KEY,
+  normalizePortfolioSort,
+  normalizeQueueAgeFilter,
+  normalizeQueueGrouping,
+  normalizeQueueSort,
+  type PlicaPortfolioSort,
+  type PlicaQueueAgeFilter,
+  type PlicaQueueGrouping,
+  type PlicaQueueSort,
+} from "./lib/queue";
 import { cn, queryKeys } from "./host/util";
 import {
   PLICA_ALERTS_STORAGE_KEY,
@@ -34,7 +47,18 @@ import {
 } from "./lib/plica";
 
 /** Preferences the retired classic views persisted; cleared once so they don't linger. */
-const LEGACY_STORAGE_KEYS = ["plica.layout", "plica.view", "plica.rows", "plica.bar", "plica.collapsed"];
+const LEGACY_STORAGE_KEYS = [
+  "plica.layout",
+  "plica.view",
+  "plica.rows",
+  "plica.bar",
+  "plica.collapsed",
+  // The projects rail's own grouping/sort, retired with it when the rail
+  // became the Portfolio chart — a chart ordered worst-first has nothing left
+  // for those controls to choose between.
+  "plica.projectGrouping",
+  "plica.projectSort",
+];
 
 /** Read a persisted preference, tolerating no storage at all (SSR, private mode). */
 function readStored(key: string): string | null {
@@ -109,6 +133,33 @@ export function PlicaHud() {
   const selectQueueGrouping = (grouping: PlicaQueueGrouping) => {
     setQueueGrouping(grouping);
     writeStored(PLICA_QUEUE_GROUPING_STORAGE_KEY, grouping);
+  };
+
+  const [queueSort, setQueueSort] = useState<PlicaQueueSort>(() =>
+    normalizeQueueSort(readStored(PLICA_QUEUE_SORT_STORAGE_KEY)),
+  );
+  const selectQueueSort = (sort: PlicaQueueSort) => {
+    setQueueSort(sort);
+    writeStored(PLICA_QUEUE_SORT_STORAGE_KEY, sort);
+  };
+
+  // Persisted, unlike the company focus: which slice of the backlog you work
+  // is a habit, not a glance, and re-picking "Today" on every visit is exactly
+  // the friction the chips exist to remove.
+  const [ageFilter, setAgeFilter] = useState<PlicaQueueAgeFilter>(() =>
+    normalizeQueueAgeFilter(readStored(PLICA_QUEUE_AGE_FILTER_STORAGE_KEY)),
+  );
+  const selectAgeFilter = (filter: PlicaQueueAgeFilter) => {
+    setAgeFilter(filter);
+    writeStored(PLICA_QUEUE_AGE_FILTER_STORAGE_KEY, filter);
+  };
+
+  const [portfolioSort, setPortfolioSort] = useState<PlicaPortfolioSort>(() =>
+    normalizePortfolioSort(readStored(PLICA_PORTFOLIO_SORT_STORAGE_KEY)),
+  );
+  const selectPortfolioSort = (sort: PlicaPortfolioSort) => {
+    setPortfolioSort(sort);
+    writeStored(PLICA_PORTFOLIO_SORT_STORAGE_KEY, sort);
   };
 
   const [tokenSettings, setTokenSettings] = useState(() => normalizeTokenSettings(readStored(PLICA_TOKEN_THRESHOLDS_STORAGE_KEY)));
@@ -332,6 +383,12 @@ export function PlicaHud() {
           onSortMode={selectSortMode}
           grouping={queueGrouping}
           onGrouping={selectQueueGrouping}
+          queueSort={queueSort}
+          onQueueSort={selectQueueSort}
+          ageFilter={ageFilter}
+          onAgeFilter={selectAgeFilter}
+          portfolioSort={portfolioSort}
+          onPortfolioSort={selectPortfolioSort}
           footer={
             showBriefing && lastVisit ? (
               <PlicaBriefing companies={companies} since={lastVisit} onDismiss={() => setBriefingDismissed(true)} />

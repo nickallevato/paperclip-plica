@@ -1,5 +1,101 @@
 # Changelog
 
+## Unreleased
+
+### Layout
+
+- **Live now moved out of the rail and onto a strip across the top of the
+  board.** It was the one block whose height tracked the size of the fleet, so
+  every run that started or finished shoved the lists below it down the page.
+  As a single row of pills its height cannot change at all, and nothing below
+  it ever moves. Running agents are a glance, not a list you work through.
+- Each run is now a pill: company, ticket, agent, elapsed. The title and the
+  agent's narration moved into the hover, where they cannot wrap a pill onto a
+  second line and change the strip's height.
+- No cap and no "+N more" line — the row scrolls sideways, so the header count
+  and what you can reach always agree.
+- The rail is a sticky column **capped** at the viewport rather than pinned to
+  a fixed height. The fixed height had to guess how much chrome sat above it
+  and guessed high, which pushed Routines off the bottom of the screen.
+  Routines is now `shrink-0`: it is the one thing that can never be squeezed
+  out of view, and Portfolio scrolls inside itself only once the column would
+  otherwise overflow.
+
+### Portfolio (was Projects)
+
+- The projects rail is now a chart, not a list. The folds, the company
+  grouping, the `most open` / `least open` sort and the per-project deep links
+  are gone — what people actually read off that rail was the shape of the bars,
+  and the rows were not being clicked.
+- One bar per project across every company, **scaled to the largest project**
+  so lengths compare down the column rather than only within a row. Three
+  segments now: moving, **waiting**, blocked — waiting is the untouched
+  remainder the old two-segment bar left as bare track and therefore never
+  named.
+- Ordered worst-first (latest overdue → most stuck → biggest), not by deadline.
+  A chart read at a glance must put the worst bar under the eye first.
+- **Trouble / By company** toggle in the header, persisted in
+  `plica.portfolioSort`. Company order follows the board's own — watched first,
+  then hot-first or the sidebar order — so a company sits in the same place in
+  both panes, and the worst project still leads inside each company. Gathering
+  the bars is the only way to see that one company's whole portfolio is stuck,
+  which trouble-order scatters down the column.
+- In company order each block is headed by the company's name and its own
+  open / blocked / late figures. The header is **sticky**, because a block can
+  be taller than the pane and scrolling past the name would leave a run of bars
+  with nothing saying whose they are. The per-row company icon drops away in
+  that mode — the header already answers it — and stays in Trouble order, where
+  consecutive bars have no shared owner to head.
+- `plica.projectGrouping` and `plica.projectSort` retired; both are cleared on
+  load with the other legacy keys.
+
+### Routines
+
+- Replaced the week's timetable with **exceptions only**: failed, wedged on a
+  blocked issue, or overdue. A schedule you can predict is not information —
+  the old list spent its whole height saying twenty routines would fire on
+  time and gave the two that broke the same weight as the rest.
+- Healthy routines are a count in the footer. When everything is healthy the
+  block is one reassuring line; with no routines at all it says so distinctly.
+- A routine that both failed and ran late is one problem, filed under the
+  failure, which is the half that says why.
+
+### Needs you
+
+- Age filter chips in the rail header: **All / Today / Yesterday / Last week /
+  Old**, persisted in `plica.queueAgeFilter`. A rail carrying a hundred-odd
+  items is a wall you stop reading, and the oldest things on it are the least
+  likely to still matter.
+- Buckets are **calendar days cut at local midnight**, not rolling hours — an
+  item raised at 9pm last night is yesterday's at 8am today. The Age *grouping*
+  now uses the same buckets, so the two can never disagree about which pile an
+  item is in.
+- Each chip carries the count of the **unfiltered** queue, so an empty bucket
+  is distinguishable from a hidden one. Empty buckets stay visible but disabled
+  rather than disappearing, so the chips never move under the cursor as items
+  age past midnight.
+- Under an age filter, **Later starts open**: narrowing to "Old" is an explicit
+  request for that slice, and a rail whose only match is folded away reads as
+  empty.
+- The rail's badge and "oldest" now describe what is on screen, not the queue
+  behind the filter.
+- Age sort remains a toggle in the rail header (`oldest` / `newest`), persisted
+  in `plica.queueSort`. Severity still decides the order first — the toggle only
+  flips which of two equally urgent items leads, so grouping by Severity with
+  newest first works as one view.
+- Every group in the rail folds from its header, not just Later.
+
+### Internal
+
+- `PlicaListControls` factored out of the queue's own header. `PlicaFoldGroup`
+  and `PlicaCompanyGroup` are gone with the rail they served — the Portfolio
+  chart and the routine exceptions have nothing to fold.
+- The projects rail's grouping and sorting helpers (`groupProjects`,
+  `compareProjectEntries`, `projectDueBucket`, `projectHealth`) removed with it;
+  a chart ordered worst-first has nothing left for them to choose between.
+- Test timezone pinned to UTC. The queue's age buckets cut at *local* midnight
+  by design, so the suite has to agree on which local.
+
 ## 0.2.0
 
 ### Board
