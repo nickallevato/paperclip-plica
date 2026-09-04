@@ -10,7 +10,7 @@ import {
   X,
 } from "lucide-react";
 import type { Company } from "@paperclipai/shared";
-import { Button, CompanyPatternIcon, useCompanyAccentColor } from "../host/ui-kit";
+import { Button, CompanyPatternIcon } from "../host/ui-kit";
 import { cn, toCompanyRelativePath } from "../host/util";
 import {
   attentionActionLabel,
@@ -179,7 +179,6 @@ export function PlicaQueueItemRow({
     item.kind === "attention" && item.item.severity === "critical";
   // The edge says *whose* item this is (it matches the company avatar); how
   // urgent it is moves to a mark before the title so the two never compete.
-  const edgeColor = useCompanyAccentColor(company.name);
 
   let identifier: string | null = null;
   let title: string;
@@ -392,10 +391,9 @@ export function PlicaQueueItemRow({
       data-queue-item={item.id}
       data-queue-kind={item.kind}
       className={cn(
-        "flex items-start gap-2.5 border-l-[3px] py-2 pl-3 pr-3 hover:bg-muted/30",
+        "flex items-start gap-2.5 py-2 pl-3 pr-3 hover:bg-muted/30",
         critical && "bg-red-500/[0.08]",
       )}
-      style={{ borderLeftColor: edgeColor }}
     >
       <Avatar company={company} />
       {body}

@@ -1,5 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
-import type { ReactNode } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { cn } from "../util";
 
 const BAYER_4X4 = [
@@ -75,46 +74,25 @@ function hslToRgb(h: number, s: number, l: number): [number, number, number] {
   ];
 }
 
-const PATTERN_SIZE = 22;
-const PATTERN_CELL = 2;
-const DOT_RADIUS_RATIO = 0.46;
+function makeCompanyPatternDataUrl(seed: string, logicalSize = 22, cellSize = 2): string {
+  if (typeof document === "undefined") return "";
 
-interface PatternParams {
-  off: [number, number, number];
-  on: [number, number, number];
-  center: number;
-  gradientDirX: number;
-  gradientDirY: number;
-  maxProjection: number;
-  diagonalFrequency: number;
-  antiDiagonalFrequency: number;
-  diagonalPhase: number;
-  antiDiagonalPhase: number;
-}
+  const canvas = document.createElement("canvas");
+  canvas.width = logicalSize * cellSize;
+  canvas.height = logicalSize * cellSize;
 
-/**
- * Every value the pattern is drawn from, in the exact order the PRNG yields
- * them. Both the canvas draw and the accent colour go through here so the two
- * can never drift apart.
- */
-function patternParams(
-  seed: string,
-  logicalSize: number,
-  hueOverride?: number,
-): PatternParams {
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return "";
+
   const rand = mulberry32(hashString(seed));
 
-  // The drawn hue is consumed even when overridden, so every later value in
-  // the sequence -- dither phases, gradient angle -- stays put and only the
-  // colour moves.
-  const drawnHue = Math.floor(rand() * 360);
-  const hue = hueOverride ?? drawnHue;
-  const off = hslToRgb(
+  const hue = Math.floor(rand() * 360);
+  const [offR, offG, offB] = hslToRgb(
     hue,
     54 + Math.floor(rand() * 14),
     36 + Math.floor(rand() * 12),
   );
-  const on = hslToRgb(
+  const [onR, onG, onB] = hslToRgb(
     hue + (rand() > 0.5 ? 10 : -10),
     86 + Math.floor(rand() * 10),
     82 + Math.floor(rand() * 10),
@@ -125,133 +103,37 @@ function patternParams(
   const gradientAngle = rand() * Math.PI * 2;
   const gradientDirX = Math.cos(gradientAngle);
   const gradientDirY = Math.sin(gradientAngle);
-
-  return {
-    off,
-    on,
-    center,
-    gradientDirX,
-    gradientDirY,
-    maxProjection: Math.abs(gradientDirX * half) + Math.abs(gradientDirY * half),
-    diagonalFrequency: 0.34 + rand() * 0.12,
-    antiDiagonalFrequency: 0.33 + rand() * 0.12,
-    diagonalPhase: rand() * Math.PI * 2,
-    antiDiagonalPhase: rand() * Math.PI * 2,
-  };
-}
-
-/** Whether cell (x, y) gets an "on" dot, per the canonical 16-level Bayer dither. */
-function isOnCell(p: PatternParams, x: number, y: number): boolean {
-  const dx = x - p.center;
-  const dy = y - p.center;
-
-  // Side-to-side signal where visible gradient is produced by dither density.
-  const projection = dx * p.gradientDirX + dy * p.gradientDirY;
-  const gradient = (projection / p.maxProjection + 1) * 0.5;
-  const diagonal =
-    Math.sin((dx + dy) * p.diagonalFrequency + p.diagonalPhase) * 0.5 + 0.5;
-  const antiDiagonal =
-    Math.sin((dx - dy) * p.antiDiagonalFrequency + p.antiDiagonalPhase) * 0.5 + 0.5;
-  const hatch = diagonal * 0.5 + antiDiagonal * 0.5;
-  const signal = Math.max(0, Math.min(1, gradient + (hatch - 0.5) * 0.22));
-
-  const level = Math.max(0, Math.min(15, Math.floor(signal * 16)));
-  return level > BAYER_4X4[y & 3]![x & 3]!;
-}
-
-/**
- * A company's accent as a CSS colour: the pattern icon's dominant colour.
- *
- * The tile is an ordered dither of a saturated base against a pale tint, and
- * the base is what covers most of it -- so the base *is* the dominant colour,
- * and reading it straight off patternParams() keeps the accent and the avatar
- * in step by construction.
- *
- * Paperclip removed per-company brand colours in upstream #12291 (the column
- * is gone from the database), so the seed is the name alone.
- */
-export function companyAccentColor(companyName: string, hue?: number): string {
-  const [r, g, b] = patternParams(companyName.trim().toLowerCase(), PATTERN_SIZE, hue).off;
-  return `rgb(${r} ${g} ${b})`;
-}
-
-const CompanyHueContext = createContext<ReadonlyMap<string, number> | null>(null);
-
-/**
- * Hues spaced evenly around the wheel, one per company.
- *
- * Hashing each name on its own is what let two companies land on neighbouring
- * hues -- with a handful of companies a near-collision is likely, not unlucky.
- * Dealing the whole set out at equal intervals makes the worst separation the
- * best it can be. The set seeds the starting offset, so the wheel is stable
- * for a given roster; adding or removing a company reshuffles it.
- */
-export function companyHues(names: readonly string[]): Map<string, number> {
-  const unique = [...new Set(names.map((name) => name.trim().toLowerCase()).filter(Boolean))].sort();
-  const hues = new Map<string, number>();
-  if (unique.length === 0) return hues;
-
-  const start = hashString(unique.join("\u0000")) % 360;
-  const step = 360 / unique.length;
-  unique.forEach((name, index) => {
-    hues.set(name, Math.round((start + index * step) % 360));
-  });
-  return hues;
-}
-
-export function CompanyHueProvider({
-  names,
-  children,
-}: {
-  names: readonly string[];
-  children: ReactNode;
-}) {
-  const key = names.map((name) => name.trim().toLowerCase()).sort().join("\u0000");
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- `key` is the roster
-  const hues = useMemo(() => companyHues(names), [key]);
-  return <CompanyHueContext.Provider value={hues}>{children}</CompanyHueContext.Provider>;
-}
-
-/** The spaced hue for a company, or undefined outside a provider (then the name hash stands). */
-export function useCompanyHue(companyName: string): number | undefined {
-  return useContext(CompanyHueContext)?.get(companyName.trim().toLowerCase());
-}
-
-/** The accent for a company, spaced against the rest of the roster when one is in scope. */
-export function useCompanyAccentColor(companyName: string): string {
-  const hue = useCompanyHue(companyName);
-  return companyAccentColor(companyName, hue);
-}
-
-function makeCompanyPatternDataUrl(
-  seed: string,
-  hueOverride?: number,
-  logicalSize = PATTERN_SIZE,
-  cellSize = PATTERN_CELL,
-): string {
-  if (typeof document === "undefined") return "";
-
-  const canvas = document.createElement("canvas");
-  canvas.width = logicalSize * cellSize;
-  canvas.height = logicalSize * cellSize;
-
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return "";
-
-  const p = patternParams(seed, logicalSize, hueOverride);
-  const [offR, offG, offB] = p.off;
-  const [onR, onG, onB] = p.on;
+  const maxProjection = Math.abs(gradientDirX * half) + Math.abs(gradientDirY * half);
+  const diagonalFrequency = 0.34 + rand() * 0.12;
+  const antiDiagonalFrequency = 0.33 + rand() * 0.12;
+  const diagonalPhase = rand() * Math.PI * 2;
+  const antiDiagonalPhase = rand() * Math.PI * 2;
 
   // token-extraction: allowlisted — canvas 2D fillStyle computed at runtime from numeric channel props; not a static literal.
   ctx.fillStyle = `rgb(${offR} ${offG} ${offB})`;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   ctx.fillStyle = `rgb(${onR} ${onG} ${onB})`;
-  const dotRadius = cellSize * DOT_RADIUS_RATIO;
+  const dotRadius = cellSize * 0.46;
 
   for (let y = 0; y < logicalSize; y++) {
+    const dy = y - center;
+
     for (let x = 0; x < logicalSize; x++) {
-      if (!isOnCell(p, x, y)) continue;
+      const dx = x - center;
+
+      // Side-to-side signal where visible gradient is produced by dither density.
+      const projection = dx * gradientDirX + dy * gradientDirY;
+      const gradient = (projection / maxProjection + 1) * 0.5;
+      const diagonal = Math.sin((dx + dy) * diagonalFrequency + diagonalPhase) * 0.5 + 0.5;
+      const antiDiagonal = Math.sin((dx - dy) * antiDiagonalFrequency + antiDiagonalPhase) * 0.5 + 0.5;
+      const hatch = diagonal * 0.5 + antiDiagonal * 0.5;
+      const signal = Math.max(0, Math.min(1, gradient + (hatch - 0.5) * 0.22));
+
+      // Canonical 16-level ordered dither: level 0..15 compared to Bayer 4x4 threshold index.
+      const level = Math.max(0, Math.min(15, Math.floor(signal * 16)));
+      const thresholdIndex = BAYER_4X4[y & 3]![x & 3]!;
+      if (level <= thresholdIndex) continue;
 
       const cx = x * cellSize + cellSize / 2;
       const cy = y * cellSize + cellSize / 2;
@@ -276,10 +158,9 @@ export function CompanyPatternIcon({
   useEffect(() => {
     setImageError(false);
   }, [logoUrl]);
-  const hue = useCompanyHue(companyName);
   const patternDataUrl = useMemo(
-    () => makeCompanyPatternDataUrl(companyName.trim().toLowerCase(), hue),
-    [companyName, hue],
+    () => makeCompanyPatternDataUrl(companyName.trim().toLowerCase()),
+    [companyName],
   );
 
   return (
