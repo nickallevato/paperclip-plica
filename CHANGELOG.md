@@ -2,6 +2,39 @@
 
 ## Unreleased
 
+### Demo mode
+
+- **Plica can now serve the whole HUD from a bundled fixture instead of the
+  live instance**, so the page can be shown or screenshotted without exposing
+  real company names, ticket titles or agent narration. Four invented companies
+  with ~40 tickets, ~22 agents, live runs, an overdue routine and a company in
+  the red — sized so every surface has something to draw rather than reading as
+  an empty prototype.
+- Two switches: `?demo=1` on the URL (sticky for the browser session, and
+  superseded as soon as the setting is changed) and a **Demo mode** checkbox
+  on the host's plugin settings page,
+  which Paperclip renders from the new `instanceConfigSchema` in the manifest.
+  Host plugin config is company-scoped and Plica is not, so the box ticked for
+  any one company turns the whole page into a demo.
+- The substitution happens at one seam — `request()` in `src/ui/host/api.ts` —
+  which every read Plica performs already funnels through. No component knows
+  demo mode exists, and none can leak real data by forgetting about it. Writes
+  are intercepted too, so approving an approval or answering an interaction
+  works in a walkthrough without reaching the server.
+- Fails closed. The page renders a placeholder until the mode is resolved and
+  an error if the fixture cannot be loaded, rather than showing real data for a
+  frame or falling back to it silently. A **Demo data** badge sits in the
+  header the whole time it is on.
+- Addressed by the plugin's row UUID, looked up from `/api/plugins`. The
+  plugin-**key** form of the asset route 500s: its `getById` guard reads
+  `error.code` while drizzle puts the Postgres `22P02` on `error.cause`, so a
+  non-UUID id escapes the guard instead of falling through to `getByKey`.
+- The fixture is a real file at `dist/ui/demo-data.json`, so renaming a company
+  is an edit and a reload. Structural changes go through
+  `scripts/gen-demo-data.mjs` (`pnpm demo:data`); a test asserts the two agree.
+  Timestamps are relative tokens resolved at page load, so the demo never reads
+  as months stale.
+
 ### Layout
 
 - **Live now moved out of the rail and onto a strip across the top of the

@@ -1,6 +1,7 @@
 import type { PaperclipPluginManifestV1 } from "@paperclipai/shared";
+import { PLUGIN_ID } from "./plugin-id";
 
-export const PLUGIN_ID = "nickallevato.plugin-plica";
+export { PLUGIN_ID };
 
 /**
  * Plica is a UI-only plugin.
@@ -18,7 +19,7 @@ export const PLUGIN_ID = "nickallevato.plugin-plica";
 const manifest: PaperclipPluginManifestV1 = {
   id: PLUGIN_ID,
   apiVersion: 1,
-  version: "0.2.0",
+  version: "0.3.0",
   displayName: "Plica",
   description: "Cross-company HUD: company panes, triage, approvals, attention, and briefing.",
   // The manifest schema has no homepage/repository fields — `author` is a plain
@@ -40,6 +41,41 @@ const manifest: PaperclipPluginManifestV1 = {
     "approvals.read",
     "activity.read",
   ],
+  /**
+   * Demo mode, rendered by the host as a form on the plugin's settings page
+   * (ui/src/pages/PluginSettings.tsx auto-generates it from this schema).
+   *
+   * With `demoMode` on, Plica serves every read from a static fixture instead
+   * of the instance's real API, so the HUD can be screenshotted or demoed
+   * without exposing real company names, tickets, or agent chatter. Writes
+   * (approve, reject, comment) mutate the in-memory fixture and never reach
+   * the server.
+   *
+   * Host plugin config is stored per company, and Plica is a cross-company
+   * page — so reading this costs one `/api/companies` call to learn which
+   * config row to ask for. Nothing real is rendered while that resolves, and
+   * the `?demo=1` URL parameter skips the lookup entirely (see
+   * `src/ui/demo/demo-mode.ts`), which is the switch to reach for mid-demo.
+   */
+  instanceConfigSchema: {
+    type: "object",
+    properties: {
+      demoMode: {
+        type: "boolean",
+        title: "Demo mode",
+        description:
+          "Serve the HUD from bundled dummy data instead of this instance's real companies. For screenshots and demos.",
+        default: false,
+      },
+      demoDataUrl: {
+        type: "string",
+        title: "Demo data URL",
+        description:
+          "Override where the fixture is fetched from. Defaults to the demo-data.json shipped with the plugin.",
+      },
+    },
+    additionalProperties: true,
+  },
   entrypoints: {
     worker: "./dist/worker.js",
     ui: "./dist/ui",

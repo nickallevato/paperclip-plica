@@ -114,4 +114,18 @@ describe("manifest version", () => {
     const pkg = JSON.parse(readFileSync("package.json", "utf8"));
     expect(manifest.version).toBe(pkg.version);
   });
+
+  it("declares the demo-mode config the host settings page renders", () => {
+    const schema = manifest.instanceConfigSchema as {
+      type: string;
+      properties: Record<string, { type: string }>;
+      additionalProperties?: boolean;
+    };
+    expect(schema.type).toBe("object");
+    expect(schema.properties.demoMode.type).toBe("boolean");
+    expect(schema.properties.demoDataUrl.type).toBe("string");
+    // devUiUrl is written into the same config row by the host's dev-proxy
+    // flow; a closed schema would make saving it fail validation.
+    expect(schema.additionalProperties).toBe(true);
+  });
 });

@@ -1,4 +1,5 @@
 import esbuild from "esbuild";
+import { copyFileSync, mkdirSync } from "node:fs";
 import { createPluginBundlerPresets } from "@paperclipai/plugin-sdk/bundlers";
 
 /**
@@ -34,11 +35,24 @@ presets.esbuild.ui.minifyWhitespace = false;
 // The compiled utility stylesheet is bundled as a string and injected at
 // runtime (src/ui/styles.ts) — the host loads no plugin CSS of its own.
 presets.esbuild.ui.loader = { ...(presets.esbuild.ui.loader ?? {}), ".css": "text" };
+/**
+ * The demo fixture ships as a real file rather than being bundled into the UI
+ * JS, so it can be edited (renamed companies, different ticket titles) and
+ * picked up on the next page load without a rebuild. The host serves anything
+ * under `dist/ui/` with the right MIME type, so a plain copy is all it takes.
+ */
+function copyDemoData() {
+  mkdirSync("dist/ui", { recursive: true });
+  copyFileSync("src/ui/demo/demo-data.json", "dist/ui/demo-data.json");
+}
+
 const watch = process.argv.includes("--watch");
 
 const workerCtx = await esbuild.context(presets.esbuild.worker);
 const manifestCtx = await esbuild.context(presets.esbuild.manifest);
 const uiCtx = await esbuild.context(presets.esbuild.ui);
+
+copyDemoData();
 
 if (watch) {
   await Promise.all([workerCtx.watch(), manifestCtx.watch(), uiCtx.watch()]);

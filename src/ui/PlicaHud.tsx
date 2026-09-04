@@ -84,7 +84,16 @@ function writeStored(key: string, value: string) {
  * cross-company lists — with the "since you last looked" briefing as the
  * rail's footer.
  */
-export function PlicaHud() {
+export interface PlicaHudProps {
+  /**
+   * True when the page is being served from the demo fixture rather than this
+   * instance. Only drives the badge — the substitution itself happens in
+   * `host/api`, so the HUD is otherwise unaware of it.
+   */
+  demo?: boolean;
+}
+
+export function PlicaHud({ demo = false }: PlicaHudProps = {}) {
   const { setBreadcrumbs } = useBreadcrumbs();
   useEffect(() => {
     setBreadcrumbs([{ label: "Plica" }]);
@@ -315,6 +324,17 @@ export function PlicaHud() {
           <Layers className="h-5 w-5 text-muted-foreground" />
           <h1 className="text-[length:var(--plica-fs-title,20px)] leading-[1.3] font-semibold tracking-tight">Plica</h1>
           <span className="text-[length:var(--plica-fs-body,14px)] leading-[1.45] text-muted-foreground">all companies</span>
+          {demo && (
+            /* Deliberately hard to miss. A screenshot of this page is meant to
+               be shareable, which only works if nobody can mistake the fixture
+               for a real instance. */
+            <span
+              className="rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[length:var(--plica-fs-micro,11px)] leading-[1.45] font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-400"
+              title="Plica is showing bundled demo data, not this instance. Add ?demo=0 to the URL to leave demo mode."
+            >
+              Demo data
+            </span>
+          )}
         </div>
         <div className="ml-auto flex items-center gap-3 text-[length:var(--plica-fs-body,14px)] leading-[1.45] text-muted-foreground">
           {anyStale && (

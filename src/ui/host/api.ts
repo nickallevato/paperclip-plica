@@ -29,6 +29,7 @@ import type {
   SidebarOrderPreference,
   WorkTimelineResult,
 } from "@paperclipai/shared";
+import { demoRespond, isDemoActive } from "../demo/demo-runtime";
 
 const BASE = "/api";
 
@@ -45,6 +46,17 @@ export class ApiError extends Error {
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  // Demo mode short-circuits every call before it can reach the network. This
+  // is the only seam that does so, which is what makes the guarantee hold: a
+  // component cannot leak real data by forgetting about demo mode, because
+  // every read it can make comes through here. `demoRespond` raises rather
+  // than returning undefined for an unknown path, so an unmapped endpoint
+  // surfaces as a failed query instead of quietly hitting the real server.
+  if (isDemoActive()) {
+    const parsedBody = typeof init?.body === "string" ? safeJson(init.body) : undefined;
+    return demoRespond(init?.method ?? "GET", path, parsedBody) as T;
+  }
+
   const headers = new Headers(init?.headers ?? undefined);
   if (!headers.has("Content-Type")) {
     headers.set("Content-Type", "application/json");
@@ -67,6 +79,15 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
   if (res.status === 204) return undefined as T;
   return res.json() as Promise<T>;
+}
+
+/** Request bodies are serialized before they reach `request`; demo writes need them back. */
+function safeJson(body: string): unknown {
+  try {
+    return JSON.parse(body);
+  } catch {
+    return undefined;
+  }
 }
 
 const api = {
@@ -288,6 +309,8 @@ export const authApi = {
    * signed-out state instead of an error boundary.
    */
   getSession: async (): Promise<AuthSession> => {
+    // Bypasses `request`, so it needs its own demo guard.
+    if (isDemoActive()) return demoRespond("GET", "/auth/get-session") as AuthSession;
     const res = await fetch("/api/auth/get-session", {
       credentials: "include",
       headers: { Accept: "application/json" },
