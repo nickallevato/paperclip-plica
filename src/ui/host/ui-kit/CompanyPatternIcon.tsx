@@ -74,42 +74,41 @@ function hslToRgb(h: number, s: number, l: number): [number, number, number] {
   ];
 }
 
-/**
- * A company's accent as a CSS colour: the name-seeded hue the pattern icon
- * draws with, so edges and chips match the avatar without a canvas.
- *
- * Paperclip removed per-company brand colours in upstream #12291 (the column
- * is gone from the database), so the hue is derived from the name alone.
- */
-export function companyAccentColor(companyName: string): string {
-  // Replay the icon's own draw sequence so the accent is the pattern's base
-  // ("off") colour exactly — hue, then saturation, then lightness.
-  const rand = mulberry32(hashString(companyName.trim().toLowerCase()));
-  const hue = Math.floor(rand() * 360);
-  const saturation = 54 + Math.floor(rand() * 14);
-  const lightness = 36 + Math.floor(rand() * 12);
-  return `hsl(${hue} ${saturation}% ${lightness}%)`;
+const PATTERN_SIZE = 22;
+const PATTERN_CELL = 2;
+const DOT_RADIUS_RATIO = 0.46;
+
+/** Fraction of a cell a drawn dot actually covers: a circle of r=0.46 in a unit square. */
+const DOT_AREA = Math.PI * DOT_RADIUS_RATIO * DOT_RADIUS_RATIO;
+
+interface PatternParams {
+  off: [number, number, number];
+  on: [number, number, number];
+  center: number;
+  gradientDirX: number;
+  gradientDirY: number;
+  maxProjection: number;
+  diagonalFrequency: number;
+  antiDiagonalFrequency: number;
+  diagonalPhase: number;
+  antiDiagonalPhase: number;
 }
 
-function makeCompanyPatternDataUrl(seed: string, logicalSize = 22, cellSize = 2): string {
-  if (typeof document === "undefined") return "";
-
-  const canvas = document.createElement("canvas");
-  canvas.width = logicalSize * cellSize;
-  canvas.height = logicalSize * cellSize;
-
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return "";
-
+/**
+ * Every value the pattern is drawn from, in the exact order the PRNG yields
+ * them. Both the canvas draw and the accent colour go through here so the two
+ * can never drift apart.
+ */
+function patternParams(seed: string, logicalSize: number): PatternParams {
   const rand = mulberry32(hashString(seed));
 
   const hue = Math.floor(rand() * 360);
-  const [offR, offG, offB] = hslToRgb(
+  const off = hslToRgb(
     hue,
     54 + Math.floor(rand() * 14),
     36 + Math.floor(rand() * 12),
   );
-  const [onR, onG, onB] = hslToRgb(
+  const on = hslToRgb(
     hue + (rand() > 0.5 ? 10 : -10),
     86 + Math.floor(rand() * 10),
     82 + Math.floor(rand() * 10),
@@ -120,37 +119,105 @@ function makeCompanyPatternDataUrl(seed: string, logicalSize = 22, cellSize = 2)
   const gradientAngle = rand() * Math.PI * 2;
   const gradientDirX = Math.cos(gradientAngle);
   const gradientDirY = Math.sin(gradientAngle);
-  const maxProjection = Math.abs(gradientDirX * half) + Math.abs(gradientDirY * half);
-  const diagonalFrequency = 0.34 + rand() * 0.12;
-  const antiDiagonalFrequency = 0.33 + rand() * 0.12;
-  const diagonalPhase = rand() * Math.PI * 2;
-  const antiDiagonalPhase = rand() * Math.PI * 2;
+
+  return {
+    off,
+    on,
+    center,
+    gradientDirX,
+    gradientDirY,
+    maxProjection: Math.abs(gradientDirX * half) + Math.abs(gradientDirY * half),
+    diagonalFrequency: 0.34 + rand() * 0.12,
+    antiDiagonalFrequency: 0.33 + rand() * 0.12,
+    diagonalPhase: rand() * Math.PI * 2,
+    antiDiagonalPhase: rand() * Math.PI * 2,
+  };
+}
+
+/** Whether cell (x, y) gets an "on" dot, per the canonical 16-level Bayer dither. */
+function isOnCell(p: PatternParams, x: number, y: number): boolean {
+  const dx = x - p.center;
+  const dy = y - p.center;
+
+  // Side-to-side signal where visible gradient is produced by dither density.
+  const projection = dx * p.gradientDirX + dy * p.gradientDirY;
+  const gradient = (projection / p.maxProjection + 1) * 0.5;
+  const diagonal =
+    Math.sin((dx + dy) * p.diagonalFrequency + p.diagonalPhase) * 0.5 + 0.5;
+  const antiDiagonal =
+    Math.sin((dx - dy) * p.antiDiagonalFrequency + p.antiDiagonalPhase) * 0.5 + 0.5;
+  const hatch = diagonal * 0.5 + antiDiagonal * 0.5;
+  const signal = Math.max(0, Math.min(1, gradient + (hatch - 0.5) * 0.22));
+
+  const level = Math.max(0, Math.min(15, Math.floor(signal * 16)));
+  return level > BAYER_4X4[y & 3]![x & 3]!;
+}
+
+const accentCache = new Map<string, string>();
+
+/**
+ * A company's accent as a CSS colour: the mean colour of the pattern icon it
+ * sits beside, so an edge or chip reads as the same colour as the avatar.
+ *
+ * Derived by replaying the icon's own draw — same seed, same dither, same dot
+ * geometry — and averaging what lands on the tile. Taking the base ("off")
+ * colour alone would be much too dark: the pale "on" dots cover roughly half
+ * the tile and lift the blend about twenty lightness points.
+ *
+ * Paperclip removed per-company brand colours in upstream #12291 (the column
+ * is gone from the database), so the seed is the name alone.
+ */
+export function companyAccentColor(companyName: string): string {
+  const seed = companyName.trim().toLowerCase();
+  const cached = accentCache.get(seed);
+  if (cached !== undefined) return cached;
+
+  const p = patternParams(seed, PATTERN_SIZE);
+
+  let onCells = 0;
+  for (let y = 0; y < PATTERN_SIZE; y++) {
+    for (let x = 0; x < PATTERN_SIZE; x++) {
+      if (isOnCell(p, x, y)) onCells++;
+    }
+  }
+
+  const onFraction = (onCells / (PATTERN_SIZE * PATTERN_SIZE)) * DOT_AREA;
+  const blend = (channel: 0 | 1 | 2) =>
+    Math.round(p.off[channel] * (1 - onFraction) + p.on[channel] * onFraction);
+
+  const accent = `rgb(${blend(0)} ${blend(1)} ${blend(2)})`;
+  accentCache.set(seed, accent);
+  return accent;
+}
+
+function makeCompanyPatternDataUrl(
+  seed: string,
+  logicalSize = PATTERN_SIZE,
+  cellSize = PATTERN_CELL,
+): string {
+  if (typeof document === "undefined") return "";
+
+  const canvas = document.createElement("canvas");
+  canvas.width = logicalSize * cellSize;
+  canvas.height = logicalSize * cellSize;
+
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return "";
+
+  const p = patternParams(seed, logicalSize);
+  const [offR, offG, offB] = p.off;
+  const [onR, onG, onB] = p.on;
 
   // token-extraction: allowlisted — canvas 2D fillStyle computed at runtime from numeric channel props; not a static literal.
   ctx.fillStyle = `rgb(${offR} ${offG} ${offB})`;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   ctx.fillStyle = `rgb(${onR} ${onG} ${onB})`;
-  const dotRadius = cellSize * 0.46;
+  const dotRadius = cellSize * DOT_RADIUS_RATIO;
 
   for (let y = 0; y < logicalSize; y++) {
-    const dy = y - center;
-
     for (let x = 0; x < logicalSize; x++) {
-      const dx = x - center;
-
-      // Side-to-side signal where visible gradient is produced by dither density.
-      const projection = dx * gradientDirX + dy * gradientDirY;
-      const gradient = (projection / maxProjection + 1) * 0.5;
-      const diagonal = Math.sin((dx + dy) * diagonalFrequency + diagonalPhase) * 0.5 + 0.5;
-      const antiDiagonal = Math.sin((dx - dy) * antiDiagonalFrequency + antiDiagonalPhase) * 0.5 + 0.5;
-      const hatch = diagonal * 0.5 + antiDiagonal * 0.5;
-      const signal = Math.max(0, Math.min(1, gradient + (hatch - 0.5) * 0.22));
-
-      // Canonical 16-level ordered dither: level 0..15 compared to Bayer 4x4 threshold index.
-      const level = Math.max(0, Math.min(15, Math.floor(signal * 16)));
-      const thresholdIndex = BAYER_4X4[y & 3]![x & 3]!;
-      if (level <= thresholdIndex) continue;
+      if (!isOnCell(p, x, y)) continue;
 
       const cx = x * cellSize + cellSize / 2;
       const cy = y * cellSize + cellSize / 2;
