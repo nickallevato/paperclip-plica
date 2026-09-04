@@ -34,13 +34,15 @@ describe("companyAccentColor", () => {
     expect(companyAccentColor("  globex ")).toBe(companyAccentColor("Globex"));
   });
 
-  it("lands mid-tone, not on the pattern's dark base", () => {
-    // The accent is the mean of the tile, so the pale dithered dots pull it
-    // well clear of the base colour. Too dark means the blend was skipped.
+  it("is the pattern's saturated base, not a washed-out blend", () => {
+    // The accent must read as the icon's dominant colour. A blend toward the
+    // pale dither tint would land far lighter than the base it comes from.
     for (const name of NAMES) {
-      const value = luma(companyAccentColor(name));
-      expect(value).toBeGreaterThan(90);
-      expect(value).toBeLessThan(215);
+      const [r, g, b] = channels(companyAccentColor(name));
+      const max = Math.max(r, g, b);
+      const min = Math.min(r, g, b);
+      expect(max - min).toBeGreaterThan(60);
+      expect(luma(companyAccentColor(name))).toBeLessThan(150);
     }
   });
 

@@ -78,9 +78,6 @@ const PATTERN_SIZE = 22;
 const PATTERN_CELL = 2;
 const DOT_RADIUS_RATIO = 0.46;
 
-/** Fraction of a cell a drawn dot actually covers: a circle of r=0.46 in a unit square. */
-const DOT_AREA = Math.PI * DOT_RADIUS_RATIO * DOT_RADIUS_RATIO;
-
 interface PatternParams {
   off: [number, number, number];
   on: [number, number, number];
@@ -153,41 +150,20 @@ function isOnCell(p: PatternParams, x: number, y: number): boolean {
   return level > BAYER_4X4[y & 3]![x & 3]!;
 }
 
-const accentCache = new Map<string, string>();
-
 /**
- * A company's accent as a CSS colour: the mean colour of the pattern icon it
- * sits beside, so an edge or chip reads as the same colour as the avatar.
+ * A company's accent as a CSS colour: the pattern icon's dominant colour.
  *
- * Derived by replaying the icon's own draw — same seed, same dither, same dot
- * geometry — and averaging what lands on the tile. Taking the base ("off")
- * colour alone would be much too dark: the pale "on" dots cover roughly half
- * the tile and lift the blend about twenty lightness points.
+ * The tile is an ordered dither of a saturated base against a pale tint, and
+ * the base is what covers most of it -- so the base *is* the dominant colour,
+ * and reading it straight off patternParams() keeps the accent and the avatar
+ * in step by construction.
  *
  * Paperclip removed per-company brand colours in upstream #12291 (the column
  * is gone from the database), so the seed is the name alone.
  */
 export function companyAccentColor(companyName: string): string {
-  const seed = companyName.trim().toLowerCase();
-  const cached = accentCache.get(seed);
-  if (cached !== undefined) return cached;
-
-  const p = patternParams(seed, PATTERN_SIZE);
-
-  let onCells = 0;
-  for (let y = 0; y < PATTERN_SIZE; y++) {
-    for (let x = 0; x < PATTERN_SIZE; x++) {
-      if (isOnCell(p, x, y)) onCells++;
-    }
-  }
-
-  const onFraction = (onCells / (PATTERN_SIZE * PATTERN_SIZE)) * DOT_AREA;
-  const blend = (channel: 0 | 1 | 2) =>
-    Math.round(p.off[channel] * (1 - onFraction) + p.on[channel] * onFraction);
-
-  const accent = `rgb(${blend(0)} ${blend(1)} ${blend(2)})`;
-  accentCache.set(seed, accent);
-  return accent;
+  const [r, g, b] = patternParams(companyName.trim().toLowerCase(), PATTERN_SIZE).off;
+  return `rgb(${r} ${g} ${b})`;
 }
 
 function makeCompanyPatternDataUrl(
