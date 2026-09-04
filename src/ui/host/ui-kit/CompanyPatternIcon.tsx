@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import type { ReactNode } from "react";
 import { cn } from "../util";
 
 const BAYER_4X4 = [
@@ -96,10 +97,18 @@ interface PatternParams {
  * them. Both the canvas draw and the accent colour go through here so the two
  * can never drift apart.
  */
-function patternParams(seed: string, logicalSize: number): PatternParams {
+function patternParams(
+  seed: string,
+  logicalSize: number,
+  hueOverride?: number,
+): PatternParams {
   const rand = mulberry32(hashString(seed));
 
-  const hue = Math.floor(rand() * 360);
+  // The drawn hue is consumed even when overridden, so every later value in
+  // the sequence -- dither phases, gradient angle -- stays put and only the
+  // colour moves.
+  const drawnHue = Math.floor(rand() * 360);
+  const hue = hueOverride ?? drawnHue;
   const off = hslToRgb(
     hue,
     54 + Math.floor(rand() * 14),
@@ -161,13 +170,62 @@ function isOnCell(p: PatternParams, x: number, y: number): boolean {
  * Paperclip removed per-company brand colours in upstream #12291 (the column
  * is gone from the database), so the seed is the name alone.
  */
-export function companyAccentColor(companyName: string): string {
-  const [r, g, b] = patternParams(companyName.trim().toLowerCase(), PATTERN_SIZE).off;
+export function companyAccentColor(companyName: string, hue?: number): string {
+  const [r, g, b] = patternParams(companyName.trim().toLowerCase(), PATTERN_SIZE, hue).off;
   return `rgb(${r} ${g} ${b})`;
+}
+
+const CompanyHueContext = createContext<ReadonlyMap<string, number> | null>(null);
+
+/**
+ * Hues spaced evenly around the wheel, one per company.
+ *
+ * Hashing each name on its own is what let two companies land on neighbouring
+ * hues -- with a handful of companies a near-collision is likely, not unlucky.
+ * Dealing the whole set out at equal intervals makes the worst separation the
+ * best it can be. The set seeds the starting offset, so the wheel is stable
+ * for a given roster; adding or removing a company reshuffles it.
+ */
+export function companyHues(names: readonly string[]): Map<string, number> {
+  const unique = [...new Set(names.map((name) => name.trim().toLowerCase()).filter(Boolean))].sort();
+  const hues = new Map<string, number>();
+  if (unique.length === 0) return hues;
+
+  const start = hashString(unique.join("\u0000")) % 360;
+  const step = 360 / unique.length;
+  unique.forEach((name, index) => {
+    hues.set(name, Math.round((start + index * step) % 360));
+  });
+  return hues;
+}
+
+export function CompanyHueProvider({
+  names,
+  children,
+}: {
+  names: readonly string[];
+  children: ReactNode;
+}) {
+  const key = names.map((name) => name.trim().toLowerCase()).sort().join("\u0000");
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- `key` is the roster
+  const hues = useMemo(() => companyHues(names), [key]);
+  return <CompanyHueContext.Provider value={hues}>{children}</CompanyHueContext.Provider>;
+}
+
+/** The spaced hue for a company, or undefined outside a provider (then the name hash stands). */
+export function useCompanyHue(companyName: string): number | undefined {
+  return useContext(CompanyHueContext)?.get(companyName.trim().toLowerCase());
+}
+
+/** The accent for a company, spaced against the rest of the roster when one is in scope. */
+export function useCompanyAccentColor(companyName: string): string {
+  const hue = useCompanyHue(companyName);
+  return companyAccentColor(companyName, hue);
 }
 
 function makeCompanyPatternDataUrl(
   seed: string,
+  hueOverride?: number,
   logicalSize = PATTERN_SIZE,
   cellSize = PATTERN_CELL,
 ): string {
@@ -180,7 +238,7 @@ function makeCompanyPatternDataUrl(
   const ctx = canvas.getContext("2d");
   if (!ctx) return "";
 
-  const p = patternParams(seed, logicalSize);
+  const p = patternParams(seed, logicalSize, hueOverride);
   const [offR, offG, offB] = p.off;
   const [onR, onG, onB] = p.on;
 
@@ -218,9 +276,10 @@ export function CompanyPatternIcon({
   useEffect(() => {
     setImageError(false);
   }, [logoUrl]);
+  const hue = useCompanyHue(companyName);
   const patternDataUrl = useMemo(
-    () => makeCompanyPatternDataUrl(companyName.trim().toLowerCase()),
-    [companyName],
+    () => makeCompanyPatternDataUrl(companyName.trim().toLowerCase(), hue),
+    [companyName, hue],
   );
 
   return (

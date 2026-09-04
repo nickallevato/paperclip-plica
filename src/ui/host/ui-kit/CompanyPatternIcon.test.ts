@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { companyAccentColor } from "./CompanyPatternIcon";
+import { companyAccentColor, companyHues } from "./CompanyPatternIcon";
 
 const RGB = /^rgb\((\d{1,3}) (\d{1,3}) (\d{1,3})\)$/;
 
@@ -54,6 +54,49 @@ describe("companyAccentColor", () => {
           ...[0, 1, 2].map((c) => Math.abs(seen[i]![c]! - seen[j]![c]!)),
         );
         expect(distance).toBeGreaterThan(8);
+      }
+    }
+  });
+});
+
+describe("companyHues", () => {
+  it("spaces a roster evenly around the wheel", () => {
+    const hues = [...companyHues(NAMES).values()].sort((a, b) => a - b);
+    expect(hues).toHaveLength(NAMES.length);
+    const step = 360 / NAMES.length;
+    for (let i = 1; i < hues.length; i++) {
+      expect(hues[i]! - hues[i - 1]!).toBeCloseTo(step, 0);
+    }
+  });
+
+  it("is stable for a roster and independent of the order it arrives in", () => {
+    const forward = companyHues(NAMES);
+    const reversed = companyHues([...NAMES].reverse());
+    for (const name of NAMES) {
+      expect(reversed.get(name.toLowerCase())).toBe(forward.get(name.toLowerCase()));
+    }
+  });
+
+  it("pulls apart companies the name hash put on top of each other", () => {
+    // Globex Analytics and Acme Robotics hash to neighbouring hues; spacing them
+    // against the real roster is the point of the palette.
+    const roster = [
+      "Globex Analytics",
+      "Father's Guide",
+      "Acme Robotics",
+      "Acme Robotics IT",
+      "Initech Payments",
+      "clover apiary",
+    ];
+    const hues = companyHues(roster);
+    const gap = Math.abs(hues.get("bora rental")! - hues.get("lion peak house")!);
+    expect(Math.min(gap, 360 - gap)).toBeGreaterThan(40);
+
+    const spaced = roster.map((name) => channels(companyAccentColor(name, hues.get(name.trim().toLowerCase()))));
+    for (let i = 0; i < spaced.length; i++) {
+      for (let j = i + 1; j < spaced.length; j++) {
+        const distance = Math.hypot(...[0, 1, 2].map((c) => spaced[i]![c]! - spaced[j]![c]!));
+        expect(distance).toBeGreaterThan(60);
       }
     }
   });

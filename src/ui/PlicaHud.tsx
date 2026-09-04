@@ -25,6 +25,7 @@ import {
   type PlicaQueueGrouping,
   type PlicaQueueSort,
 } from "./lib/queue";
+import { CompanyHueProvider } from "./host/ui-kit";
 import { cn, queryKeys } from "./host/util";
 import {
   PLICA_ALERTS_STORAGE_KEY,
@@ -308,7 +309,12 @@ export function PlicaHud() {
   const anyStale = Object.values(dataByCompany).some((data) => data?.staleSince != null);
   // The rail's own total, so the number up top is the number you find below it.
 
+  // One roster in, one hue per company out: spacing them here is what keeps
+  // two companies off neighbouring hues.
+  const companyNames = useMemo(() => orderedCompanies.map((company) => company.name), [orderedCompanies]);
+
   return (
+    <CompanyHueProvider names={companyNames}>
     <div ref={rootRef} className={cn("space-y-4", isKiosk && "plica-kiosk bg-background p-4")}>
       <div className="flex flex-wrap items-center gap-3">
         <div className="flex items-center gap-2">
@@ -397,5 +403,6 @@ export function PlicaHud() {
         />
       )}
     </div>
+    </CompanyHueProvider>
   );
 }

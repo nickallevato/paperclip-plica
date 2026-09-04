@@ -1,6 +1,6 @@
 import { ExternalLink, Pin } from "lucide-react";
 import type { Company } from "@paperclipai/shared";
-import { CompanyPatternIcon, companyAccentColor } from "../host/ui-kit";
+import { CompanyPatternIcon, useCompanyAccentColor } from "../host/ui-kit";
 import { cn } from "../host/util";
 import {
   deriveNeedsBreakdown,
@@ -95,6 +95,8 @@ export function PlicaBoardRow({
       ? "Nothing waiting on you"
       : `${actionable.count} waiting on you${stats.oldestMins !== null ? ` · oldest ${formatAgeMinutes(stats.oldestMins)}` : ""}`;
 
+  const accentColor = useCompanyAccentColor(company.name);
+
   return (
     <tr
       data-board-row={company.id}
@@ -118,7 +120,7 @@ export function PlicaBoardRow({
         pulse && "animate-[pulse_3s_ease-in-out_infinite] bg-red-500/10 motion-reduce:animate-none",
       )}
     >
-      <td className="w-full min-w-0 border-l-4 py-2.5 pl-3 pr-2" style={{ borderLeftColor: companyAccentColor(company.name) }}>
+      <td className="w-full min-w-0 border-l-4 py-2.5 pl-3 pr-2" style={{ borderLeftColor: accentColor }}>
         <div className="flex min-w-0 items-center gap-2.5">
           <button
             type="button"
