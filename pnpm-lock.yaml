@@ -28,10 +28,10 @@ importers:
         version: 3.6.0
     devDependencies:
       '@paperclipai/plugin-sdk':
-        specifier: link:~/paperclip/packages/plugins/sdk
+        specifier: link:../../paperclip/packages/plugins/sdk
         version: link:../../paperclip/packages/plugins/sdk
       '@paperclipai/shared':
-        specifier: link:~/paperclip/packages/shared
+        specifier: link:../../paperclip/packages/shared
         version: link:../../paperclip/packages/shared
       '@tailwindcss/node':
         specifier: 4.3.3

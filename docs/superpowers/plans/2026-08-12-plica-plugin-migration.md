@@ -4,7 +4,7 @@
 
 **Goal:** Move the Plica cross-company HUD out of the Paperclip repo's `LOCAL_CUSTOMIZATIONS` mechanism and into a standalone Paperclip plugin that no repo reset or rebuild can erase.
 
-**Architecture:** A plugin package at `the plugin directory` (own git repo, outside the Paperclip checkout) contributes one `page` slot at `routePath: "plica"` and one `navigate` launcher in the sidebar zone. All coupling to Paperclip internals is absorbed by a `src/ui/host/` compatibility layer, so the ~2,800 lines of ported Plica code keep importing familiar names. Plugin UI is same-origin trusted JS and calls core `/api/...` endpoints directly.
+**Architecture:** A plugin package at the plugin directory (own git repo, outside the Paperclip checkout) contributes one `page` slot at `routePath: "plica"` and one `navigate` launcher in the sidebar zone. All coupling to Paperclip internals is absorbed by a `src/ui/host/` compatibility layer, so the ~2,800 lines of ported Plica code keep importing familiar names. Plugin UI is same-origin trusted JS and calls core `/api/...` endpoints directly.
 
 **Tech Stack:** TypeScript, React 19, `@tanstack/react-query` (bundled by the plugin), esbuild, vitest, `@paperclipai/plugin-sdk`.
 
@@ -915,14 +915,14 @@ git add -A && git commit -m "feat: port PlicaLink with full-load cross-company n
 ### Task 12: Cutover and backup
 
 **Files:**
-- Modify: `the nightly upgrade script` (remove one `LOCAL_CUSTOMIZATIONS` entry)
+- Modify: the host's nightly upgrade script (remove one `LOCAL_CUSTOMIZATIONS` entry)
 - No other changes outside the plugin repo.
 
 **Interfaces:**
 - Consumes: a verified working plugin from Task 11.
 - Produces: a Paperclip checkout with zero Plica files and no Plica customization entry.
 
-Nothing here is destructive to the rollback path: the `plica-hud-customization` branch and its private mirror backup survive untouched.
+Nothing here is destructive to the rollback path: the `plica-hud-customization` branch and its private mirror backup survives untouched.
 
 - [ ] **Step 1: Confirm the plugin is fully working**
 
@@ -932,7 +932,7 @@ Re-verify `/<prefix>/plica` renders the complete HUD on the current canary build
 
 ```bash
 cd the plugin directory
-git remote add mirror <the private mirror-remote-url>
+git remote add mirror <remote-url>
 git push -u mirror main
 ```
 
@@ -940,7 +940,7 @@ Create the remote repo first if it does not exist.
 
 - [ ] **Step 3: Remove the customization entry**
 
-In `the nightly upgrade script`, delete the `plica-hud-customization|...` entry from `LOCAL_CUSTOMIZATIONS` and its two explanatory comment lines. Leave `local-customization-a`, `local-customization-b`, and `local-customization-c` untouched.
+In the host's nightly upgrade script, delete the `plica-hud-customization|...` entry from `LOCAL_CUSTOMIZATIONS` and its two explanatory comment lines. Leave the other local customizations untouched.
 
 - [ ] **Step 4: Verify the script still parses**
 
@@ -973,6 +973,6 @@ git push mirror main
 
 ## Deferred / Out of Scope
 
-- The nightly script's skip-before-reapply ordering bug: when the version guard declines an upgrade, `reapply_local_customizations` never runs. After this migration it no longer affects Plica, but `local-customization-a`, `local-customization-b`, and `local-customization-c` still ride that path and have not been re-applied since 2026-08-07.
+- The nightly script's skip-before-reapply ordering bug: when the version guard declines an upgrade, `reapply_local_customizations` never runs. After this migration it no longer affects Plica, but the other local customizations still ride that path and have not been re-applied since 2026-08-07.
 - Restoring `/plica` as a global company-less route (needs a host `scope: "global"` page slot; rejected to keep the core footprint at zero).
 - Upstreaming the `shouldSyncCompanySelectionFromRoute` fix to paperclipai/paperclip.

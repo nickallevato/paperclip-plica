@@ -34,8 +34,8 @@
     "tailwind-merge": "^3.6.0"
   },
   "devDependencies": {
-    "@paperclipai/plugin-sdk": "link:~/paperclip/packages/plugins/sdk",
-    "@paperclipai/shared": "link:~/paperclip/packages/shared",
+    "@paperclipai/plugin-sdk": "link:../../paperclip/packages/plugins/sdk",
+    "@paperclipai/shared": "link:../../paperclip/packages/shared",
     "@tailwindcss/node": "4.3.3",
     "@tailwindcss/oxide": "4.3.3",
     "@testing-library/jest-dom": "^6.6.3",

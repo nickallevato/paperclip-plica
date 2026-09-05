@@ -6,7 +6,7 @@
 ## Problem
 
 The Plica cross-company HUD is deployed through the `LOCAL_CUSTOMIZATIONS`
-mechanism in `the nightly upgrade script`: a single squashed commit
+mechanism in the host's nightly upgrade script: a single squashed commit
 on branch `plica-hud-customization`, 3-way applied onto a freshly built upstream
 tree, landing only in `dist/`. Nothing is merged into the repo.
 
@@ -44,8 +44,7 @@ nightly would now skip Plica.
 
 - Restoring `/plica` as a global, company-less route (see Decisions).
 - Fixing the nightly script's skip-before-reapply ordering. It stops affecting
-  Plica after this migration, but still affects `local-customization-a`,
-  `full-width-ticket`, and `goal-detach`. Tracked separately.
+  Plica after this migration, but still affects the other local customizations. Tracked separately.
 - Upstreaming Plica to paperclipai/paperclip.
 
 ## Decisions
@@ -56,7 +55,7 @@ dynamic ESM loading of plugin bundles, per-plugin error boundaries, and a host
 bridge that injects React and an SDK component kit.
 
 **The package lives outside the Paperclip checkout**, in its own git repo at
-`the plugin directory`, backed up to a private mirror, installed by absolute path via
+the plugin directory, backed up to a private mirror, installed by absolute path via
 `paperclipai plugin install`. Local-path installs read source from disk and the
 host watches the package's declared entrypoints. Because nothing lives inside
 the Paperclip repo, no reset or rebuild can reach it. This is the property that
