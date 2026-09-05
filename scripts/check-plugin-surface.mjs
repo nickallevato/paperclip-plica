@@ -8,10 +8,9 @@
  * mirror (`src/ui/host/`) is out of bounds — see CONTRIBUTING.md, "Never modify
  * Paperclip core".
  *
- * Dependency-free on purpose. `pnpm install` cannot run in CI: the
- * `@paperclipai/*` dev dependencies are `link:` references to a local Paperclip
- * checkout that does not exist on a runner. This script is plain Node against
- * plain `git`, so the guardrail runs even when nothing else can.
+ * Dependency-free on purpose. This script is plain Node against plain `git`, so
+ * the guardrail still reports when nothing is installed and the build is
+ * broken — the moments a core edit is most tempting.
  *
  * There is deliberately no bypass token, no `--force`, no skip label. If the
  * plugin surface genuinely cannot express what a change needs, that is a core
