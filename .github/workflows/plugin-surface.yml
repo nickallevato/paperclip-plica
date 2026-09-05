@@ -1,0 +1,38 @@
+name: plugin surface
+
+# The no-core-changes rule, enforced. See CONTRIBUTING.md, "Never modify
+# Paperclip core".
+#
+# Deliberately does not install dependencies: the `@paperclipai/*` dev
+# dependencies are `link:` references to a local Paperclip checkout that does
+# not exist on a runner, so `pnpm install` cannot succeed here. The check is
+# plain Node against plain git, which is why it can run at all.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  plugin-surface:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Need the merge base to diff a PR branch against it.
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Check the changed files stay inside the plugin surface
+        if: github.event_name == 'pull_request'
+        run: node scripts/check-plugin-surface.mjs --base "origin/${{ github.base_ref }}"
+
+      - name: Check the whole tree stays inside the plugin surface
+        if: github.event_name != 'pull_request'
+        run: node scripts/check-plugin-surface.mjs --all

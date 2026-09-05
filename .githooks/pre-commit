@@ -4,6 +4,9 @@
 # Dependency-free: enabled with `pnpm hooks:install`, which points
 # core.hooksPath here. No husky, no lint-staged, nothing to keep in sync.
 set -e
+# Dependency-free, so it stays useful even when install is broken.
+echo "pre-commit: plugin surface"
+node ./scripts/check-plugin-surface.mjs --all
 echo "pre-commit: typecheck"
 pnpm typecheck
 echo "pre-commit: test"

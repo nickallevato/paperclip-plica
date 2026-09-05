@@ -191,6 +191,13 @@ src/
 scripts/build-css.mjs      Tailwind compile + host-duplicate subtraction
 ```
 
+## Contributing
+
+[CONTRIBUTING.md](CONTRIBUTING.md). The rule to read before anything else:
+**Plica never modifies Paperclip core.** Everything lands here, through a plugin
+extension point. If the plugin surface cannot express a change, file it as a
+core limitation rather than working around it — CI enforces this, with no bypass.
+
 ## License
 
 MIT

@@ -18,6 +18,7 @@
     "dev": "node ./scripts/build-css.mjs && node ./esbuild.config.mjs --watch",
     "test": "vitest run --config ./vitest.config.ts",
     "typecheck": "tsc --noEmit",
+    "check:surface": "node ./scripts/check-plugin-surface.mjs --all",
     "hooks:install": "git config core.hooksPath .githooks"
   },
   "paperclipPlugin": {
