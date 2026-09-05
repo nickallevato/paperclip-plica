@@ -1,0 +1,15 @@
+# The Paperclip core commit CI checks Plica against.
+#
+# Plica's `@paperclipai/*` dev dependencies are `link:` references to a
+# Paperclip checkout (CONTRIBUTING.md, "Never modify Paperclip core"). CI
+# clones that checkout read-only from the public upstream so typecheck, build,
+# and test can run against the real host types instead of stubs.
+#
+# Pinned rather than tracking `master` on purpose: an unrelated upstream commit
+# should not turn every open Plica pull request red. Bumping this is its own
+# pull request, and a red CI on that bump is exactly the signal we want — it
+# means a Paperclip upgrade broke Plica, loudly, before a user hit it.
+#
+# One commit SHA, comments and blank lines ignored.
+
+f9e814366722d6ece2467ed9b3d53c38e2eb2367

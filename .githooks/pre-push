@@ -3,6 +3,11 @@
 #
 # `pnpm build` is what produces dist/, which is what the host loads — a push
 # that does not build is a push nobody can install.
+#
+# The branch name is checked here rather than at commit time: renaming after a
+# push means a second branch on the remote and a stale pull request.
 set -e
+echo "pre-push: branch name"
+pnpm check:branch
 echo "pre-push: build"
 pnpm build

@@ -3,10 +3,11 @@ name: plugin surface
 # The no-core-changes rule, enforced. See CONTRIBUTING.md, "Never modify
 # Paperclip core".
 #
-# Deliberately does not install dependencies: the `@paperclipai/*` dev
-# dependencies are `link:` references to a local Paperclip checkout that does
-# not exist on a runner, so `pnpm install` cannot succeed here. The check is
-# plain Node against plain git, which is why it can run at all.
+# Deliberately does not install dependencies. `ci.yml` does the heavy work —
+# it clones a Paperclip checkout so the `@paperclipai/*` links resolve — but
+# this check is plain Node against plain git, so it still reports in seconds
+# when that install or build is broken. Those are the moments a core edit is
+# most tempting, so the guardrail must not depend on them.
 
 on:
   pull_request:

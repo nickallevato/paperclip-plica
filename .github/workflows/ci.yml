@@ -1,0 +1,123 @@
+name: ci
+
+# Typecheck, build, and test on every pull request and every push to main.
+#
+# The interesting part is the Paperclip checkout. Plica's `@paperclipai/*` dev
+# dependencies are `link:../../paperclip/...`, so nothing installs without a
+# Paperclip tree next to this one. CI clones it from the public upstream at the
+# commit pinned in `.github/paperclip-core.ref` — read-only, never written to,
+# never committed here. That is what lets Plica type-check against the host's
+# real types rather than hand-written stubs that drift.
+#
+# The layout matters: this repo is checked out at `repo/plica` so that
+# `../../paperclip` resolves to the core checkout at the workspace root.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Corepack picks the pnpm version from each repo's `packageManager` field —
+  # Plica is on pnpm 10, Paperclip on pnpm 9 — and must not stop to ask.
+  COREPACK_ENABLE_DOWNLOAD_PROMPT: "0"
+
+jobs:
+  branch-name:
+    name: branch name
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check the branch follows the naming convention
+        run: node scripts/check-branch-name.mjs "${{ github.head_ref }}"
+
+  build-and-test:
+    name: build and test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out Plica
+        uses: actions/checkout@v4
+        with:
+          path: repo/plica
+
+      - name: Read the pinned Paperclip core commit
+        id: core
+        working-directory: repo/plica
+        run: |
+          ref=$(grep -v '^[[:space:]]*#' .github/paperclip-core.ref | tr -d '[:space:]')
+          if [ -z "$ref" ]; then
+            echo "::error::.github/paperclip-core.ref holds no commit SHA"
+            exit 1
+          fi
+          echo "ref=$ref" >> "$GITHUB_OUTPUT"
+          echo "Paperclip core pinned at $ref"
+
+      - name: Check out Paperclip core (read-only reference)
+        uses: actions/checkout@v4
+        with:
+          repository: paperclipai/paperclip
+          ref: ${{ steps.core.outputs.ref }}
+          path: paperclip
+
+      - uses: actions/setup-node@v4
+        with:
+          # Paperclip core declares engines.node >= 24.11.0.
+          node-version: 24
+
+      - name: Enable corepack
+        run: corepack enable
+
+      # Only the two workspace projects Plica links against, plus the host UI —
+      # `pnpm build` filters Plica's stylesheet against the host's compiled CSS
+      # (scripts/build-css.mjs), and that file only exists after a UI build.
+      #
+      # `--ignore-scripts` skips core's postinstall, which links the SDK into
+      # core's own plugin examples. Plica has no business triggering that.
+      - name: Install Paperclip core packages
+        working-directory: paperclip
+        run: pnpm install --frozen-lockfile --ignore-scripts --filter "@paperclipai/plugin-sdk..." --filter "ui..."
+
+      - name: Build the plugin SDK
+        working-directory: paperclip
+        run: pnpm --filter @paperclipai/plugin-sdk build
+
+      - name: Build the host UI
+        working-directory: paperclip
+        run: pnpm --filter ui build
+
+      - name: Locate the host stylesheet
+        run: |
+          css=$(ls "$GITHUB_WORKSPACE"/paperclip/ui/dist/assets/*.css | head -n 1)
+          if [ -z "$css" ]; then
+            echo "::error::no compiled host stylesheet under paperclip/ui/dist/assets"
+            exit 1
+          fi
+          echo "PLICA_HOST_CSS=$css" >> "$GITHUB_ENV"
+          echo "host stylesheet: $css"
+
+      - name: Install Plica
+        working-directory: repo/plica
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        working-directory: repo/plica
+        run: pnpm typecheck
+
+      # Build before test on purpose: src/bundle.test.ts asserts against
+      # dist/ui/index.js and skips itself when that file is missing, so running
+      # tests first would quietly drop the host-loader contract checks.
+      - name: Build
+        working-directory: repo/plica
+        run: pnpm build
+
+      - name: Test
+        working-directory: repo/plica
+        run: pnpm test
