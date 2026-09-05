@@ -16,8 +16,10 @@
  * has no pre-checkout hook to hang a veto on. What it can do is keep the shared
  * tree from being where anyone's work lives, so there is nothing there to lose.
  *
- * It only applies to agents. A human clone has exactly one worktree and no
- * `PAPERCLIP_WORKSPACE_CWD` in the environment, so this is a no-op there.
+ * It only applies to agents sharing a tree. A human clone has exactly one
+ * worktree and no `PAPERCLIP_WORKSPACE_CWD` in the environment, and a run given
+ * an isolated workspace reports a `PAPERCLIP_WORKSPACE_STRATEGY` other than
+ * `project_primary`, so this is a no-op in both.
  *
  * Dependency-free, like the branch-name and plugin-surface checks, so it runs
  * in a git hook with nothing to keep in sync.
@@ -34,6 +36,9 @@ import { execFileSync } from "node:child_process";
 /** Branches that are not one agent's in-flight work. */
 export const EXEMPT_BRANCHES = new Set(["main"]);
 
+/** The one `PAPERCLIP_WORKSPACE_STRATEGY` that hands every agent the same tree. */
+export const SHARED_STRATEGY = "project_primary";
+
 /**
  * Decides whether a commit is allowed, from already-gathered facts.
  *
@@ -44,12 +49,26 @@ export const EXEMPT_BRANCHES = new Set(["main"]);
  * @param {boolean} facts.isPaperclipRun    Running inside a Paperclip agent run.
  * @param {boolean} facts.isSharedCheckout  This is the main worktree, not a linked one.
  * @param {string}  facts.branch            Current branch name.
+ * @param {string}  [facts.strategy]        `PAPERCLIP_WORKSPACE_STRATEGY`, if set.
  * @param {boolean} [facts.overridden]      `PLICA_ALLOW_SHARED_CHECKOUT` is set.
  * @returns {{ ok: boolean, reason: string }}
  */
-export function classifyCheckout({ isPaperclipRun, isSharedCheckout, branch, overridden = false }) {
+export function classifyCheckout({
+  isPaperclipRun,
+  isSharedCheckout,
+  branch,
+  strategy = "",
+  overridden = false,
+}) {
   if (!isPaperclipRun) {
     return { ok: true, reason: "not a Paperclip agent run" };
+  }
+  // The runtime says which working copy it handed us, and only one of the
+  // strategies shares it. Trust that over the shape of the checkout: an
+  // isolated workspace is free to be a clone rather than a linked worktree,
+  // and blocking every commit in one would be the worse failure.
+  if (strategy && strategy !== SHARED_STRATEGY) {
+    return { ok: true, reason: `workspace strategy "${strategy}" is not shared` };
   }
   if (!isSharedCheckout) {
     return { ok: true, reason: "linked worktree, private to this run" };
@@ -89,6 +108,7 @@ function main() {
     isPaperclipRun: Boolean(process.env.PAPERCLIP_WORKSPACE_CWD),
     isSharedCheckout: isMainWorktree(),
     branch,
+    strategy: process.env.PAPERCLIP_WORKSPACE_STRATEGY ?? "",
     overridden: Boolean(process.env.PLICA_ALLOW_SHARED_CHECKOUT),
   });
 

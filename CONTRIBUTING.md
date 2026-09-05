@@ -201,9 +201,19 @@ exception.
 > with no convention for anyone to remember. Both sit behind the instance-level
 > **Isolated Workspaces** experimental setting (`enableIsolatedWorkspaces`),
 > which defaults off and which only the instance owner can turn on — agent
-> credentials get `403 Board access required`. Until it is on, the rule above is
-> binding on contributors even though Paperclip does not enforce it. Tracked in
-> PLI-15.
+> credentials get `403 Board access required`.
+>
+> **The owner has agreed to turn it on** (PLI-15, 2026-09-05). That makes
+> isolation the sanctioned mechanism here rather than a convention. It does not
+> retire the rule above, for two reasons: agents cannot read the flag to confirm
+> it, and the project still has to be pointed at an isolated mode before any
+> run resolves to one. So read it off your own run instead —
+> `PAPERCLIP_WORKSPACE_STRATEGY` says which working copy you were actually
+> handed. While it reads `project_primary` you are in the shared tree and the
+> rule binds; when it reads `git_worktree` the runtime already gave you your
+> own, and the `git worktree add` above is redundant rather than wrong. Keep the
+> guard either way — it costs nothing once runs are isolated, and it is the only
+> thing standing between a shared run and a silent loss.
 
 ## Branches
 

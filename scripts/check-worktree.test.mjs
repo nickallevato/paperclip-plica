@@ -24,6 +24,18 @@ describe("classifyCheckout", () => {
     expect(classifyCheckout({ ...shared, branch: "main" }).ok).toBe(true);
   });
 
+  it("stands down when the runtime says the workspace is not the shared one", () => {
+    // An isolated workspace may be a clone rather than a linked worktree, so
+    // the shape of the checkout is not the tell — the strategy is.
+    const { ok, reason } = classifyCheckout({ ...shared, strategy: "git_worktree" });
+    expect(ok).toBe(true);
+    expect(reason).toContain("git_worktree");
+  });
+
+  it("still blocks when the strategy is the one that shares the tree", () => {
+    expect(classifyCheckout({ ...shared, strategy: "project_primary" }).ok).toBe(false);
+  });
+
   it("honours the escape hatch for a deliberate exception", () => {
     expect(classifyCheckout({ ...shared, overridden: true }).ok).toBe(true);
   });
@@ -59,7 +71,16 @@ describe("the CLI", () => {
       const stdout = execFileSync("node", ["scripts/check-worktree.mjs"], {
         encoding: "utf8",
         stdio: ["ignore", "pipe", "pipe"],
-        env: { ...process.env, PLICA_ALLOW_SHARED_CHECKOUT: "", PAPERCLIP_WORKSPACE_CWD: "", ...env },
+        env: {
+          ...process.env,
+          PLICA_ALLOW_SHARED_CHECKOUT: "",
+          PAPERCLIP_WORKSPACE_CWD: "",
+          // Pinned, not inherited: once the instance turns on isolated
+          // workspaces the ambient value changes, and these cases are about
+          // the shared tree.
+          PAPERCLIP_WORKSPACE_STRATEGY: "project_primary",
+          ...env,
+        },
       });
       return { code: 0, stdout };
     } catch (err) {
