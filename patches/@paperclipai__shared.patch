@@ -1,0 +1,5 @@
+--- a/packages/shared/src/plugin-manifest.ts
++++ b/packages/shared/src/plugin-manifest.ts
+@@
+-  additionalProperties: false,
++  additionalProperties: true,

@@ -53,7 +53,8 @@
     "react-router-dom": "^7.18.1",
     "tailwindcss": "4.3.3",
     "typescript": "^5.7.3",
-    "vitest": "^4.1.10"
+    "vitest": "^4.1.10",
+    "@paperclipai/server": "link:../../paperclip/packages/server"
   },
   "peerDependencies": {
     "react": ">=18"
@@ -61,6 +62,9 @@
   "pnpm": {
     "onlyBuiltDependencies": [
       "esbuild"
-    ]
+    ],
+    "patchedDependencies": {
+      "@paperclipai/shared": "patches/@paperclipai__shared.patch"
+    }
   }
 }
