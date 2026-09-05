@@ -3,8 +3,9 @@
  *
  * Plugin UI runs as same-origin trusted JavaScript, and manifest capabilities
  * gate worker-side host RPC only — they do not restrict plugin UI from calling
- * ordinary Paperclip HTTP APIs (PLUGIN_SPEC.md §24). So Plica keeps talking to
- * the same endpoints it always did, carrying the session cookie.
+ * ordinary Paperclip HTTP APIs (PLUGIN_SPEC.md, "Current implementation
+ * caveats" — not a numbered section; §24 is Operator UX). So Plica keeps
+ * talking to the same endpoints it always did, carrying the session cookie.
  *
  * This module deliberately implements ONLY the methods Plica calls. The host's
  * own api modules carry dozens more; copying them wholesale would create a

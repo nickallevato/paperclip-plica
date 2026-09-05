@@ -3,7 +3,14 @@ import { HoverCard as HoverCardPrimitive } from "radix-ui";
 
 import { cn } from "../util";
 
-/** Plugin-local copy of the host's shadcn HoverCard. */
+/**
+ * A Plica original, not a vendored copy — the third documented exception to the
+ * "keep `src/ui/host/` byte-identical to upstream" rule in the README.
+ *
+ * Paperclip ships no HoverCard component, so there is nothing upstream for a
+ * drift check to compare this against. It is written in the same shadcn-over-
+ * radix shape as the rest of this directory so it reads as part of the kit.
+ */
 function HoverCard({ openDelay = 250, closeDelay = 100, ...props }: React.ComponentProps<typeof HoverCardPrimitive.Root>) {
   return <HoverCardPrimitive.Root data-slot="hover-card" openDelay={openDelay} closeDelay={closeDelay} {...props} />;
 }

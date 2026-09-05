@@ -42,8 +42,8 @@ editing it to make Plica compile, it stops telling us anything true.
 - `src/ui/host/` — read-only *copies* of core internals Paperclip does not
   export to plugins. Copying core source into Plica is not modifying core. Keep
   the copies byte-identical to upstream apart from import paths, and keep them
-  under `src/ui/host/`; see the README's "Vendored host components" for the two
-  documented exceptions.
+  under `src/ui/host/`; see the README's "Vendored host components" for the
+  three documented exceptions.
 
 ### What this forbids
 
@@ -128,6 +128,25 @@ checkout if it is not under `~/paperclip`.
 Rebuilding Paperclip's UI requires rebuilding Plica; the README's "The
 stylesheet coupling" explains why, and it is the one operational rule worth
 reading before you touch `scripts/build-css.mjs`.
+
+## Documentation
+
+The user-facing documentation lives in [`docs/`](docs/) and ships with the
+plugin. A change that alters what someone sees or does belongs in the same pull
+request as the change itself — install, configuration, board, queue,
+troubleshooting, and a line in the changelog under **Unreleased**.
+
+If the change moves the UI, refresh the screenshots. They are generated, not
+hand-cropped:
+
+```bash
+node scripts/capture-screenshots.mjs
+```
+
+That needs a running instance with Plica installed; the recipe for standing up a
+throwaway one is in [`docs/screenshots/README.md`](docs/screenshots/README.md).
+Every image in `docs/` is Plica's own demo fixture, so nothing from a real
+instance can end up in a published picture — keep it that way.
 
 ## Branches
 
