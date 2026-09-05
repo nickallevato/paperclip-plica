@@ -32,7 +32,9 @@ export function PlicaStaleStylesheetWarning({ check: injected }: {
     >
       <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
       <div className="space-y-1">
-        <p className="font-semibold">Plica's stylesheet is stale — run `pnpm build` in the Plica checkout.</p>
+        <p className="font-semibold">
+          Plica's stylesheet is stale — run <code>pnpm build</code> in the Plica checkout.
+        </p>
         <p>
           Plica filters its own utilities against Paperclip's compiled stylesheet at build time, and Paperclip's has
           changed since. Until Plica is rebuilt, its leftover duplicates can override Paperclip's responsive rules and

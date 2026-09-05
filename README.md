@@ -156,6 +156,9 @@ document actually loaded — read from the `<link>` tags, using nothing but the 
 the top of the Plica page carries a banner naming the fix (`pnpm build`) and showing both
 identifiers, recorded and observed.
 
+![The staleness banner: "Plica's stylesheet is stale — run pnpm build in the Plica checkout", above the
+stylesheet Plica was built against and the one now being served](docs/screenshots/stale-stylesheet-warning.png)
+
 **It fails open.** If the host's stylesheet cannot be identified — no same-origin stylesheet link,
 several that are equally plausible, or a bundle built with no record at all — Plica shows nothing
 rather than a warning it cannot stand behind. A false "your plugin is stale" on every load teaches
