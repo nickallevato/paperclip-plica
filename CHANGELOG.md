@@ -129,6 +129,23 @@
 - Test timezone pinned to UTC. The queue's age buckets cut at *local* midnight
   by design, so the suite has to agree on which local.
 
+### Project
+
+- **Requests have one path now**, written down in `docs/intake.md`: capture,
+  deduplicate, clarify, scope, propose a priority, build, review, merge,
+  changelog. Two steps are the repository owner's — the priority band and the
+  merge — and the document says so rather than leaving it to be discovered.
+- Three issue templates (feature request, bug report, core limitation) produce
+  the *Problem / Proposed scope / Acceptance criteria / Open questions* shape
+  triage needs, so triage fills gaps instead of restructuring prose. Blank
+  issues stay enabled on purpose.
+- The **core limitation** template is the sanctioned exit from the
+  no-core-changes rule and the only one: it asks which extension point comes
+  closest, why it falls short, and what Plica ships in the meantime — then parks
+  the work for the owner rather than routing around core.
+- A state label is now mandatory on every issue, because an issue with no state
+  label is the one failure mode nothing else in this repository has an alarm on.
+
 ## 0.2.0
 
 ### Board

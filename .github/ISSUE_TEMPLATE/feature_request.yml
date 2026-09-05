@@ -1,0 +1,79 @@
+name: Feature request
+description: Ask for new behaviour, or for behaviour that should change.
+labels: ["enhancement", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Answer what you can. A short request that is honest about what you do
+        not know is more useful than a long one that guesses — triage fills the
+        gaps, and it will come back to you if it needs to.
+
+        `docs/intake.md` describes what happens to this issue after you send it.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do?
+      description: >-
+        The problem, not the fix. What were you doing when you wanted this, and
+        what did you do instead? This is the part triage cannot reconstruct.
+      placeholder: |
+        Every morning I check which companies have work waiting on me. The board
+        shows all of them, so I read past four I do not care about to find the two
+        I do.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What would you like to happen?
+      description: >-
+        Your idea for a fix, if you have one. Leave it blank if you do not — the
+        problem above is the part that matters.
+    validations:
+      required: false
+
+  - type: dropdown
+    id: frequency
+    attributes:
+      label: How often does this come up?
+      description: This is most of how the priority gets proposed.
+      options:
+        - Every time I use Plica
+        - Weekly
+        - Occasionally
+        - Once, but it mattered
+        - Not sure
+    validations:
+      required: false
+
+  - type: input
+    id: surface
+    attributes:
+      label: Which surface?
+      description: The Plica page, the toolbar button, demo mode, the docs, the build.
+      placeholder: The Board, cross-company queue
+    validations:
+      required: false
+
+  - type: textarea
+    id: workaround
+    attributes:
+      label: What do you do now instead?
+      description: >-
+        If there is a workaround, describe it. A request with a painful
+        workaround and one with none are different requests.
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: dedup
+    attributes:
+      label: Before you send
+      options:
+        - label: I searched open issues for this, including parked ones.
+          required: false
+        - label: I checked CHANGELOG.md under "Unreleased" — it may already be built and not yet released.
+          required: false

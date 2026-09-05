@@ -1,0 +1,10 @@
+# Blank issues stay on. A template that stops someone reporting a real problem
+# has cost more than the structure it saved — see docs/intake.md §9.
+blank_issues_enabled: true
+contact_links:
+  - name: How a request becomes a merged change
+    url: https://github.com/nickallevato/paperclip-plica/blob/main/docs/intake.md
+    about: What happens to an issue after you send it, and where the decisions sit.
+  - name: Contributing, and the no-core-changes rule
+    url: https://github.com/nickallevato/paperclip-plica/blob/main/CONTRIBUTING.md
+    about: Branches, pull requests, CI, the review gate, and the one rule Plica does not bend.
