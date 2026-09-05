@@ -2,6 +2,12 @@
 
 Plica is a Paperclip plugin. Everything below follows from that one fact.
 
+> **Reporting something, rather than building something?** Open an issue from
+> one of the templates and stop there — [`docs/intake.md`](docs/intake.md)
+> describes what happens to it next, and which two decisions are the repository
+> owner's. This document takes over once an issue is prioritized and someone
+> cuts a branch.
+
 ## Never modify Paperclip core
 
 **Plica never changes the Paperclip AI core application. Every change lands in
@@ -63,9 +69,11 @@ different spellings, and each one is invisible to whoever upgrades next.
 
 Instead:
 
-1. **Open a core-limitation issue** describing what Plica needs, which extension
-   point comes closest, and exactly why it falls short. Include the smallest
-   change to core that would fix it — as a *request*, not a patch.
+1. **Open a core-limitation issue** — the `Core limitation` issue template
+   (`.github/ISSUE_TEMPLATE/core_limitation.yml`) asks for exactly this —
+   describing what Plica needs, which extension point comes closest, and exactly
+   why it falls short. Include the smallest change to core that would fix it —
+   as a *request*, not a patch.
 2. **Say what the fallback is** if core does not change: the degraded version
    Plica can ship inside the surface today, or nothing.
 3. **Let the user decide.** Whether core changes is their call, not the

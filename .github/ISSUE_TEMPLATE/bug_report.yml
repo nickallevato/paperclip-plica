@@ -1,0 +1,95 @@
+name: Bug report
+description: Something Plica already ships does the wrong thing.
+labels: ["bug", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        The three fields below that are required are the three a fix cannot be
+        written without: what you did, what happened, and what you expected.
+        Everything else helps and none of it blocks you.
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: What did you do?
+      description: Enough for someone else to reach the same screen.
+      placeholder: |
+        1. Open /acme/plica
+        2. Switch the grouping to "By project"
+        3. Expand Ledger Reconciliation
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: What happened?
+      description: >-
+        Include the exact text of any error, and a screenshot if the problem is
+        visual. Paste the browser console if there is anything in it.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect instead?
+      description: >-
+        Sometimes obvious, sometimes not — and when it is not, this is the field
+        that stops a fix from solving the wrong problem.
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Plica version
+      description: From package.json, or the plugin row in Paperclip's plugin settings.
+      placeholder: "0.3.0"
+    validations:
+      required: false
+
+  - type: input
+    id: host
+    attributes:
+      label: Paperclip version or commit
+      description: >-
+        Plica is coupled to the host's compiled stylesheet, so "which host build"
+        is a real question for anything that looks like a layout bug.
+    validations:
+      required: false
+
+  - type: dropdown
+    id: demo
+    attributes:
+      label: Demo mode?
+      options:
+        - "No — live data"
+        - "Yes — demo mode was on"
+        - Not sure
+    validations:
+      required: false
+
+  - type: dropdown
+    id: reproducible
+    attributes:
+      label: Does it happen every time?
+      options:
+        - Every time
+        - Sometimes
+        - Saw it once
+    validations:
+      required: false
+
+  - type: textarea
+    id: rebuilt
+    attributes:
+      label: Have you rebuilt Plica since upgrading Paperclip?
+      description: >-
+        Plica subtracts the host's duplicate CSS selectors once, at build time.
+        After a host upgrade that subtraction is stale, and the symptom is a
+        layout that looks wrong for no reason. If you are not sure, run
+        `pnpm build` and say whether it changed anything.
+    validations:
+      required: false

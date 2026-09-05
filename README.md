@@ -191,6 +191,17 @@ src/
 scripts/build-css.mjs      Tailwind compile + host-duplicate subtraction
 ```
 
+## Reporting a bug, or asking for a feature
+
+Open an issue from one of the three templates — feature request, bug report, or
+core limitation. [docs/intake.md](docs/intake.md) is the whole path a request
+takes from there to a merged change, including the two points where the
+repository owner decides: the priority band, and the merge.
+
+You will get an answer either way. A request that turns out to be a duplicate is
+closed pointing at the original and its evidence is moved there first; one that
+is real but not now is *parked*, not closed, and reopens on a sentence.
+
 ## Contributing
 
 [CONTRIBUTING.md](CONTRIBUTING.md). The rule to read before anything else:

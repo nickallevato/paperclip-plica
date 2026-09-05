@@ -1,0 +1,81 @@
+name: Core limitation
+description: Plica cannot do this inside the plugin surface. A request for a Paperclip core change.
+labels: ["core-limitation"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Read `CONTRIBUTING.md`, "When the plugin surface is not enough", before
+        filing this.**
+
+        This template is the sanctioned exit from the no-core-changes rule, and
+        the only one. It is not a task for an engineer — it is a decision for the
+        repository owner about whether core changes. Filing it means the work is
+        parked, not started, and no workaround gets merged while it waits.
+
+        If you have not yet confirmed that no extension point can do this, stop
+        and confirm that first. Most "core has to change" turns out to be an
+        extension point nobody looked for.
+
+  - type: textarea
+    id: need
+    attributes:
+      label: What does Plica need to do?
+      description: The capability, in terms of what a user would see.
+    validations:
+      required: true
+
+  - type: textarea
+    id: closest
+    attributes:
+      label: Which extension point comes closest, and exactly why does it fall short?
+      description: >-
+        Name it. Cite the spec section or the source file. "There is nothing"
+        is not an answer — it is a search that has not finished. If the surface
+        is silent on this, say which surfaces you read to conclude that.
+      placeholder: |
+        `useDialogActions().openNewIssue` flips React state on a dialog that lives
+        in the host's DialogContext, which plugin UI cannot reach, and there is no
+        URL that opens it.
+    validations:
+      required: true
+
+  - type: textarea
+    id: smallest-change
+    attributes:
+      label: What is the smallest core change that would fix it?
+      description: >-
+        Described as a request, not supplied as a patch. Do not open a pull
+        request against core. Do not attach a diff.
+    validations:
+      required: true
+
+  - type: textarea
+    id: fallback
+    attributes:
+      label: What can Plica ship today if core does not change?
+      description: >-
+        The degraded version that stays inside the plugin surface, or "nothing".
+        Both are acceptable answers. A shim, a monkey-patch, or reaching into
+        host internals at runtime are not — those are the same failure as
+        editing core, spelled differently.
+    validations:
+      required: true
+
+  - type: textarea
+    id: blocked
+    attributes:
+      label: What is blocked on this?
+      description: Link the Plica issues that are waiting on this decision.
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: rule
+    attributes:
+      label: Confirm
+      options:
+        - label: I have not modified, patched, forked, or shimmed around Paperclip core.
+          required: true
+        - label: I understand this is parked until the owner decides, and that no workaround merges while it waits.
+          required: true
