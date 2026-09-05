@@ -10,9 +10,9 @@
   leftover duplicates can override Paperclip's responsive rules and strand the
   whole application in its mobile layout. The symptom shows up in Paperclip's
   own chrome with nothing pointing at Plica, and the fix — `pnpm build` in the
-  Plica checkout — is not one anyone would guess. A banner at the top of the
-  Plica page now names it, and shows the stylesheet Plica was built against
-  next to the one currently loaded.
+  Plica checkout — is not one anyone would guess. A **Stylesheet stale** badge
+  now appears in the Plica header, and its hover text names the fix and shows
+  the stylesheet Plica was built against next to the one currently loaded.
 - **It stays quiet unless it is sure.** If the host's stylesheet cannot be
   identified from the page, Plica shows nothing rather than a warning it cannot
   stand behind. Nothing about rendering, data or demo mode changes either way.

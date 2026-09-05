@@ -17,7 +17,7 @@
  *
  * Every path that cannot answer the question returns `"unknown"` and renders
  * nothing. A false "your plugin is stale" on every page load is worse than the
- * silence it replaces: it trains the reader to ignore the one banner that is
+ * silence it replaces: it trains the reader to ignore the one badge that is
  * supposed to mean something.
  *
  * ## Plugin surface only

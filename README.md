@@ -153,25 +153,26 @@ So Plica records what it subtracted against and checks it at runtime. `scripts/b
 writes the host sheet's filename and a content hash to `src/ui/host-css.generated.json`, esbuild
 inlines that into the UI bundle, and at mount Plica compares it against the stylesheet the
 document actually loaded — read from the `<link>` tags, using nothing but the DOM. On a mismatch
-the top of the Plica page carries a banner naming the fix (`pnpm build`) and showing both
-identifiers, recorded and observed.
+the Plica header carries a **Stylesheet stale** badge beside `Demo data`, whose hover text names
+the fix (`pnpm build`) and shows both identifiers, recorded and observed. The same text is repeated
+in an `sr-only` span, because assistive technology cannot hover.
 
-![The staleness banner: "Plica's stylesheet is stale — run pnpm build in the Plica checkout", above the
-stylesheet Plica was built against and the one now being served](docs/screenshots/stale-stylesheet-warning.png)
+![The Plica header with a "Stylesheet stale" badge beside the title, its hover text naming pnpm build
+and showing the stylesheet Plica was built against next to the one now being served](docs/screenshots/stale-stylesheet-warning.png)
 
 **It fails open.** If the host's stylesheet cannot be identified — no same-origin stylesheet link,
 several that are equally plausible, or a bundle built with no record at all — Plica shows nothing
 rather than a warning it cannot stand behind. A false "your plugin is stale" on every load teaches
-people to ignore the banner that matters.
+people to ignore the badge that matters.
 
 The filename is what gets compared, not the content hash. Paperclip's sheet is Vite-built and
 hash-named, so the name already changes whenever the bytes do, and reading a name off a `<link>`
 costs nothing — where an observed content hash would mean fetching and hashing ~450KB of CSS on
-every page load. The recorded hash is kept for the banner to display and for comparing two installs
+every page load. The recorded hash is kept for the badge to display and for comparing two installs
 by hand. The gap that leaves: a host serving an *unhashed* stylesheet name could be rebuilt under
 the same name with the check staying quiet. That is the fail-open direction, and deliberate.
 
-To see the banner: point `PLICA_HOST_CSS` at a different sheet, `pnpm build`, and load the page.
+To see the badge: point `PLICA_HOST_CSS` at a different sheet, `pnpm build`, and load the page.
 
 ## Vendored host components
 

@@ -21,6 +21,30 @@ describe("PlicaStaleStylesheetWarning", () => {
     expect(alert).toHaveTextContent("index-ZZ99-newr.css");
   });
 
+  it("shows a short chip, with the detail in the hover text", () => {
+    // The owner chose the quiet badge over the banner (issue #5, Q2). What is
+    // visible has to stay chip-sized; the identifiers move to the tooltip.
+    render(
+      <PlicaStaleStylesheetWarning check={{ status: "mismatch", recorded: RECORDED, observed: "index-ZZ99-newr.css" }} />,
+    );
+    const alert = screen.getByRole("alert");
+    expect(alert.firstElementChild?.tagName.toLowerCase()).not.toBe("p");
+    expect(alert).toHaveAttribute("title", expect.stringContaining("pnpm build"));
+    expect(alert.getAttribute("title")).toContain("index-BU41-p9M.css");
+    expect(alert.getAttribute("title")).toContain("index-ZZ99-newr.css");
+  });
+
+  it("repeats the detail for assistive technology, which cannot hover", () => {
+    // A title attribute alone would make the quiet shape mean the identifiers
+    // are unreachable without a mouse.
+    const { container } = render(
+      <PlicaStaleStylesheetWarning check={{ status: "mismatch", recorded: RECORDED, observed: "index-ZZ99-newr.css" }} />,
+    );
+    const srOnly = container.querySelector(".sr-only");
+    expect(srOnly?.textContent).toContain("pnpm build");
+    expect(srOnly?.textContent).toContain("index-ZZ99-newr.css");
+  });
+
   it("renders nothing on a match", () => {
     const { container } = render(
       <PlicaStaleStylesheetWarning check={{ status: "match", recorded: RECORDED, observed: RECORDED.file }} />,
