@@ -120,7 +120,8 @@ exactly the intended use: turn it on, take the picture, publish it.
 ## The stylesheet coupling
 
 **Rebuilding Paperclip's UI requires rebuilding Plica.** This is the one operational rule worth
-knowing, and nothing enforces it.
+knowing. Plica now notices when it has been broken and says so — see "The staleness warning"
+below — but noticing is all it does; the rebuild is still yours to run.
 
 Plica compiles its own Tailwind sheet and injects it via `<style>` appended to `<head>` — after
 the host's. Tailwind emits every class it scans, including ones Paperclip already defines, and a
@@ -141,6 +142,33 @@ Ordering cannot fix this, in either direction. Appended last, Plica's duplicates
 responsive variants. Inserted first, Plica's `@layer` declarations come before the host's, which
 pushes the host's `base`/`components` layers after `utilities` and breaks spacing app-wide.
 Subtraction is the only approach that works.
+
+### The staleness warning
+
+The reason that rule needed writing down is that breaking it looks like nothing to do with Plica:
+the symptom is Paperclip's own sidebar and chrome stranded in the mobile layout, and the person
+who upgraded has no reason to suspect a plugin they installed weeks ago.
+
+So Plica records what it subtracted against and checks it at runtime. `scripts/build-css.mjs`
+writes the host sheet's filename and a content hash to `src/ui/host-css.generated.json`, esbuild
+inlines that into the UI bundle, and at mount Plica compares it against the stylesheet the
+document actually loaded — read from the `<link>` tags, using nothing but the DOM. On a mismatch
+the top of the Plica page carries a banner naming the fix (`pnpm build`) and showing both
+identifiers, recorded and observed.
+
+**It fails open.** If the host's stylesheet cannot be identified — no same-origin stylesheet link,
+several that are equally plausible, or a bundle built with no record at all — Plica shows nothing
+rather than a warning it cannot stand behind. A false "your plugin is stale" on every load teaches
+people to ignore the banner that matters.
+
+The filename is what gets compared, not the content hash. Paperclip's sheet is Vite-built and
+hash-named, so the name already changes whenever the bytes do, and reading a name off a `<link>`
+costs nothing — where an observed content hash would mean fetching and hashing ~450KB of CSS on
+every page load. The recorded hash is kept for the banner to display and for comparing two installs
+by hand. The gap that leaves: a host serving an *unhashed* stylesheet name could be rebuilt under
+the same name with the check staying quiet. That is the fail-open direction, and deliberate.
+
+To see the banner: point `PLICA_HOST_CSS` at a different sheet, `pnpm build`, and load the page.
 
 ## Vendored host components
 

@@ -9,6 +9,7 @@ import { countCapacity, deriveCapacity } from "./lib/capacity";
 import { releaseStrandedPointerEvents } from "./lib/drafts";
 import { PlicaBoardPage } from "./components/PlicaBoardPage";
 import { PlicaBriefing } from "./components/PlicaBriefing";
+import { PlicaStaleStylesheetWarning } from "./components/PlicaStaleStylesheetWarning";
 import { PlicaTokenSettingsPanel } from "./components/PlicaTokenSettings";
 import type { PlicaCompanyData } from "./components/usePlicaCompanyData";
 import {
@@ -319,6 +320,10 @@ export function PlicaHud({ demo = false }: PlicaHudProps = {}) {
 
   return (
     <div ref={rootRef} className={cn("space-y-4", isKiosk && "plica-kiosk bg-background p-4")}>
+      {/* Above the header, not inside it: this is about the build, not the data,
+          and it stays put whatever the header wraps to. Silent unless Plica's
+          stylesheet is provably stale. */}
+      <PlicaStaleStylesheetWarning />
       <div className="flex flex-wrap items-center gap-3">
         <div className="flex items-center gap-2">
           <Layers className="h-5 w-5 text-muted-foreground" />
