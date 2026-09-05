@@ -154,7 +154,10 @@ check:branch` and the `branch name` CI job check it; renaming is
 ### The review gate
 
 **Nothing reaches `main` unattended.** `main` is protected: no direct pushes,
-no merge without the required checks green, and no merge without a review.
+no force pushes, no deletion, and no merge without the required checks green.
+Protection applies to admins too. A branch must also be **up to date with
+`main`** before it merges, so the checks that pass are the checks for the merge
+result — expect to rebase when `main` moves.
 
 An agent opens the pull request. A second party — the user, or a reviewing
 agent — approves it and merges it. **Nobody merges their own pull request**,
@@ -164,6 +167,16 @@ is the gate deleting itself.
 
 Approvals are dismissed when new commits land, so a review approves the diff
 that merges, not an earlier one.
+
+> **The approval half of this gate is convention, not yet enforcement.**
+> `required_approving_review_count` is `0`. GitHub will not let a pull request's
+> author approve it, and agents currently authenticate as `nickallevato` — the
+> same account that would review — so every agent-opened pull request has the
+> reviewer as its author. Setting the count to `1` today would block every merge
+> with no way to unblock it. The fix is a separate machine identity (a bot
+> account or a GitHub App) for the agents to open pull requests as; the approval
+> count goes to `1` once that exists. Until then the no-self-merge rule above is
+> binding on contributors even though GitHub does not check it.
 
 ### What CI runs
 
