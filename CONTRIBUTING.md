@@ -271,6 +271,10 @@ check:branch` and the `branch name` CI job check it; renaming is
 - Green CI: `branch name`, `plugin surface`, and `build and test`.
 - If a change is worth documenting for users, say so in the description so it
   reaches the README and `CHANGELOG.md`.
+- Auto-merge is enabled on the repository. `gh pr merge --auto` queues a merge
+  for the moment the checks go green instead of polling them by hand; it
+  respects branch protection, and anyone can cancel it before it fires. Merged
+  branches are deleted automatically — remove the matching worktree too.
 
 ### The review gate
 
@@ -289,6 +293,24 @@ is the gate deleting itself.
 Approvals are dismissed when new commits land, so a review approves the diff
 that merges, not an earlier one.
 
+**Agents merge; the owner does not gate it.** The repository owner decided this
+on PLI-16, 2026-09-13, choosing it over merging by hand: a reviewing agent that
+did not write the pull request reads it, and if it finds nothing blocking and
+the checks are green, that agent merges — no wait on the owner. The owner's
+control is after the fact rather than in front of it, which on a repository
+this size is the trade that keeps pull requests from queueing behind one
+person: `main`'s history is public and every merge is revertable.
+
+Two obligations come with it. The reviewing agent must actually read the diff —
+the merge button is the only gate left, so "checks are green" is not a review.
+And the review must be written down as a pull request comment before the merge,
+because it is the only durable record that the reading happened; GitHub will
+not record it as an approval (see below).
+
+When two pull requests touch the same file, decide the merge order rather than
+discovering it — whichever merges second rebases, and the agent that owns it
+should be told, not left to find a conflict.
+
 > **The approval half of this gate is convention, not yet enforcement.**
 > `required_approving_review_count` is `0`. GitHub will not let a pull request's
 > author approve it, and agents currently authenticate as `nickallevato` — the
@@ -298,6 +320,19 @@ that merges, not an earlier one.
 > account or a GitHub App) for the agents to open pull requests as; the approval
 > count goes to `1` once that exists. Until then the no-self-merge rule above is
 > binding on contributors even though GitHub does not check it.
+>
+> This is not a guess about GitHub's behaviour — it was tried on PR #6 and the
+> API refused it outright:
+>
+> ```
+> failed to create review: GraphQL: Review Can not approve your own pull request
+> ```
+>
+> So a reviewing agent posts its review as a **pull request comment**, which is
+> why the rule above requires one. It carries no weight with GitHub and all the
+> weight here. The machine identity is tracked in **PLI-12**; when it lands,
+> these reviews become real approvals and `required_approving_review_count`
+> goes to `1`, at which point the convention stops needing to be a convention.
 
 ### What CI runs
 
