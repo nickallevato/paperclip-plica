@@ -115,7 +115,8 @@ pnpm typecheck       # tsc --noEmit
 pnpm build           # CSS then bundle
 pnpm check:surface   # the guardrail above
 pnpm check:branch    # branch name against the convention below
-pnpm hooks:install   # pre-commit: surface check, typecheck, test
+pnpm check:worktree  # not working in the checkout other agents share
+pnpm hooks:install   # pre-commit: worktree, surface check, typecheck, test
 ```
 
 The `@paperclipai/*` dev dependencies are `link:` references to a Paperclip
@@ -147,6 +148,99 @@ That needs a running instance with Plica installed; the recipe for standing up a
 throwaway one is in [`docs/screenshots/README.md`](docs/screenshots/README.md).
 Every image in `docs/` is Plica's own demo fixture, so nothing from a real
 instance can end up in a published picture — keep it that way.
+
+## The shared checkout
+
+**If you are an agent: do not work in the checkout you were handed. Add a
+worktree and work there.**
+
+```bash
+git worktree add -b pli-15/shared-checkout-isolation ../plica-pli-15 origin/main
+cd ../plica-pli-15
+```
+
+Every agent in this company resolves to the same working copy. Paperclip runs
+this project with `PAPERCLIP_WORKSPACE_STRATEGY=project_primary`, so each
+agent's `PAPERCLIP_WORKSPACE_CWD` lands on the same `_default/plica` — one
+`HEAD`, one index, one stash, shared by everyone running at once.
+
+That makes branch switching destructive in a way git will not warn you about.
+`git checkout` carries uncommitted changes across branches without complaint
+when they do not conflict, so one agent switching branches can take another's
+in-flight edits with it and commit them onto the wrong branch; a later
+`git checkout -- .` or `git reset --hard` can discard them outright. Neither
+agent sees an error and neither run fails. The work is simply not where anyone
+looks for it. `git stash` is no help — it is global to the checkout too, so two
+agents stashing race each other.
+
+A worktree is the whole fix. It is a full checkout with its own `HEAD`, index
+and stash, sharing the original's object store, so it costs a working copy on
+disk and nothing else. Creating one does not move the shared tree's `HEAD`, so
+adding yours cannot disturb work already in flight. Put it beside `plica/`
+rather than inside it — anywhere unique outside the shared tree works, and
+`../plica-<issue-key>` is what the tooling suggests. When the branch has
+merged, `git worktree remove ../plica-<issue-key>` cleans it up.
+
+What you may do in the shared checkout: read it, and run read-only git
+commands. What you may not do: `checkout`, `switch`, `reset`, `stash`, or leave
+uncommitted changes. Assume another agent is one command away from discarding
+anything you leave there.
+
+### If you are already on a topic branch here
+
+The `git worktree add -b …` above starts work. It will not rescue work already
+under way: the branch exists and is checked out right here, so git refuses
+(`fatal: a branch named '…' already exists`), and a worktree cut from
+`origin/main` would leave your uncommitted changes behind anyway. This is what
+`pnpm check:worktree` prints when it blocks a commit, and it is the sequence to
+run instead:
+
+```bash
+WIP=$(git stash create) && git reset --hard
+git checkout main
+git worktree add ../plica-<issue-key> <branch>
+cd ../plica-<issue-key>
+git stash apply --index "$WIP"
+```
+
+Then re-run your `git commit`; `--index` brings the staged state across, so
+nothing needs re-adding.
+
+`git stash create` rather than `git stash push` because the stash *ref* is
+shared by every agent in this checkout — a `push`/`pop` pair here can pop
+somebody else's stash. `create` writes a commit object and touches no ref, so
+`$WIP` is yours alone for as long as the shell lives. Untracked files are not
+in it and survive the reset; `git status` in the shared tree afterwards lists
+whatever is left to move by hand.
+
+`pnpm check:worktree` enforces the part that can be enforced. It runs in
+`pre-commit` and fails a commit made on a topic branch in the shared checkout
+during an agent run — human clones share their checkout with nobody, so it is a
+no-op there. `PLICA_ALLOW_SHARED_CHECKOUT=1` overrides it for a deliberate
+exception.
+
+> **The guard is a backstop, not the guarantee.** Git has no pre-checkout hook,
+> so nothing can veto the destructive command itself; the guard only keeps the
+> shared tree from being where work lives, so there is less there to lose. The
+> real fix is configuration, and it already exists in Paperclip — an execution
+> workspace with `workspaceStrategy.type: "git_worktree"`, or a project
+> `defaultMode: "isolated_workspace"`, which gives each run its own worktree
+> with no convention for anyone to remember. Both sit behind the instance-level
+> **Isolated Workspaces** experimental setting (`enableIsolatedWorkspaces`),
+> which defaults off and which only the instance owner can turn on — agent
+> credentials get `403 Board access required`.
+>
+> **The owner has agreed to turn it on** (PLI-15, 2026-09-05). That makes
+> isolation the sanctioned mechanism here rather than a convention. It does not
+> retire the rule above, for two reasons: agents cannot read the flag to confirm
+> it, and the project still has to be pointed at an isolated mode before any
+> run resolves to one. So read it off your own run instead —
+> `PAPERCLIP_WORKSPACE_STRATEGY` says which working copy you were actually
+> handed. While it reads `project_primary` you are in the shared tree and the
+> rule binds; when it reads `git_worktree` the runtime already gave you your
+> own, and the `git worktree add` above is redundant rather than wrong. Keep the
+> guard either way — it costs nothing once runs are isolated, and it is the only
+> thing standing between a shared run and a silent loss.
 
 ## Branches
 

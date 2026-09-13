@@ -4,7 +4,11 @@
 # Dependency-free: enabled with `pnpm hooks:install`, which points
 # core.hooksPath here. No husky, no lint-staged, nothing to keep in sync.
 set -e
-# Dependency-free, so it stays useful even when install is broken.
+# Dependency-free, so they stay useful even when install is broken.
+# Worktree first: it is the cheapest check, and if it fails the commit was
+# about to land in a tree another agent can discard.
+echo "pre-commit: worktree"
+node ./scripts/check-worktree.mjs
 echo "pre-commit: plugin surface"
 node ./scripts/check-plugin-surface.mjs --all
 echo "pre-commit: typecheck"
