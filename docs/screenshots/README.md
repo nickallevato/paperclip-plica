@@ -4,6 +4,13 @@ Every image in this directory is produced by `scripts/capture-screenshots.mjs`
 against a real running Paperclip with Plica installed, in **demo mode**. None of
 them is hand-cropped, and none contains anything from a real instance.
 
+One exception: `stale-stylesheet-warning.png`. The badge it shows only renders
+when Plica's build and the host's stylesheet genuinely disagree, which no run of
+the capture script can arrange — the instance it drives has a correctly built
+Plica installed in it. To refresh that one, follow the README's recipe (point
+`PLICA_HOST_CSS` at a different sheet, `pnpm build`, load the page), capture the
+header, then rebuild normally.
+
 ```bash
 node scripts/capture-screenshots.mjs           # all of them
 node scripts/capture-screenshots.mjs --list    # what each one is

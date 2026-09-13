@@ -51,6 +51,19 @@ const baseUrl = (process.env.PLICA_SHOT_URL ?? "http://127.0.0.1:3199").replace(
 const chrome = process.env.PLICA_CHROME ?? "/usr/bin/google-chrome";
 
 /**
+ * The default is one machine's path. Say so here rather than letting Playwright
+ * fail at launch, several seconds and one opaque spawn error later — the same
+ * courtesy `loadPlaywright()` extends for its own default.
+ */
+function resolveChrome() {
+  if (existsSync(chrome)) return chrome;
+  throw new Error(
+    `capture-screenshots: no browser at ${chrome}. Set PLICA_CHROME to a Chrome or ` +
+      `Chromium executable.`,
+  );
+}
+
+/**
  * Wide enough that the board's columns and the queue sit side by side, and
  * tall enough that the whole HUD is on screen at once.
  *
@@ -329,7 +342,7 @@ const plicaUrl = `${baseUrl}/${prefix}/plica?demo=1`;
 mkdirSync(outDir, { recursive: true });
 
 const browser = await chromium.launch({
-  executablePath: chrome,
+  executablePath: resolveChrome(),
   // The capture runs unattended, often in a container without a user
   // namespace; there is no untrusted content here, only our own fixture.
   args: ["--no-sandbox", "--force-color-profile=srgb", "--font-render-hinting=none"],

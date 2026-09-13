@@ -145,7 +145,9 @@ cd paperclip-plica
 pnpm build
 ```
 
-The symptom of forgetting is described under
+If you forget, Plica says so: a **Stylesheet stale** badge appears in its header
+naming `pnpm build` as the fix. The symptom when it cannot — the check stays
+silent unless it is certain — is described under
 [the app looks broken](troubleshooting.md#the-whole-app-is-stuck-in-its-mobile-layout).
 
 ## Upgrading Plica

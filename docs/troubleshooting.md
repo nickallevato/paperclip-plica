@@ -7,6 +7,21 @@ across the whole of Paperclip, not just the Plica page.
 
 **Cause:** you upgraded Paperclip and did not rebuild Plica.
 
+Plica usually tells you so itself. A **Stylesheet stale** badge sits in the
+Plica header beside the Demo data badge whenever the stylesheet it was built
+against is not the one the page is serving, and its hover text names the fix and
+shows both stylesheets:
+
+![The Stylesheet stale badge in the Plica header, its hover text naming `pnpm build` as the fix
+and showing the stylesheet Plica was built against next to the one now being
+served](screenshots/stale-stylesheet-warning.png)
+
+The badge is deliberately silent when it cannot be certain — if the host's
+stylesheet cannot be identified from the page, or Plica's bundle carries no
+record of what it was built against, you get nothing rather than a warning that
+might be wrong. So a missing badge is not proof the stylesheet is current, and
+the symptom above can appear without it.
+
 Plica injects its own Tailwind sheet after the host's. Tailwind emits every
 class it scans, including ones Paperclip already defines, and a duplicate that
 lands later wins on document order. A stray `.hidden{display:none}` beats
@@ -25,7 +40,8 @@ cd paperclip-plica
 pnpm build
 ```
 
-Then reload. Do this after every Paperclip upgrade. Nothing enforces it.
+Then reload. Do this after every Paperclip upgrade — the badge reports the
+problem, but nothing rebuilds Plica for you.
 
 ## The Plica page is blank
 
