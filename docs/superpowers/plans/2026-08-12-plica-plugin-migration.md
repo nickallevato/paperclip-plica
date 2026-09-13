@@ -1,10 +1,25 @@
 # Plica Plugin Migration Implementation Plan
 
+> **COMPLETED — historical.** This migration shipped; the plugin it describes is
+> the one in this repository. The plan is kept for the reasoning behind the
+> decisions, not as open work. Its unticked checkboxes are an artefact of how it
+> was written, not a to-do list.
+>
+> **One thing it describes did not ship as planned.** The sidebar entry point is
+> a `globalToolbarButton` **slot**, not a `navigate` launcher in the sidebar
+> zone. Launcher declarations carry no icon field, so a launcher would have
+> rendered a bare label; a slot component draws its own markup, which is how the
+> Telescope icon survives. See `src/manifest.ts`. Read every mention of the
+> launcher below with that substitution in mind.
+>
+> For how the plugin actually behaves today, use [the documentation
+> set](../../README.md).
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Move the Plica cross-company HUD out of the Paperclip repo's `LOCAL_CUSTOMIZATIONS` mechanism and into a standalone Paperclip plugin that no repo reset or rebuild can erase.
 
-**Architecture:** A plugin package at the plugin directory (own git repo, outside the Paperclip checkout) contributes one `page` slot at `routePath: "plica"` and one `navigate` launcher in the sidebar zone. All coupling to Paperclip internals is absorbed by a `src/ui/host/` compatibility layer, so the ~2,800 lines of ported Plica code keep importing familiar names. Plugin UI is same-origin trusted JS and calls core `/api/...` endpoints directly.
+**Architecture:** A plugin package at the plugin directory (own git repo, outside the Paperclip checkout) contributes one `page` slot at `routePath: "plica"` and one sidebar entry point (planned as a `navigate` launcher; shipped as a `globalToolbarButton` slot). All coupling to Paperclip internals is absorbed by a `src/ui/host/` compatibility layer, so the ~2,800 lines of ported Plica code keep importing familiar names. Plugin UI is same-origin trusted JS and calls core `/api/...` endpoints directly.
 
 **Tech Stack:** TypeScript, React 19, `@tanstack/react-query` (bundled by the plugin), esbuild, vitest, `@paperclipai/plugin-sdk`.
 

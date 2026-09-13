@@ -11,7 +11,8 @@ export { PLUGIN_ID };
  *
  * The declared capabilities describe the company data the HUD surfaces. They
  * do not gate its reads: capabilities gate worker-side host RPC, and plugin UI
- * may call ordinary Paperclip HTTP APIs directly (PLUGIN_SPEC.md §24). Plica's
+ * may call ordinary Paperclip HTTP APIs directly (PLUGIN_SPEC.md, "Current
+ * implementation caveats" — not a numbered section; §24 is Operator UX). Plica's
  * worker is a no-op, so nothing here is exercised at runtime — the list stands
  * as an honest declaration of what the page displays, and the schema requires
  * at least one entry.

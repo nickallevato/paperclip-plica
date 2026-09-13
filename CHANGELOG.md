@@ -1,5 +1,8 @@
 # Changelog
 
+Short-form. The reader-facing write-up for each version is in
+[`docs/releases/`](docs/releases/).
+
 ## Unreleased
 
 ### The stylesheet coupling
@@ -16,6 +19,30 @@
 - **It stays quiet unless it is sure.** If the host's stylesheet cannot be
   identified from the page, Plica shows nothing rather than a warning it cannot
   stand behind. Nothing about rendering, data or demo mode changes either way.
+
+### Documentation
+
+- **A documentation set with real screenshots**, in [`docs/`](docs/): install,
+  configuration, the board, the queue, and troubleshooting. The README is now an
+  overview that hands off to them rather than the only page there is.
+- Screenshots are **generated**, by `scripts/capture-screenshots.mjs`, from a
+  running instance in demo mode. Refreshing them after a UI change is one
+  command instead of a manual session with a cropping tool, which is the only
+  version of "keep the screenshots current" that survives contact with a
+  release. See [`docs/screenshots/README.md`](docs/screenshots/README.md).
+- Removed the README's claim that a classic layout is available behind a toggle.
+  The classic views were retired in `e40e459`; the line documented a feature
+  that does not exist.
+- `demoDataUrl` is now documented as accepted-and-ignored on the settings page.
+  It is declared in the manifest and rendered by the host, but nothing reads it.
+- Corrected two `PLUGIN_SPEC.md §24` citations in `src/manifest.ts` and
+  `src/ui/host/api.ts`. §24 is *Operator UX*; the statement they lean on is in
+  the spec's *Current implementation caveats*.
+- Marked the plugin-migration plan as completed and corrected its description of
+  what shipped — a `globalToolbarButton` slot, not a navigate launcher in the
+  sidebar zone.
+
+## 0.3.0
 
 ### Demo mode
 
