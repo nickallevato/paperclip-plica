@@ -9,6 +9,7 @@ import { countCapacity, deriveCapacity } from "./lib/capacity";
 import { releaseStrandedPointerEvents } from "./lib/drafts";
 import { PlicaBoardPage } from "./components/PlicaBoardPage";
 import { PlicaBriefing } from "./components/PlicaBriefing";
+import { PlicaStaleStylesheetWarning } from "./components/PlicaStaleStylesheetWarning";
 import { PlicaTokenSettingsPanel } from "./components/PlicaTokenSettings";
 import type { PlicaCompanyData } from "./components/usePlicaCompanyData";
 import {
@@ -335,6 +336,11 @@ export function PlicaHud({ demo = false }: PlicaHudProps = {}) {
               Demo data
             </span>
           )}
+          {/* Beside "Demo data" rather than above the header: this is about the
+              build, not the data, but it shares that badge's job of qualifying
+              what you are looking at. Silent unless Plica's stylesheet is
+              provably stale. */}
+          <PlicaStaleStylesheetWarning />
         </div>
         <div className="ml-auto flex items-center gap-3 text-[length:var(--plica-fs-body,14px)] leading-[1.45] text-muted-foreground">
           {anyStale && (

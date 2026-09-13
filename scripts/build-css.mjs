@@ -20,8 +20,9 @@
 // collision entirely and leaves only what Plica actually needs -- the
 // utilities the host happens not to use.
 import { readFileSync, writeFileSync, readdirSync, existsSync, statSync } from "node:fs";
-import { dirname, resolve, join } from "node:path";
+import { basename, dirname, resolve, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { createHash } from "node:crypto";
 import { homedir } from "node:os";
 import { compile } from "@tailwindcss/node";
 import { Scanner } from "@tailwindcss/oxide";
@@ -30,6 +31,11 @@ import postcss from "postcss";
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const input = resolve(root, "src/ui/plica.css");
 const output = resolve(root, "src/ui/plica.generated.css");
+// The record of WHICH host sheet the subtraction below was computed against.
+// esbuild.config.mjs inlines it into the UI bundle; src/ui/lib/host-stylesheet
+// compares it against the sheet the document actually loaded and warns when
+// they differ. See the README's "The stylesheet coupling".
+const stamp = resolve(root, "src/ui/host-css.generated.json");
 
 /** Largest .css in the host's built assets dir — that's the app stylesheet. */
 function findHostCss() {
@@ -54,6 +60,18 @@ if (!hostCssPath || !existsSync(hostCssPath)) {
   );
 }
 
+const hostCss = readFileSync(hostCssPath, "utf8");
+// `file` is the runtime comparison key: the host's sheet is Vite-built and
+// hash-named, so its filename already changes whenever its content does, and a
+// filename is readable from a <link> tag without fetching 450KB of CSS on every
+// mount. `hash` is recorded alongside it for the warning to display and for
+// anyone diffing two installs by hand -- it is not compared at runtime.
+const hostCssRecord = {
+  file: basename(hostCssPath),
+  hash: `sha256-${createHash("sha256").update(hostCss).digest("hex").slice(0, 16)}`,
+};
+writeFileSync(stamp, `${JSON.stringify(hostCssRecord, null, 2)}\n`);
+
 const compiler = await compile(readFileSync(input, "utf8"), {
   base: dirname(input),
   onDependency: () => {},
@@ -66,7 +84,7 @@ const built = compiler.build(candidates);
 
 // Every class selector the host already defines.
 const hostSelectors = new Set();
-postcss.parse(readFileSync(hostCssPath, "utf8")).walkRules((rule) => {
+postcss.parse(hostCss).walkRules((rule) => {
   for (const sel of rule.selectors) hostSelectors.add(sel.trim());
 });
 
@@ -104,3 +122,4 @@ console.log(
   `plica.generated.css: ${candidates.length} candidates, ${css.length} bytes ` +
     `(${dropped} host-duplicate selectors dropped, host: ${hostCssPath})`,
 );
+console.log(`host-css.generated.json: ${hostCssRecord.file} ${hostCssRecord.hash}`);

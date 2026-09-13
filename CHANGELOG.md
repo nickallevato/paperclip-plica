@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+### The stylesheet coupling
+
+- **Plica now warns when it needs rebuilding after a Paperclip upgrade.** Plica
+  filters its own utilities against Paperclip's compiled stylesheet once, at
+  build time; upgrade Paperclip and that filtering goes stale, and Plica's
+  leftover duplicates can override Paperclip's responsive rules and strand the
+  whole application in its mobile layout. The symptom shows up in Paperclip's
+  own chrome with nothing pointing at Plica, and the fix — `pnpm build` in the
+  Plica checkout — is not one anyone would guess. A **Stylesheet stale** badge
+  now appears in the Plica header, and its hover text names the fix and shows
+  the stylesheet Plica was built against next to the one currently loaded.
+- **It stays quiet unless it is sure.** If the host's stylesheet cannot be
+  identified from the page, Plica shows nothing rather than a warning it cannot
+  stand behind. Nothing about rendering, data or demo mode changes either way.
+
 ### Demo mode
 
 - **Plica can now serve the whole HUD from a bundled fixture instead of the
