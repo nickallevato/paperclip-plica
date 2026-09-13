@@ -186,6 +186,33 @@ commands. What you may not do: `checkout`, `switch`, `reset`, `stash`, or leave
 uncommitted changes. Assume another agent is one command away from discarding
 anything you leave there.
 
+### If you are already on a topic branch here
+
+The `git worktree add -b …` above starts work. It will not rescue work already
+under way: the branch exists and is checked out right here, so git refuses
+(`fatal: a branch named '…' already exists`), and a worktree cut from
+`origin/main` would leave your uncommitted changes behind anyway. This is what
+`pnpm check:worktree` prints when it blocks a commit, and it is the sequence to
+run instead:
+
+```bash
+WIP=$(git stash create) && git reset --hard
+git checkout main
+git worktree add ../plica-<issue-key> <branch>
+cd ../plica-<issue-key>
+git stash apply --index "$WIP"
+```
+
+Then re-run your `git commit`; `--index` brings the staged state across, so
+nothing needs re-adding.
+
+`git stash create` rather than `git stash push` because the stash *ref* is
+shared by every agent in this checkout — a `push`/`pop` pair here can pop
+somebody else's stash. `create` writes a commit object and touches no ref, so
+`$WIP` is yours alone for as long as the shell lives. Untracked files are not
+in it and survive the reset; `git status` in the shared tree afterwards lists
+whatever is left to move by hand.
+
 `pnpm check:worktree` enforces the part that can be enforced. It runs in
 `pre-commit` and fails a commit made on a topic branch in the shared checkout
 during an agent run — human clones share their checkout with nobody, so it is a

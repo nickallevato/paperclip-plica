@@ -101,6 +101,52 @@ function gitOutput(args) {
   return execFileSync("git", args, { encoding: "utf8" }).trim();
 }
 
+/**
+ * Where the worktree for a branch goes: `../plica-<issue-key>`.
+ *
+ * @param {string} branch
+ * @returns {string}
+ */
+export function worktreePathFor(branch) {
+  return `../plica-${branch.split("/")[0]}`;
+}
+
+/**
+ * The commands that actually get this commit out of the shared checkout.
+ *
+ * The guard only ever fires from `pre-commit`, so by the time anyone reads
+ * this there is staged work in the shared tree. That rules out the `git
+ * worktree add -b <branch> … origin/main` line CONTRIBUTING.md gives for
+ * *starting* work: the branch already exists and is checked out right here, so
+ * git refuses it outright — and even if it did not, a worktree branched from
+ * `origin/main` would not carry the staged changes across. A remedy that fails
+ * at the moment it is offered is the moment someone reaches for
+ * `PLICA_ALLOW_SHARED_CHECKOUT=1` and defeats the guard instead.
+ *
+ * So: save the work, put the shared tree back on `main`, check the branch out
+ * in a worktree of its own, and restore the work there with the index intact
+ * so the interrupted `git commit` can simply be re-run.
+ *
+ * `git stash create` rather than `git stash push` on purpose. It writes a
+ * commit object and stops, leaving the stash *ref* untouched — and that ref is
+ * shared by every agent in this checkout, so a `push`/`pop` pair here can pop
+ * somebody else's stash instead of yours. Holding the commit in a shell
+ * variable races nobody.
+ *
+ * @param {string} branch
+ * @returns {string[]} Shell lines, in order.
+ */
+export function remedyFor(branch) {
+  const path = worktreePathFor(branch);
+  return [
+    `WIP=$(git stash create) && git reset --hard`,
+    `git checkout main`,
+    `git worktree add ${path} ${branch}`,
+    `cd ${path}`,
+    `git stash apply --index "$WIP"`,
+  ];
+}
+
 function main() {
   const branch = gitOutput(["rev-parse", "--abbrev-ref", "HEAD"]);
   const verdict = classifyCheckout({
@@ -122,11 +168,15 @@ function main() {
       "Every agent in this company resolves to this one working copy. Work left\n" +
       "here is one `git checkout` by another agent away from being committed to\n" +
       "the wrong branch or discarded — with no error shown to either of you.\n\n" +
-      "Do your work in your own worktree instead:\n\n" +
-      `  git worktree add -b ${branch} ../plica-${branch.split("/")[0]} origin/main\n` +
-      `  cd ../plica-${branch.split("/")[0]}\n\n` +
-      "It is a full checkout with its own HEAD and index, sharing this one's\n" +
-      "object store, and creating it does not move the shared tree's HEAD.\n\n" +
+      "Move this commit into a worktree of its own. From here:\n\n" +
+      remedyFor(branch)
+        .map((line) => `  ${line}\n`)
+        .join("") +
+      "\nThen re-run your `git commit` — the index comes across intact.\n\n" +
+      "`git stash create` writes a commit object without touching this\n" +
+      "checkout's stash ref, which every agent here shares; `$WIP` is yours\n" +
+      "alone. Untracked files stay behind — `git status` in this tree after the\n" +
+      "reset lists anything left to move by hand.\n\n" +
       'See CONTRIBUTING.md, "The shared checkout".\n',
   );
   return 1;
