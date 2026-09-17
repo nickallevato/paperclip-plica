@@ -97,7 +97,8 @@ const manifest: PaperclipPluginManifestV1 = {
         //
         // A slot rather than a launcher: launcher declarations carry no icon
         // field, so a launcher here would render a bare label. Slot components
-        // draw their own markup, which is how the Telescope icon survives.
+        // draw their own markup, which is how the Plica mark survives
+        // (src/ui/components/PlicaMark.tsx).
         type: "globalToolbarButton",
         id: "plica-toolbar-button",
         displayName: "Plica",

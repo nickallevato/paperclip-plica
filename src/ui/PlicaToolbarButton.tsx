@@ -1,4 +1,4 @@
-import { Telescope } from "lucide-react";
+import { PlicaMark } from "./components/PlicaMark";
 import { buildCompanyPath, useHostNavigate, useOptionalCompany } from "./host/shims";
 
 /**
@@ -40,7 +40,7 @@ export function PlicaToolbarButton({
       aria-label="Plica — all companies"
       className="inline-flex h-7 items-center gap-1.5 rounded-md border border-border px-2 text-(length:--text-compact) font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring"
     >
-      <Telescope className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+      <PlicaMark className="h-3.5 w-3.5 shrink-0" />
       <span className="hidden sm:inline">Plica</span>
     </a>
   );

@@ -5,6 +5,19 @@ Short-form. The reader-facing write-up for each version is in
 
 ## Unreleased
 
+### The mark
+
+- **Plica has its own icon.** A sheet folded down its middle, seen end-on — a
+  *plica*, which reads flat as a caret. It replaces the two stock Lucide icons
+  that stood in for it: the Telescope on the breadcrumb-bar button and the
+  Layers glyph beside the page title. Both surfaces now show the same mark, so
+  the button in the host's chrome and the page it opens are recognisably the
+  same thing.
+- Drawn as an SVG component rather than shipped as the supplied PNG, so it
+  inherits `currentColor` and tracks the text beside it through hover, light
+  mode and dark mode. The source artwork and its geometry are kept in
+  [`docs/brand/`](docs/brand/) for anyone who has to redraw it.
+
 ### The stylesheet coupling
 
 - **Plica now warns when it needs rebuilding after a Paperclip upgrade.** Plica
