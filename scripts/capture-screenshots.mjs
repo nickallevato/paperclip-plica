@@ -218,7 +218,7 @@ const SHOTS = [
   {
     name: "toolbar-button",
     doc: "The Telescope launcher the plugin adds to the host's breadcrumb bar.",
-    take: async (page) => ({ clip: await region(page, ['a[aria-label="Plica — all companies"]'], 16) }),
+    take: async (page) => ({ clip: await region(page, ['a[aria-label="Plica — all orgs"]'], 16) }),
   },
   {
     name: "board",
@@ -278,7 +278,7 @@ const SHOTS = [
   {
     name: "queue-by-company",
     doc: "The same queue grouped by company — a per-company worklist.",
-    before: async (page) => groupQueueBy(page, "Company"),
+    before: async (page) => groupQueueBy(page, "Org"),
     take: async (page) => ({ clip: await region(page, ["[data-plica-queue]"]) }),
   },
   {

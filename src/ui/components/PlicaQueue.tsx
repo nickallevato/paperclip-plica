@@ -757,10 +757,10 @@ export function PlicaQueue({
           <button
             type="button"
             onClick={onClearFilter}
-            aria-label="Show all companies"
+            aria-label="Show all orgs"
             className="ml-auto inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-muted-foreground hover:text-foreground"
           >
-            <X className="h-3 w-3" /> all companies
+            <X className="h-3 w-3" /> all orgs
           </button>
         </div>
       )}

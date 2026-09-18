@@ -275,7 +275,7 @@ export type PlicaQueueGrouping = "decide" | "severity" | "company" | "kind" | "p
 export const PLICA_QUEUE_GROUPINGS: ReadonlyArray<{ grouping: PlicaQueueGrouping; label: string }> = [
   { grouping: "decide", label: "Decide by" },
   { grouping: "severity", label: "Severity" },
-  { grouping: "company", label: "Company" },
+  { grouping: "company", label: "Org" },
   { grouping: "kind", label: "Kind" },
   { grouping: "project", label: "Project" },
   { grouping: "age", label: "Age" },

@@ -140,7 +140,7 @@ describe("PlicaHud", () => {
   it("persists the pane-order mode from the board header", async () => {
     const root = render();
     await vi.waitFor(() => {
-      expect(container.querySelector('[aria-label="Company order"]')).not.toBeNull();
+      expect(container.querySelector('[aria-label="Org order"]')).not.toBeNull();
     });
     const hotButton = Array.from(container.querySelectorAll("button")).find((button) => button.textContent === "Hot first");
     await act(async () => {

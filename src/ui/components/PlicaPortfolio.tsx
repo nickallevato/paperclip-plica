@@ -17,7 +17,7 @@ const MICRO = "text-[length:var(--plica-fs-micro,11px)] leading-[1.45]";
 /** Same two-button shape the board header uses for its own order. */
 const PORTFOLIO_SORTS = [
   { sort: "trouble" as const, label: "Trouble" },
-  { sort: "company" as const, label: "Company" },
+  { sort: "company" as const, label: "Org" },
 ] as const;
 
 /** The deadline, in as few characters as a right-aligned column can hold. */

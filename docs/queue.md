@@ -72,7 +72,7 @@ Within a bucket, items are ordered by an internal rank and then by age.
 
 ![The queue's controls: grouping, sort, and the age filter chips](screenshots/queue-controls.png)
 
-**Grouping** — Decide by, Severity, Company, Kind, Project, Age. Persisted per browser.
+**Grouping** — Decide by, Severity, Org, Kind, Project, Age. Persisted per browser.
 
 **Sort** — `oldest` or `newest`. This is only the age tiebreaker: severity, then
 rank inside the bucket, always wins. It decides which of two equally urgent
@@ -91,7 +91,7 @@ though it is eleven hours old. The same buckets drive the Age grouping and the
 chips, so the two can never disagree about which pile something is in. An item
 with no timestamp reads as today's rather than being buried under "Old".
 
-**Company focus** — clicking a company in the Companies list filters the queue to that company; a
+**Company focus** — clicking an org in the Orgs list filters the queue to that company; a
 "Show all companies" control appears while the filter is on. Not persisted.
 
 ## Grouping by company

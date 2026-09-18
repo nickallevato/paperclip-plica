@@ -7,12 +7,15 @@ Short-form. The reader-facing write-up for each version is in
 
 ### Decide by
 
+- **"Orgs", not "companies"**, everywhere Plica labels them: the list, the
+  queue and portfolio grouping, the header ("all orgs").
+
 - **The queue owns the page.** The wide company ledger is now a compact
-  **Companies** list in the left column — name, who is working, runs per day,
+  **Orgs** list in the left column — name, who is working, runs per day,
   and Need you — so the queue takes the main column. Every figure the ledger
   showed (Questions, Blocked, Review, Open, Tokens, the run sparkline, the
   lead agent) is in a card on hovering a company's name, with Watch and Open.
-  Narrow, the page stacks Companies, the queue, then Portfolio and Routines.
+  Narrow, the page stacks Orgs, the queue, then Portfolio and Routines.
 
 - **The queue is grouped by when you'll decide.** Today, Unsorted, This week,
   Alerts, Whenever and Snoozed replace Now / Soon / Later as the default

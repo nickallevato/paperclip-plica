@@ -18,9 +18,9 @@ launcher that navigates there. Its worker is a deliberate no-op.
 
 ## What it shows
 
-**Board** — a compact Companies list beside the queue: one line per company with capacity, runs
+**Board** — a compact Orgs list beside the queue: one line per company with capacity, runs
 per day and what is waiting on you; hover a name for the rest (questions, blockers, review, open
-work, token burn, a sparkline of recent runs). Companies can be watched, sorted by heat, and
+work, token burn, a sparkline of recent runs). Orgs can be watched, sorted by heat, and
 clicked to filter the queue.
 
 Each company's capacity is a row of squares, one per agent — working, stalled, queued, errored

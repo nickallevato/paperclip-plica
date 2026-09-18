@@ -223,15 +223,15 @@ export function PlicaBoardPage({
         <div className="contents @[64rem]/board:sticky @[64rem]/board:top-4 @[64rem]/board:flex @[64rem]/board:max-h-[calc(100vh-2rem)] @[64rem]/board:min-w-0 @[64rem]/board:flex-col @[64rem]/board:gap-4 @[64rem]/board:self-start">
           <section
             data-plica-companies
-            aria-label="Companies"
+            aria-label="Orgs"
             className="order-1 flex shrink-0 flex-col rounded-lg border bg-card @[64rem]/board:order-none"
           >
             <div className="flex items-center gap-2 border-b px-3 py-2">
               <h2 className={cn(MICRO, "font-semibold uppercase tracking-(--tracking-label) text-muted-foreground")}>
-                Companies
+                Orgs
               </h2>
               <PlicaSegmented
-                label="Company order"
+                label="Org order"
                 options={[
                   { value: "hot", label: "Hot first" },
                   { value: "manual", label: "My order" },

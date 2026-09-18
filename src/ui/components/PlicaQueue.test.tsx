@@ -355,7 +355,7 @@ describe("PlicaQueue", () => {
     const rows = Array.from(container.querySelectorAll("[data-queue-item]")).map((row) => row.getAttribute("data-queue-item"));
     expect(rows).toEqual(["heartbeat:ceo-2"]);
     act(() => {
-      (container.querySelector('[aria-label="Show all companies"]') as HTMLButtonElement).dispatchEvent(
+      (container.querySelector('[aria-label="Show all orgs"]') as HTMLButtonElement).dispatchEvent(
         new MouseEvent("click", { bubbles: true }),
       );
     });

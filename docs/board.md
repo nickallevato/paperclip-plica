@@ -1,16 +1,16 @@
 # The Board
 
-The Plica page is two columns. On the left, context: **Companies** (one line per
-company), the **Portfolio**, and **Routines** that need attention. On the right,
+The Plica page is two columns. On the left, context: **Orgs** (one line per
+org), the **Portfolio**, and **Routines** that need attention. On the right,
 owning the main column, the **[queue](queue.md)** — because that is where the
 work is. A strip of everything running right now spans the top.
 
-When there is not room for both columns, the page stacks: Companies, then the
+When there is not room for both columns, the page stacks: Orgs, then the
 queue, then Portfolio and Routines.
 
-![The Companies list: one line per company, with the totals beneath](screenshots/board.png)
+![The Orgs list: one line per org, with the totals beneath](screenshots/board.png)
 
-## Companies
+## Orgs
 
 Each company is one line: its name, its capacity strip (see below), runs per
 day, and **Need you** — pending approvals + undismissed attention items + an
@@ -78,7 +78,7 @@ actually reach always agree.
 
 ## Ordering companies
 
-Two controls sit in the Companies header:
+Two controls sit in the Orgs header:
 
 - **My order** — the same order as your sidebar company switcher, drag order
   included.
@@ -98,7 +98,7 @@ per browser.
 
 ## Clicking a company
 
-Clicking anywhere on a company's line that is not a control **filters the queue
+Clicking anywhere on an org's line that is not a control **filters the queue
 to that company**. Click again to show all companies. The company name picks up a
 dotted underline while the filter is on, and the queue grows a "Show all
 companies" control.
@@ -124,7 +124,7 @@ Down the left of the board:
 
 **Portfolio** — every project with open work, across every company, as one
 chart. Each bar splits into moving / waiting / blocked, and the header carries
-the totals. Sort by **Trouble** (worst first) or **Company**. What people
+the totals. Sort by **Trouble** (worst first) or **Org**. What people
 actually read off the old list was the shape of the work, so it became a chart.
 
 **Routines** — schedules that are *not* firing: failed, blocked, or overdue.

@@ -36,8 +36,8 @@ export function PlicaToolbarButton({
         event.preventDefault();
         nav.navigate(href);
       }}
-      title="Plica — all companies"
-      aria-label="Plica — all companies"
+      title="Plica — all orgs"
+      aria-label="Plica — all orgs"
       className="inline-flex h-7 items-center gap-1.5 rounded-md border border-border px-2 text-(length:--text-compact) font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring"
     >
       <PlicaMark className="h-3.5 w-3.5 shrink-0" />

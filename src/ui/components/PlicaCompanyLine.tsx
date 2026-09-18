@@ -72,8 +72,8 @@ export function PlicaCompanyLine({
   const needsTone =
     actionable.count === 0 ? ZERO : actionable.criticalOrHigh ? "text-plica-alarm" : "text-plica-wait";
   const focusTitle = needsFocused
-    ? "Showing only this company in the queue — click to show all"
-    : "Click to filter the queue to this company";
+    ? "Showing only this org in the queue — click to show all"
+    : "Click to filter the queue to this org";
 
   return (
     <li
