@@ -5,6 +5,20 @@ Short-form. The reader-facing write-up for each version is in
 
 ## Unreleased
 
+### Paperclip v2026.916.0
+
+- **In-progress tasks draw Paperclip's new spinner glyph.** The host replaced the
+  rotate arrow with an open circle that turns (and holds still under reduced
+  motion);
+  Plica's copy of the glyph had fallen behind, so the same task looked
+  different in Plica and in Paperclip.
+- **Links into `/tasks` and `/chats` keep their company.** Both are new
+  company-scoped routes; Plica did not know them, so a link into one could lose
+  its company prefix.
+- **Dialogs respect reduced motion**, as Paperclip's now do.
+- **`pnpm check:vendored`** reports any vendored host file that has drifted from
+  the Paperclip checkout. Nothing caught the two above until now.
+
 ### The mark
 
 - **Plica has its own icon.** A sheet folded down its middle, seen end-on — a

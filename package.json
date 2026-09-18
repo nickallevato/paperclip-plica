@@ -20,6 +20,7 @@
     "typecheck": "tsc --noEmit",
     "check:branch": "node ./scripts/check-branch-name.mjs",
     "check:surface": "node ./scripts/check-plugin-surface.mjs --all",
+    "check:vendored": "node ./scripts/check-vendored.mjs",
     "check:worktree": "node ./scripts/check-worktree.mjs",
     "hooks:install": "git config core.hooksPath .githooks"
   },
