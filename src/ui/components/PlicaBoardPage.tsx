@@ -18,6 +18,8 @@ import {
   filterQueueByAge,
   flattenLiveRuns,
   groupQueue,
+  isSnoozed,
+  summarizeDecide,
   summarizeQueue,
   upcomingProjects,
   upcomingRoutines,
@@ -34,6 +36,7 @@ import { PlicaQueue } from "./PlicaQueue";
 import { PlicaRoutineExceptions } from "./PlicaRoutineExceptions";
 import { PlicaSegmented } from "./PlicaSegmented";
 import type { PlicaCompanyData } from "./usePlicaCompanyData";
+import { applyTriageOverrides, useQueueTriage } from "./useQueueTriage";
 
 const MICRO = "text-[length:var(--plica-fs-micro,11px)] leading-[1.45]";
 
@@ -142,22 +145,34 @@ export function PlicaBoardPage({
       ),
     [loaded, nowMs, focusCompanyId],
   );
+  const { overrides, busy: triageBusy, triage } = useQueueTriage((companyId) => dataByCompany[companyId]?.invalidate());
+  // Pending decide-by / snooze / archive writes applied on top, so a row moves
+  // when clicked rather than a poll later. Snoozed items only exist in the
+  // Decide-by grouping's Snoozed lane; everywhere else they are simply away.
+  const triagedItems = useMemo(() => {
+    const applied = applyTriageOverrides(queueItems, overrides);
+    return grouping === "decide" ? applied : applied.filter((item) => !isSnoozed(item, nowMs));
+  }, [queueItems, overrides, grouping, nowMs]);
   const projects = useMemo(() => loaded.flatMap(({ data }) => data.projects), [loaded]);
   // Counted before the filter is applied, so each chip can say how much it is
   // holding back — a chip that reported its own post-filter count would read
   // "0" for every bucket you are not standing in.
-  const ageCounts = useMemo(() => countQueueByAge(queueItems, nowMs), [queueItems, nowMs]);
+  const ageCounts = useMemo(() => countQueueByAge(triagedItems, nowMs), [triagedItems, nowMs]);
   const visibleItems = useMemo(
-    () => filterQueueByAge(queueItems, ageFilter, nowMs),
-    [queueItems, ageFilter, nowMs],
+    () => filterQueueByAge(triagedItems, ageFilter, nowMs),
+    [triagedItems, ageFilter, nowMs],
   );
+  const decideSummary = useMemo(() => summarizeDecide(visibleItems, nowMs), [visibleItems, nowMs]);
   const groups = useMemo(
     () => groupQueue(visibleItems, grouping, companies, { projects, nowMs, sort: queueSort }),
     [visibleItems, grouping, companies, projects, nowMs, queueSort],
   );
   // The badge counts what is on screen: a rail filtered to "today" that still
   // claimed 137 would be describing a list the reader cannot see.
-  const summary = useMemo(() => summarizeQueue(visibleItems, nowMs), [visibleItems, nowMs]);
+  const summary = useMemo(
+    () => summarizeQueue(visibleItems.filter((item) => !isSnoozed(item, nowMs)), nowMs),
+    [visibleItems, nowMs],
+  );
   const live = useMemo(
     () => flattenLiveRuns(loaded.map(({ company, data }) => ({ company, runs: data.liveRuns, issues: data.issues }))),
     [loaded],
@@ -310,6 +325,9 @@ export function PlicaBoardPage({
           companiesById={companiesById}
           nowMs={nowMs}
           onActed={(companyId) => dataByCompany[companyId]?.invalidate()}
+          decideSummary={decideSummary}
+          onTriage={triage}
+          triageBusy={triageBusy}
           footer={footer}
           filterCompany={focusCompany}
           onClearFilter={() => setFocusCompanyId(null)}

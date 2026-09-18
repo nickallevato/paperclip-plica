@@ -47,6 +47,17 @@ interface PlicaQueueItemBase {
   rank: number;
   /** When the item started needing you (epoch ms), or null when unknown. */
   atMs: number | null;
+  /**
+   * The identity Paperclip's decision triage is keyed by (the attention
+   * item's `sourceKind` + `subject.id`), or null for the conditions Plica
+   * derives itself — an overdue heartbeat, a stalled routine — which have no
+   * triage row and clear on their own.
+   */
+  triage: { sourceKind: string; sourceId: string } | null;
+  /** Server-side decide-by: "today" | "this_week" | "whenever" | YYYY-MM-DD, or null. */
+  decideBy: string | null;
+  /** Server-side snooze, ISO; the item hides until then outside the Snoozed lane. */
+  snoozedUntil: string | null;
 }
 
 export type PlicaQueueItem =
@@ -96,9 +107,20 @@ export function deriveQueueItems(input: {
   const items: PlicaQueueItem[] = [];
   const agentName = new Map(input.agents.map((agent) => [agent.id, agent.name]));
   const issueById = new Map((input.issues ?? []).map((issue) => [issue.id, issue]));
+  // An approval's decide-by and snooze live on its attention-feed twin, which
+  // is otherwise skipped below; read them off it so both halves agree.
+  const approvalTwin = new Map(
+    (input.attention?.items ?? [])
+      .filter((item) => item.sourceKind === "approval")
+      .map((item) => [item.subject.id, item]),
+  );
 
   for (const approval of input.approvals) {
+    const twin = approvalTwin.get(approval.id);
     items.push({
+      triage: { sourceKind: "approval", sourceId: approval.id },
+      decideBy: twin?.decideBy ?? null,
+      snoozedUntil: twin?.snoozedUntil ?? null,
       kind: "approval",
       id: `approval:${approval.id}`,
       companyId: input.companyId,
@@ -117,6 +139,9 @@ export function deriveQueueItems(input: {
     if (item.dismissal || item.sourceKind === "approval") continue;
     const { bucket, rank } = attentionBucket(item.severity);
     items.push({
+      triage: { sourceKind: item.sourceKind, sourceId: item.subject.id },
+      decideBy: item.decideBy ?? null,
+      snoozedUntil: item.snoozedUntil ?? null,
       kind: "attention",
       id: `attention:${item.id}`,
       companyId: input.companyId,
@@ -135,6 +160,9 @@ export function deriveQueueItems(input: {
   const beat = deriveCeoHeartbeat(ceo, input.nowMs);
   if (ceo && beat.state === "overdue") {
     items.push({
+      triage: null,
+      decideBy: null,
+      snoozedUntil: null,
       kind: "heartbeat",
       id: `heartbeat:${ceo.id}`,
       companyId: input.companyId,
@@ -157,6 +185,9 @@ export function deriveQueueItems(input: {
       .sort((a, b) => a - b)[0];
     if (overdueAt !== undefined) {
       items.push({
+        triage: null,
+        decideBy: null,
+        snoozedUntil: null,
         kind: "routine",
         id: `routine:${routine.id}:overdue`,
         companyId: input.companyId,
@@ -168,6 +199,9 @@ export function deriveQueueItems(input: {
       });
     } else if (routine.lastRun?.status === "failed") {
       items.push({
+        triage: null,
+        decideBy: null,
+        snoozedUntil: null,
         kind: "routine",
         id: `routine:${routine.id}:failed`,
         companyId: input.companyId,
@@ -236,9 +270,10 @@ export function summarizeQueue(items: ReadonlyArray<PlicaQueueItem>, nowMs: numb
   };
 }
 
-export type PlicaQueueGrouping = "severity" | "company" | "kind" | "project" | "age";
+export type PlicaQueueGrouping = "decide" | "severity" | "company" | "kind" | "project" | "age";
 
 export const PLICA_QUEUE_GROUPINGS: ReadonlyArray<{ grouping: PlicaQueueGrouping; label: string }> = [
+  { grouping: "decide", label: "Decide by" },
   { grouping: "severity", label: "Severity" },
   { grouping: "company", label: "Company" },
   { grouping: "kind", label: "Kind" },
@@ -249,7 +284,7 @@ export const PLICA_QUEUE_GROUPINGS: ReadonlyArray<{ grouping: PlicaQueueGrouping
 export const PLICA_QUEUE_GROUPING_STORAGE_KEY = "plica.queueGrouping";
 
 export function normalizeQueueGrouping(value: string | null | undefined): PlicaQueueGrouping {
-  return PLICA_QUEUE_GROUPINGS.some((entry) => entry.grouping === value) ? (value as PlicaQueueGrouping) : "severity";
+  return PLICA_QUEUE_GROUPINGS.some((entry) => entry.grouping === value) ? (value as PlicaQueueGrouping) : "decide";
 }
 
 /** What sort of ask an item is — the "Kind" grouping and the row glyph. */
@@ -293,6 +328,131 @@ export function queueItemKind(item: PlicaQueueItem): PlicaQueueKind {
       return "other";
     }
   }
+}
+
+// ---------------------------------------------------------------------------
+// Decide-by lanes
+// ---------------------------------------------------------------------------
+
+/**
+ * When you have said you will decide something, from Paperclip's decision
+ * triage — the same `decideBy` / `snoozedUntil` the host's Decisions page
+ * reads and writes, so the two can never disagree.
+ *
+ *   today    — "today", or a date that is today or already past (overdue)
+ *   unsorted — nothing set yet: new, waiting for you to give it a day
+ *   week     — "this_week", or a date before the week is out
+ *   alerts   — conditions Plica derives (heartbeat, routine); no triage row,
+ *              they clear themselves when the condition does
+ *   whenever — "whenever", or a date beyond this week
+ *   snoozed  — snoozed until a time still ahead; hidden from other groupings
+ *
+ * Dates compare in local calendar days — "today" means the reader's today.
+ * Weeks end on Sunday.
+ */
+export type PlicaDecideLane = "today" | "unsorted" | "week" | "alerts" | "whenever" | "snoozed";
+
+export const PLICA_DECIDE_LANES: ReadonlyArray<{ lane: PlicaDecideLane; label: string; folded: boolean }> = [
+  { lane: "today", label: "Today", folded: false },
+  { lane: "unsorted", label: "Unsorted", folded: false },
+  { lane: "week", label: "This week", folded: false },
+  { lane: "alerts", label: "Alerts", folded: false },
+  { lane: "whenever", label: "Whenever", folded: true },
+  { lane: "snoozed", label: "Snoozed", folded: true },
+];
+
+/** Local YYYY-MM-DD for an epoch. */
+export function localDateKey(ms: number): string {
+  const d = new Date(ms);
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${d.getFullYear()}-${mm}-${dd}`;
+}
+
+/** Local YYYY-MM-DD of the Sunday that closes the week containing `ms`. */
+function endOfWeekKey(ms: number): string {
+  const d = new Date(ms);
+  d.setDate(d.getDate() + ((7 - d.getDay()) % 7));
+  return localDateKey(d.getTime());
+}
+
+const DATE_KEY = /^\d{4}-\d{2}-\d{2}$/;
+
+export function isSnoozed(item: Pick<PlicaQueueItem, "snoozedUntil">, nowMs: number): boolean {
+  const until = epochMs(item.snoozedUntil);
+  return until !== null && until > nowMs;
+}
+
+/** A decide-by date that has already passed (a preset never goes overdue). */
+export function isDecideOverdue(item: Pick<PlicaQueueItem, "decideBy">, nowMs: number): boolean {
+  return !!item.decideBy && DATE_KEY.test(item.decideBy) && item.decideBy < localDateKey(nowMs);
+}
+
+export function decideLane(item: PlicaQueueItem, nowMs: number): PlicaDecideLane {
+  if (isSnoozed(item, nowMs)) return "snoozed";
+  if (!item.triage) return "alerts";
+  const decideBy = item.decideBy;
+  if (!decideBy) return "unsorted";
+  if (decideBy === "today") return "today";
+  if (decideBy === "this_week") return "week";
+  if (decideBy === "whenever") return "whenever";
+  if (DATE_KEY.test(decideBy)) {
+    if (decideBy <= localDateKey(nowMs)) return "today";
+    if (decideBy <= endOfWeekKey(nowMs)) return "week";
+    return "whenever";
+  }
+  // An unrecognised value is still a decision someone made; do not call it unsorted.
+  return "whenever";
+}
+
+/** "Today", "This week", "Whenever", "Fri 26 Sep", or null when unset. */
+export function decideByLabel(decideBy: string | null): string | null {
+  if (!decideBy) return null;
+  if (decideBy === "today") return "Today";
+  if (decideBy === "this_week") return "This week";
+  if (decideBy === "whenever") return "Whenever";
+  if (DATE_KEY.test(decideBy)) {
+    const date = new Date(`${decideBy}T12:00:00`);
+    if (Number.isFinite(date.getTime())) {
+      return date.toLocaleDateString([], { weekday: "short", day: "numeric", month: "short" });
+    }
+  }
+  return decideBy;
+}
+
+/** Snooze presets, matching the host's DecisionTriageStrip; resolved at click time. */
+export const PLICA_SNOOZE_PRESETS: ReadonlyArray<{ label: string; resolve: (nowMs: number) => string }> = [
+  { label: "1 hour", resolve: (nowMs) => new Date(nowMs + 60 * 60_000).toISOString() },
+  { label: "4 hours", resolve: (nowMs) => new Date(nowMs + 4 * 60 * 60_000).toISOString() },
+  {
+    label: "Tomorrow 9:00",
+    resolve: (nowMs) => {
+      const d = new Date(nowMs);
+      d.setDate(d.getDate() + 1);
+      d.setHours(9, 0, 0, 0);
+      return d.toISOString();
+    },
+  },
+  { label: "Next week", resolve: (nowMs) => new Date(nowMs + 7 * 24 * 60 * 60_000).toISOString() },
+];
+
+export interface PlicaDecideSummary {
+  today: number;
+  overdue: number;
+  unsorted: number;
+  snoozed: number;
+}
+
+export function summarizeDecide(items: ReadonlyArray<PlicaQueueItem>, nowMs: number): PlicaDecideSummary {
+  const summary: PlicaDecideSummary = { today: 0, overdue: 0, unsorted: 0, snoozed: 0 };
+  for (const item of items) {
+    const lane = decideLane(item, nowMs);
+    if (lane === "today") summary.today += 1;
+    if (lane === "unsorted") summary.unsorted += 1;
+    if (lane === "snoozed") summary.snoozed += 1;
+    if (lane !== "snoozed" && isDecideOverdue(item, nowMs)) summary.overdue += 1;
+  }
+  return summary;
 }
 
 /**
@@ -389,6 +549,10 @@ export interface PlicaQueueGroup {
   bucket: PlicaQueueBucket | null;
   company: Company | null;
   items: PlicaQueueItem[];
+  /** Starts folded (Later, Whenever, Snoozed): a count you can open. */
+  folded?: boolean;
+  /** Set on decide-by groups. */
+  lane?: PlicaDecideLane;
 }
 
 /**
@@ -421,6 +585,18 @@ export function groupQueue(
       .filter((group) => group.items.length > 0);
 
   switch (grouping) {
+    case "decide": {
+      const nowMs = context.nowMs ?? Date.now();
+      return PLICA_DECIDE_LANES.map(({ lane, label, folded }) => ({
+        key: `decide:${lane}`,
+        label,
+        bucket: null,
+        company: null,
+        lane,
+        folded,
+        items: sorted.filter((item) => decideLane(item, nowMs) === lane),
+      })).filter((group) => group.items.length > 0);
+    }
     case "company":
       return companies
         .map((company) => ({
@@ -459,6 +635,7 @@ export function groupQueue(
         key: bucket,
         label,
         bucket,
+        folded: bucket === "later",
         company: null,
         items: sorted.filter((item) => item.bucket === bucket),
       })).filter((group) => group.items.length > 0);

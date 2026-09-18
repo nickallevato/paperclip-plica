@@ -5,6 +5,24 @@ Short-form. The reader-facing write-up for each version is in
 
 ## Unreleased
 
+### Decide by
+
+- **The queue is grouped by when you'll decide.** Today, Unsorted, This week,
+  Alerts, Whenever and Snoozed replace Now / Soon / Later as the default
+  grouping (Severity is still one click away). The lanes come from Paperclip's
+  own decision triage, so a day set in Plica is the day Paperclip's Decisions
+  page shows.
+- **Unsorted rows sort in one click**: Today · This week · Whenever sit inline.
+- **Every row has a triage menu**: decide by, snooze (1 hour to a week), wake,
+  archive. Changes apply immediately and are rolled back with a toast if
+  Paperclip refuses them.
+- **Snoozed items are away.** They sit folded in the Snoozed lane and nowhere
+  else, and they no longer count toward the Needs you badge.
+- The header reads *N today (N overdue) · N unsorted · N snoozed*.
+- The demo fixture now carries realistic triage (it used to store an instant
+  where Paperclip stores a preset or a date), and demo mode accepts the triage
+  and archive writes.
+
 ### A calmer board
 
 - **Colour marks one thing per row.** The ledger's Questions, Blocked and

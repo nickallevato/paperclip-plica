@@ -28,6 +28,30 @@ const id = (kind, key) => `demo-${kind}-${key}`;
 const t = (offset) => `@t:${offset}`;
 const d = (days) => `@d:${days}`;
 
+/**
+ * Decide-by and snooze per attention item, by the start of its subject title,
+ * so the Decide-by grouping has something in every lane: one overdue item,
+ * two due today, a working week, a couple of whenevers, two snoozed, and the
+ * interactions left unsorted. Values follow the server's shape — a preset or
+ * a calendar date for decideBy, an instant for snoozedUntil.
+ */
+const TRIAGE = [
+  ["Ledger reconciliation drifts", { decideBy: d(-1) }],
+  ["Quill needs sign-off", { decideBy: "today" }],
+  ["Payout rails is at 99%", { decideBy: "today" }],
+  ["Pickers drop their route", { decideBy: "this_week" }],
+  ["Warehouse cost attribution", { decideBy: "this_week" }],
+  ["Settlement file parser", { decideBy: "this_week" }],
+  ["Pick path regression harness", { decideBy: "whenever" }],
+  ["Export to CSV truncates", { decideBy: "whenever" }],
+  ["Nightly telemetry rollup", { snoozedUntil: t("+18h") }],
+  ["Weekly pricing review", { snoozedUntil: t("+72h") }],
+];
+function triageFor(title) {
+  const found = TRIAGE.find(([prefix]) => (title ?? "").startsWith(prefix))?.[1] ?? {};
+  return { decideBy: found.decideBy ?? null, snoozedUntil: found.snoozedUntil ?? null };
+}
+
 // ---------------------------------------------------------------------------
 // Companies
 // ---------------------------------------------------------------------------
@@ -532,9 +556,9 @@ function buildAttention(key, prefix) {
       keep: false,
       archivedAt: null,
       retentionVersion: 1,
-      decideBy: severity === "critical" ? t("+2h") : null,
+      decideBy: triageFor(subject.title).decideBy,
       decideByAttribution: null,
-      snoozedUntil: null,
+      snoozedUntil: triageFor(subject.title).snoozedUntil,
       detail: null,
       trainingExampleId: null,
     };

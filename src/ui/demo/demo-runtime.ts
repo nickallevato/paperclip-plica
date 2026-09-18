@@ -221,6 +221,35 @@ export function demoRespond(method: string, path: string, body?: unknown): unkno
         case "sidebar-badges": return data.sidebarBadges;
       }
     }
+    // Decision triage: decide-by / snooze, and archive. Applied to the fixture's
+    // attention row so the queue moves lanes exactly as it would live.
+    // .../decision-triage/:sourceKind/:sourceId
+    // .../decision-retention/:sourceKind/:sourceId/archive
+    if ((rest[0] === "decision-triage" || rest[0] === "decision-retention") && rest[1] && rest[2]) {
+      const matches = (item: (typeof data.attention.items)[number]) =>
+        item.sourceKind === rest[1] && item.subject.id === rest[2];
+      if (verb === "PUT" && rest[0] === "decision-triage") {
+        const update = (body ?? {}) as { decideBy?: string | null; snoozedUntil?: string | null };
+        const items = data.attention.items.map((item) =>
+          matches(item)
+            ? {
+                ...item,
+                ...(update.decideBy !== undefined ? { decideBy: update.decideBy } : {}),
+                ...(update.snoozedUntil !== undefined ? { snoozedUntil: update.snoozedUntil } : {}),
+              }
+            : item,
+        );
+        data.attention = { ...data.attention, items };
+        return { sourceKind: rest[1], sourceId: rest[2], ...update };
+      }
+      if (verb === "POST" && rest[0] === "decision-retention" && rest[3] === "archive") {
+        const items = data.attention.items.filter((item) => !matches(item));
+        data.attention = { ...data.attention, items, totalCount: items.length };
+        // An archived approval leaves the queue too, the way the live feed drops it.
+        if (rest[1] === "approval") data.approvals = data.approvals.filter((approval) => approval.id !== rest[2]);
+        return { archived: true };
+      }
+    }
     // Issue creation is the only write scoped to a company; it is accepted so
     // a demo can show the flow, but the new row is local to this page load.
     if (verb === "POST" && rest.join("/") === "issues") {

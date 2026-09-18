@@ -243,8 +243,26 @@ const SHOTS = [
     }),
   },
   {
+    name: "queue-by-decide",
+    doc: "The queue in its default grouping: Today, Unsorted, This week, and the rest by when you said you'd decide.",
+    take: async (page) => ({ clip: await region(page, ["[data-plica-queue]"]) }),
+  },
+  {
+    name: "queue-triage-menu",
+    doc: "A row's triage menu: decide by, snooze, archive.",
+    before: async (page) => {
+      await page.locator("[data-queue-group='decide:unsorted'] [data-triage-menu]").first().click();
+      await page.waitForSelector("[role='menu']", { timeout: 10_000 });
+      await page.waitForTimeout(300);
+    },
+    take: async (page) => ({
+      clip: await region(page, ["[data-queue-group='decide:unsorted'] [data-queue-item]:first-of-type", "[role='menu']"]),
+    }),
+  },
+  {
     name: "queue-by-severity",
-    doc: "The queue in its default grouping: Now, Soon, Later.",
+    doc: "The same queue grouped by severity: Now, Soon, Later.",
+    before: async (page) => groupQueueBy(page, "Severity"),
     take: async (page) => ({ clip: await region(page, ["[data-plica-queue]"]) }),
   },
   {

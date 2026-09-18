@@ -3,7 +3,7 @@
 The queue — headed **Needs you** — is every item across every company that is
 waiting on a human, in one list, in the order you should work it.
 
-![The queue in its default grouping: Now, Soon, Later](screenshots/queue-by-severity.png)
+![The queue in its default grouping: Today, Unsorted, This week](screenshots/queue-by-decide.png)
 
 ## What lands in it
 
@@ -21,10 +21,44 @@ waiting on a human, in one list, in the order you should work it.
 Dismissed attention items are not shown. Approvals appear once, not twice, even
 though the attention feed also emits an item for each of them.
 
-## The three buckets
+## Decide by
 
-By default the queue groups by severity, which is really "how long can this
-wait":
+By default the queue groups by **when you said you'd decide** — Paperclip's
+decision triage, the same *decide by* and *snooze* its own Decisions page
+sets. A day chosen in Plica is the day Paperclip shows, and the other way
+round.
+
+- **Today** — due today, or overdue. An item whose date has passed says
+  *overdue · was due …* in brick.
+- **Unsorted** — nothing set yet. This is the new pile: each row carries
+  **Today · This week · Whenever** inline, so sorting it is one click a row.
+- **This week** — due by Sunday.
+- **Alerts** — conditions Plica spots itself (an overdue CEO heartbeat, a
+  routine that stopped firing). They have no triage; they leave when the
+  condition clears.
+- **Whenever** — no deadline, or a date beyond this week. Starts folded.
+- **Snoozed** — hidden until the snooze ends. Starts folded, and appears in no
+  other grouping.
+
+The header counts what matters for the day: *3 today (1 overdue) · 7 unsorted
+· 1 snoozed*.
+
+Every row that can be triaged has a calendar button at the end:
+
+![A row's triage menu: decide by, snooze, archive](screenshots/queue-triage-menu.png)
+
+- **Decide by** Today, This week or Whenever — or **Back to unsorted**.
+- **Snooze** for 1 hour, 4 hours, until tomorrow 9:00, or a week; **Wake now**
+  on a snoozed row.
+- **Archive** takes the item off the feed for good (Paperclip keeps it, and
+  its Decisions page can revive it).
+
+Changes show at once and are confirmed on the next refetch; if the write
+fails, the row goes back and a toast says why.
+
+## The three severity buckets
+
+Grouped by **Severity**, the queue is "how long can this wait":
 
 - **Now** — approvals, critical attention, an overdue CEO heartbeat.
 - **Soon** — high-severity attention, routines that stopped firing or failed.
@@ -32,11 +66,13 @@ wait":
 
 Within a bucket, items are ordered by an internal rank and then by age.
 
+![The same queue grouped by severity](screenshots/queue-by-severity.png)
+
 ## Controls
 
 ![The queue's controls: grouping, sort, and the age filter chips](screenshots/queue-controls.png)
 
-**Grouping** — Severity, Company, Kind, Project, Age. Persisted per browser.
+**Grouping** — Decide by, Severity, Company, Kind, Project, Age. Persisted per browser.
 
 **Sort** — `oldest` or `newest`. This is only the age tiebreaker: severity, then
 rank inside the bucket, always wins. It decides which of two equally urgent
