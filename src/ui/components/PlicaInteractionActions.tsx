@@ -125,7 +125,7 @@ function ConfirmButtons({
         {accept.isPending ? (
           <Loader2 className="mr-1 h-3 w-3 shrink-0 animate-spin" />
         ) : (
-          <Check className="mr-1 h-3 w-3 shrink-0 text-emerald-600 dark:text-emerald-400" />
+          <Check className="mr-1 h-3 w-3 shrink-0 text-plica-ok" />
         )}
         {acceptLabel}
       </Button>
@@ -134,7 +134,7 @@ function ConfirmButtons({
           <Button
             size="sm"
             variant="ghost"
-            className={cn("h-6 whitespace-nowrap px-2 text-muted-foreground hover:text-red-600 dark:hover:text-red-400", MICRO)}
+            className={cn("h-6 whitespace-nowrap px-2 text-muted-foreground hover:text-destructive", MICRO)}
             disabled={busy}
             aria-label={rejectLabel}
           >
@@ -216,7 +216,7 @@ function InteractionFormPopover({
           </p>
         )}
         {interactions.isError && (
-          <p className={cn("text-red-600 dark:text-red-400", MICRO)}>Could not load: {errorMessage(interactions.error)}</p>
+          <p className={cn("text-plica-alarm", MICRO)}>Could not load: {errorMessage(interactions.error)}</p>
         )}
         {interactions.isSuccess && !interaction && (
           <p className={cn("text-muted-foreground", MICRO)}>This request is no longer pending.</p>
@@ -326,7 +326,7 @@ function QuestionsForm({
             data-question={question.id}
             className={cn(
               "flex flex-col gap-2 rounded-md border p-2.5",
-              answered ? "border-emerald-500/40 bg-emerald-500/[0.04]" : "bg-muted/30",
+              answered ? "border-plica-ok/40 bg-plica-ok/5" : "bg-muted/30",
             )}
           >
             <legend className="sr-only">{question.prompt}</legend>
@@ -336,7 +336,7 @@ function QuestionsForm({
                 className={cn(
                   "mt-0.5 inline-flex size-5 shrink-0 items-center justify-center rounded-full font-semibold tabular-nums",
                   MICRO,
-                  answered ? "bg-emerald-600 text-white" : "bg-muted text-muted-foreground",
+                  answered ? "bg-plica-ok text-white" : "bg-muted text-muted-foreground",
                 )}
               >
                 {answered ? <Check className="h-3 w-3" /> : index + 1}
@@ -484,7 +484,7 @@ function CheckboxForm({
         <Button
           size="sm"
           variant="ghost"
-          className={cn("h-6 px-2 text-red-600 dark:text-red-400", MICRO)}
+          className={cn("h-6 px-2 text-destructive", MICRO)}
           disabled={busy}
           onClick={() => reject.mutate()}
         >

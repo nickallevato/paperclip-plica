@@ -6,8 +6,8 @@
 export function LiveDot() {
   return (
     <span data-live-dot className="relative flex h-2 w-2 shrink-0" aria-label="Agent live">
-      <span className="absolute inline-flex h-full w-full animate-[pulse_3s_ease-in-out_infinite] rounded-full bg-blue-400 opacity-75 motion-reduce:animate-none" />
-      <span className="relative inline-flex h-2 w-2 rounded-full bg-blue-500" />
+      <span className="absolute inline-flex h-full w-full animate-[pulse_3s_ease-in-out_infinite] rounded-full bg-plica-live opacity-60 motion-reduce:animate-none" />
+      <span className="relative inline-flex h-2 w-2 rounded-full bg-plica-live" />
     </span>
   );
 }

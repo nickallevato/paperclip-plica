@@ -38,7 +38,7 @@ export function PlicaStaleStylesheetWarning({ check: injected }: {
     <span
       role="alert"
       title={detail}
-      className="inline-flex items-center gap-1 rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[length:var(--plica-fs-micro,11px)] leading-[1.45] font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-400"
+      className="inline-flex items-center gap-1 rounded-full border border-plica-wait/40 bg-plica-wait/10 px-2 py-0.5 text-[length:var(--plica-fs-micro,11px)] leading-[1.45] font-semibold uppercase tracking-(--tracking-label) text-plica-wait"
     >
       <TriangleAlert className="h-3 w-3 shrink-0" aria-hidden="true" />
       Stylesheet stale

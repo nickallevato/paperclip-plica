@@ -331,7 +331,7 @@ export function PlicaHud({ demo = false }: PlicaHudProps = {}) {
                be shareable, which only works if nobody can mistake the fixture
                for a real instance. */
             <span
-              className="rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[length:var(--plica-fs-micro,11px)] leading-[1.45] font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-400"
+              className="rounded-full border border-plica-wait/40 bg-plica-wait/10 px-2 py-0.5 text-[length:var(--plica-fs-micro,11px)] leading-[1.45] font-semibold uppercase tracking-(--tracking-label) text-plica-wait"
               title="Plica is showing bundled demo data, not this instance. Add ?demo=0 to the URL to leave demo mode."
             >
               Demo data
@@ -345,7 +345,7 @@ export function PlicaHud({ demo = false }: PlicaHudProps = {}) {
         </div>
         <div className="ml-auto flex items-center gap-3 text-[length:var(--plica-fs-body,14px)] leading-[1.45] text-muted-foreground">
           {anyStale && (
-            <span className="inline-flex items-center gap-1 text-amber-600 dark:text-amber-400">
+            <span className="inline-flex items-center gap-1 text-plica-wait">
               <TriangleAlert className="h-3.5 w-3.5" /> polling degraded
             </span>
           )}

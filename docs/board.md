@@ -114,7 +114,7 @@ Down the left of the board:
 
 **Portfolio** — every project with open work, across every company, as one
 chart. Each bar splits into moving / waiting / blocked, and the header carries
-the totals. Sort by **Trouble** (worst first) or **By company**. What people
+the totals. Sort by **Trouble** (worst first) or **Company**. What people
 actually read off the old list was the shape of the work, so it became a chart.
 
 **Routines** — schedules that are *not* firing: failed, blocked, or overdue.

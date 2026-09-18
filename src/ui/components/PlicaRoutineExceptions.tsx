@@ -36,7 +36,7 @@ export function PlicaRoutineExceptions({ items, nowMs }: { items: PlicaUpcomingR
     <section data-plica-routines className="flex shrink-0 flex-col rounded-lg border bg-card">
       <h3
         className={cn(
-          "flex shrink-0 items-center gap-2 px-3 pb-2 pt-3 font-semibold uppercase tracking-wide text-muted-foreground",
+          "flex shrink-0 items-center gap-2 px-3 pb-2 pt-3 font-semibold uppercase tracking-(--tracking-label) text-muted-foreground",
           MICRO,
         )}
       >

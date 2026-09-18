@@ -122,7 +122,7 @@ function ApprovalActions({
       <Button
         size="sm"
         variant="ghost"
-        className={cn("h-6 px-2 text-red-600 dark:text-red-400", MICRO)}
+        className={cn("h-6 px-2 text-destructive", MICRO)}
         disabled={decision.busy}
         aria-label="Reject"
         onClick={() => decision.reject()}
@@ -159,7 +159,8 @@ function OpenLink({
 /**
  * One thing that needs you, on two lines: what it is (identifier + title) and
  * why/when (kind + age), with its single action on the right. Critical rows
- * carry a red edge and tint; anything else in Now carries an amber edge.
+ * carry an alarm edge and a faint tint; anything else in Now carries an ochre
+ * dot before its title.
  */
 export function PlicaQueueItemRow({
   item,
@@ -274,7 +275,7 @@ export function PlicaQueueItemRow({
           {item.beat.lastBeatAt
             ? relativeTimeLabel(item.beat.lastBeatAt, nowMs)
             : "never"}
-          {interval ? ` · expected every ${interval}` : ""}
+          {interval ? ` · expected ${interval}` : ""}
         </>
       );
       actions = (
@@ -313,12 +314,12 @@ export function PlicaQueueItemRow({
       <div className={cn("flex items-baseline gap-1.5", BODY)}>
         {critical ? (
           <AlertTriangle
-            className="h-3 w-3 shrink-0 self-center text-red-600 dark:text-red-400"
+            className="h-3 w-3 shrink-0 self-center text-plica-alarm"
             aria-label="critical"
           />
         ) : item.bucket === "now" ? (
           <span
-            className="size-1.5 shrink-0 self-center rounded-full bg-amber-500"
+            className="size-1.5 shrink-0 self-center rounded-full bg-plica-wait"
             aria-label="now"
           />
         ) : null}
@@ -351,7 +352,7 @@ export function PlicaQueueItemRow({
         className={cn(
           "flex min-w-0 items-center gap-1.5 text-muted-foreground",
           MICRO,
-          critical && "text-red-700 dark:text-red-300",
+          critical && "text-plica-alarm",
         )}
       >
         {meta}
@@ -368,9 +369,9 @@ export function PlicaQueueItemRow({
           className={cn(
             "shrink-0 tabular-nums",
             !inline && "ml-auto",
-            tone === "stale" && "font-semibold text-red-600 dark:text-red-400",
+            tone === "stale" && "font-semibold text-plica-alarm",
             tone === "aging" &&
-              "font-medium text-amber-700 dark:text-amber-300",
+              "font-medium text-plica-wait",
           )}
           title={
             tone === "stale"
@@ -392,7 +393,10 @@ export function PlicaQueueItemRow({
       data-queue-kind={item.kind}
       className={cn(
         "flex items-start gap-2.5 py-2 pl-3 pr-3 hover:bg-muted/30",
-        critical && "bg-red-500/[0.08]",
+        // An edge and a breath of tint, not a filled band: three critical
+        // rows in a row used to paint the heaviest block on the page, heavier
+        // than the approvals under them that you can actually clear inline.
+        critical && "bg-plica-alarm/[0.05] shadow-[inset_2px_0_0_var(--plica-alarm)]",
       )}
     >
       <Avatar company={company} />
@@ -478,13 +482,13 @@ export function PlicaQueue({
             className={cn(
               "inline-flex min-w-5 items-center justify-center rounded-full px-1.5 font-semibold tabular-nums text-white",
               MICRO,
-              summary.now > 0 ? "bg-red-600" : "bg-amber-600",
+              summary.now > 0 ? "bg-plica-alarm" : "bg-plica-wait",
             )}
           >
             {urgent}
           </span>
         ) : (
-          <span className={cn(MICRO, "text-emerald-600 dark:text-emerald-400")}>
+          <span className={cn(MICRO, "text-plica-ok")}>
             clear
           </span>
         )}
@@ -614,7 +618,7 @@ export function PlicaQueue({
                       className="size-4 shrink-0 rounded text-[7px]"
                     />
                   )}
-                  <span className="font-semibold uppercase tracking-wide text-muted-foreground">
+                  <span className="font-semibold uppercase tracking-(--tracking-label) text-muted-foreground">
                     {group.label}
                   </span>
                   <span className="tabular-nums text-muted-foreground">

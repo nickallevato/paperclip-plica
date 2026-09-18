@@ -1,5 +1,6 @@
 import { ArrowDownWideNarrow, ArrowUpNarrowWide } from "lucide-react";
 import { cn } from "../host/util";
+import { PlicaSegmented } from "./PlicaSegmented";
 
 const MICRO = "text-[length:var(--plica-fs-micro,11px)] leading-[1.45]";
 
@@ -50,23 +51,12 @@ export function PlicaListControls<G extends string, S extends string>({
         {flipped ? <ArrowUpNarrowWide className="h-3 w-3" /> : <ArrowDownWideNarrow className="h-3 w-3" />}
         {current.label}
       </button>
-      <div role="group" aria-label={groupingLabel} className="flex items-center rounded-md border p-0.5">
-        {groupings.map(({ grouping: mode, label }) => (
-          <button
-            key={mode}
-            type="button"
-            aria-pressed={grouping === mode}
-            onClick={() => onGrouping(mode)}
-            className={cn(
-              "rounded px-2 py-0.5",
-              MICRO,
-              grouping === mode ? "bg-muted font-medium" : "text-muted-foreground hover:text-foreground",
-            )}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
+      <PlicaSegmented
+        label={groupingLabel}
+        options={groupings.map(({ grouping: value, label }) => ({ value, label }))}
+        value={grouping}
+        onChange={onGrouping}
+      />
     </>
   );
 }

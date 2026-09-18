@@ -5,6 +5,27 @@ Short-form. The reader-facing write-up for each version is in
 
 ## Unreleased
 
+### A calmer board
+
+- **Colour marks one thing per row.** The ledger's Questions, Blocked and
+  Review counts are plain ink now; only **Need you** carries ochre or brick.
+  Every nonzero count used to be ochre, so one question read as loudly as five
+  things waiting on you.
+- **Critical rows in Now carry an edge, not a band.** A faint tint and a brick
+  edge replace the solid pink (maroon in dark mode) fill.
+- **Moving work and good runs are sage, not neon.** Portfolio bars, the
+  sparkline and answered cards use Plica's new low-chroma `ok` colour.
+- **Liveness is Paperclip's own blue**, the same one its nav dots and
+  in-progress icons use.
+- **The ledger no longer clips its last column.** The totals row was padded
+  wider than the rows above it, which pushed the pin and open icons out of the
+  card. The sparkline now hides when the ledger is narrow rather than when the
+  window is, and the board stacks (ledger and queue first) when there isn't
+  room for both columns.
+- **One toggle style.** Hot first / My order, Trouble / Company and the queue
+  grouping all draw like Paperclip's tabs.
+- "Expected every every 1h" on an overdue heartbeat now reads "expected every 1h".
+
 ### Paperclip v2026.916.0
 
 - **In-progress tasks draw Paperclip's new spinner glyph.** The host replaced the
