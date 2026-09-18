@@ -222,8 +222,18 @@ const SHOTS = [
   },
   {
     name: "board",
-    doc: "The board: one row per company, capacity, and the totals row.",
-    take: async (page) => ({ clip: await region(page, ["[data-board-totals]", "table"]) }),
+    doc: "The Companies list: one line per company, capacity, and the totals line.",
+    take: async (page) => ({ clip: await region(page, ["[data-plica-companies]"]) }),
+  },
+  {
+    name: "company-detail",
+    doc: "A company's detail card: every figure the line leaves out.",
+    before: async (page) => {
+      await page.locator("[data-company-line] [data-company-filter]").nth(2).hover();
+      await page.waitForSelector("[data-company-detail]", { timeout: 10_000 });
+      await page.waitForTimeout(400);
+    },
+    take: async (page) => ({ clip: await region(page, ["[data-plica-companies]", "[data-company-detail]"]) }),
   },
   {
     name: "live-strip",

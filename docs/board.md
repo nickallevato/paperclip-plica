@@ -1,41 +1,50 @@
 # The Board
 
-The board is the top half of the Plica page: one row per company, and above it a
-strip of everything running right now.
+The Plica page is two columns. On the left, context: **Companies** (one line per
+company), the **Portfolio**, and **Routines** that need attention. On the right,
+owning the main column, the **[queue](queue.md)** — because that is where the
+work is. A strip of everything running right now spans the top.
 
-![The board: one row per company, with the totals row beneath](screenshots/board.png)
+When there is not room for both columns, the page stacks: Companies, then the
+queue, then Portfolio and Routines.
 
-## The columns
+![The Companies list: one line per company, with the totals beneath](screenshots/board.png)
 
-Order is the argument. What is waiting on you sits immediately right of the
-company name, because those are the only two figures you can act on. Everything
-after them is context.
+## Companies
 
-| Column | What it counts |
+Each company is one line: its name, its capacity strip (see below), runs per
+day, and **Need you** — pending approvals + undismissed attention items + an
+overdue CEO heartbeat, the same number the queue is showing for that company.
+
+Need you is the only coloured figure: **ochre** when something waits, **brick**
+when any of it is critical or high. A zero is dimmer than muted text, so a
+clear company reads as an empty field.
+
+The last line is the cross-company total: tokens this month, runs per day, and
+everything that needs you.
+
+### The detail card
+
+Hovering a company's name opens everything the line leaves out:
+
+![A company's detail card: every figure, the run sparkline, and the lead agent](screenshots/company-detail.png)
+
+| Figure | What it counts |
 | --- | --- |
-| **Company** | Name, the CEO agent, and the capacity strip — see below. |
-| **Need you** | Pending approvals + undismissed attention items + an overdue CEO heartbeat. The same number the queue below is showing for that company. |
-| **Questions** | Open `ask_user_questions` interactions. |
-| **Blocked** | Issues that are blocked. |
-| **Review** | Issues waiting on review. |
-| **Open** | Open issues. |
-| **Runs/d** | Runs per day, recent average. |
+| **Need you** | As above. |
+| **Questions** | Open `ask_user_questions` interactions waiting on you. |
+| **Blocked** | Blockers waiting on you (the tooltip has the total blocked). |
+| **Review** | Items waiting on your review. |
+| **Open** | Open issues (the tooltip splits in-progress and blocked). |
 | **Tokens** | This calendar month's tokens, in millions. Coloured by your [thresholds](configuration.md#token-thresholds). |
+| **Runs** | Runs per day over the last week, with a sparkline; brick at a 20% failure rate. |
+| **Lead** | The CEO agent and their heartbeat. |
 
-The last row is the cross-company total, so the number at the top of a column
-and the number at the bottom always agree.
-
-Colour marks only the exception: **ochre** for waiting on you, **brick** for
-broken, and nothing at all for a company that is fine. A zero is dimmer than
-muted text, so a clear company reads as an empty field rather than a row of
-noughts you have to check.
-
-Every cell's detail — the oldest wait, the in-progress/blocked split — is in its
-tooltip rather than under the number, which is what keeps all rows one height.
+The card also carries **Watch** (the pin) and **Open** (the company's dashboard).
 
 ## Capacity
 
-Beside each company name is a row of small squares, **one per agent**:
+Under each company name is a row of small squares, **one per agent**:
 
 | Square | Means |
 | --- | --- |
@@ -56,7 +65,7 @@ amber at twenty minutes of silence.
 
 ## Live
 
-Across the top of the board, one pill per run in flight: company, ticket, agent,
+Across the top of the page, one pill per run in flight: company, ticket, agent,
 elapsed.
 
 ![The live strip: one pill per running agent](screenshots/live-strip.png)
@@ -67,9 +76,9 @@ second line and shove the whole board down the page. There is no cap and no
 "+N more" — the row scrolls sideways, so the header count and what you can
 actually reach always agree.
 
-## Ordering rows
+## Ordering companies
 
-Two controls sit above the Company column:
+Two controls sit in the Companies header:
 
 - **My order** — the same order as your sidebar company switcher, drag order
   included.
@@ -80,16 +89,17 @@ whether a company wants you, so a heat mark beside them would just restate it.
 Its job is the row order — the one thing those columns cannot do, because heat
 folds in things none of them show: an unreachable company, a stalled run, an
 errored agent, an open decision, tokens past your threshold. The sort is stable,
-so equal-heat companies keep your own order and the board only reshuffles when a
+so equal-heat companies keep your own order and the list only reshuffles when a
 company's situation actually changes.
 
-**Pin** (the pin at the right of a row) keeps a company at the top of the board
-regardless of sort. Pins persist per browser.
+**Watch** (the pin in a company's detail card) keeps a company at the top
+regardless of sort, marked with a small pin beside its name. Watches persist
+per browser.
 
-## Clicking a row
+## Clicking a company
 
-Clicking anywhere on a row that is not a control **filters the queue below to
-that company**. Click again to show all companies. The company name picks up a
+Clicking anywhere on a company's line that is not a control **filters the queue
+to that company**. Click again to show all companies. The company name picks up a
 dotted underline while the filter is on, and the queue grows a "Show all
 companies" control.
 
@@ -98,7 +108,7 @@ visit always starts on the whole portfolio.
 
 ## When a company cannot be reached
 
-If a company's poll fails outright, its row is marked unavailable and its
+If a company's poll fails outright, its line is marked unreachable and its
 figures are blanked rather than drawn as zeroes — a company you cannot see is
 not a company with nothing happening.
 

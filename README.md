@@ -18,9 +18,10 @@ launcher that navigates there. Its worker is a deliberate no-op.
 
 ## What it shows
 
-**Board** — one row per company: capacity, live runs, what is waiting on you, token burn, and a
-sparkline of recent activity. Rows can be pinned, sorted by heat, and clicked to filter the
-queue below.
+**Board** — a compact Companies list beside the queue: one line per company with capacity, runs
+per day and what is waiting on you; hover a name for the rest (questions, blockers, review, open
+work, token burn, a sparkline of recent runs). Companies can be watched, sorted by heat, and
+clicked to filter the queue.
 
 Each company's capacity is a row of squares, one per agent — working, stalled, queued, errored
 or idle. Hovering one says who it is and what they are actually doing, which is the thing a bare
@@ -178,7 +179,7 @@ src/
     PlicaHud.tsx           root: owns the roster, sort mode, pins, token settings
     PlicaPage.tsx          host-mounted page slot
     PlicaToolbarButton.tsx toolbar launcher
-    components/            board rows, queue, portfolio, briefing, strips
+    components/            company lines, queue, portfolio, briefing, strips
     lib/                   capacity, queue grouping, run derivation, drafts
     host/                  vendored Paperclip internals (read-only)
     styles.ts              injects the compiled sheet, idempotently

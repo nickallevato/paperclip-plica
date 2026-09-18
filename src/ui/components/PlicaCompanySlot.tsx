@@ -12,13 +12,13 @@ import {
   type PlicaCompanyStats,
   type PlicaTokenThresholds,
 } from "../lib/plica";
-import { PlicaBoardRow } from "./PlicaBoardRow";
+import { PlicaCompanyLine } from "./PlicaCompanyLine";
 import { usePlicaAlerts } from "./usePlicaAlerts";
 import { usePlicaCompanyData, type PlicaCompanyData } from "./usePlicaCompanyData";
 
 /**
  * One slot per company: owns the single usePlicaCompanyData(company.id) poll,
- * renders the company's board row, and reports what the page needs from it
+ * renders the company's line in the Companies list, and reports what the page needs from it
  * (stats, the actionable summary, the whole data bundle) upward — the page
  * derives the cross-company rail and lists from those reports rather than
  * polling again.
@@ -106,7 +106,7 @@ export function PlicaCompanySlot({
   ]);
 
   return (
-    <PlicaBoardRow
+    <PlicaCompanyLine
       company={company}
       data={data}
       stats={stats}
