@@ -89,6 +89,8 @@ describe("PlicaHud", () => {
     expect(container.textContent).toContain("row:Globex");
     expect(container.textContent).not.toContain("row:Gone");
     expect(container.querySelector('[data-view="board"]')).not.toBeNull();
+    // The page titles itself with the brand mark, not with a stock icon.
+    expect(container.querySelector("[data-plica-mark]")).not.toBeNull();
     expect(container.querySelector("[data-plica-queue]")).not.toBeNull();
     expect(container.textContent).toContain("Needs you");
     // The header no longer carries its own company/running/spend readout: the

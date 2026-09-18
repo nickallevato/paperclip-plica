@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Bell, BellOff, Layers, Maximize, Minimize, Settings, TriangleAlert } from "lucide-react";
+import { Bell, BellOff, Maximize, Minimize, Settings, TriangleAlert } from "lucide-react";
 import { authApi } from "./host/api";
 import { companiesListQueryOptions } from "./host/companies-query";
 import { useBreadcrumbs } from "./host/shims";
@@ -9,6 +9,7 @@ import { countCapacity, deriveCapacity } from "./lib/capacity";
 import { releaseStrandedPointerEvents } from "./lib/drafts";
 import { PlicaBoardPage } from "./components/PlicaBoardPage";
 import { PlicaBriefing } from "./components/PlicaBriefing";
+import { PlicaMark } from "./components/PlicaMark";
 import { PlicaStaleStylesheetWarning } from "./components/PlicaStaleStylesheetWarning";
 import { PlicaTokenSettingsPanel } from "./components/PlicaTokenSettings";
 import type { PlicaCompanyData } from "./components/usePlicaCompanyData";
@@ -322,7 +323,7 @@ export function PlicaHud({ demo = false }: PlicaHudProps = {}) {
     <div ref={rootRef} className={cn("space-y-4", isKiosk && "plica-kiosk bg-background p-4")}>
       <div className="flex flex-wrap items-center gap-3">
         <div className="flex items-center gap-2">
-          <Layers className="h-5 w-5 text-muted-foreground" />
+          <PlicaMark className="h-5 w-5 text-muted-foreground" />
           <h1 className="text-[length:var(--plica-fs-title,20px)] leading-[1.3] font-semibold tracking-tight">Plica</h1>
           <span className="text-[length:var(--plica-fs-body,14px)] leading-[1.45] text-muted-foreground">all companies</span>
           {demo && (

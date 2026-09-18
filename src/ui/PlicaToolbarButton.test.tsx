@@ -10,6 +10,13 @@ describe("PlicaToolbarButton", () => {
     expect(screen.getByRole("link", { name: /Plica/ })).toHaveAttribute("href", "/LIOA/plica");
   });
 
+  it("carries the brand mark, which stays out of the accessible name", () => {
+    const { container } = render(<PlicaToolbarButton context={{ companyPrefix: "LIOA" }} />);
+    expect(container.querySelector("[data-plica-mark]")).not.toBeNull();
+    // The link is labelled once, by its own aria-label.
+    expect(screen.getByRole("link", { name: "Plica — all companies" })).toBeInTheDocument();
+  });
+
   it("falls back to the host context prefix when the slot passes none", () => {
     render(<PlicaToolbarButton />);
     // installTestBridge defaults companyPrefix to ACME.

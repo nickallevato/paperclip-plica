@@ -98,7 +98,8 @@ else.
 
 Plica adds two things:
 
-**A Telescope button** in the breadcrumb bar, above every page in every company.
+**A button carrying the Plica mark** — the folded-sheet caret — in the
+breadcrumb bar, above every page in every company.
 
 ![The Plica launcher in the host's breadcrumb bar](screenshots/toolbar-button.png)
 
