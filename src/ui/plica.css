@@ -25,7 +25,11 @@
  * colour is reserved for abnormal conditions, so every hue here is low-chroma
  * and each carries exactly one meaning:
  *
- *   live  — happening right now. Nothing static is ever this hue.
+ *   live  — happening right now. Nothing static is ever this hue. It is the
+ *           host's own liveness blue (--status-task-icon-in_progress), so a
+ *           run reads the same in Plica as in Paperclip's nav and task icons.
+ *   ok    — finished well: runs that succeeded, work that is moving. Kept
+ *           quieter than wait and alarm so a healthy board stays grey-green.
  *   wait  — waiting on you, on a runner, or on a clock.
  *   alarm — broken: agent errors, unreachable companies, expired decisions.
  *
@@ -33,14 +37,16 @@
  * never encodes a value, so it cannot compete with an alarm for attention.
  */
 :root {
-  --plica-live: #5a7d9a;
+  --plica-live: var(--status-task-icon-in_progress, #2563eb);
+  --plica-ok: #5f8a6e;
   --plica-wait: #9c8340;
   --plica-alarm: #a1564e;
   /* Where a routine's colour rests between cycles: present, but receded. */
   --plica-rest: #86817a;
 }
 .dark {
-  --plica-live: #7396b4;
+  --plica-live: var(--status-task-icon-in_progress, #60a5fa);
+  --plica-ok: #7fa88c;
   --plica-wait: #b89b56;
   --plica-alarm: #bd7d74;
   --plica-rest: #56514b;
@@ -49,6 +55,7 @@
 @theme inline reference {
   --font-sans: var(--font-sans);
   --font-mono: var(--font-mono);
+  --font-heading: var(--font-sans);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -68,7 +75,21 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
   --color-plica-live: var(--plica-live);
+  --color-plica-ok: var(--plica-ok);
   --color-plica-wait: var(--plica-wait);
   --color-plica-alarm: var(--plica-alarm);
   --radius-sm: calc(var(--radius) * 0.6);
@@ -76,4 +97,6 @@
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) * 1.4);
   --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
 }

@@ -207,7 +207,7 @@ export function PlicaCapacityStrip({
           same x on every row — they stay beside the chief, but they tab out
           into a column you can read straight down. */}
       {lead && (
-        <span data-capacity-lead className="ml-1.5 mr-2 w-[9.5rem] min-w-0 shrink-0 truncate">
+        <span data-capacity-lead className="ml-1.5 mr-2 w-[7.5rem] min-w-0 shrink-0 truncate">
           {lead}
         </span>
       )}

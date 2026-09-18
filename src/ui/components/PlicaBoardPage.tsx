@@ -32,6 +32,7 @@ import { PlicaLiveStrip } from "./PlicaLiveStrip";
 import { PlicaPortfolio } from "./PlicaPortfolio";
 import { PlicaQueue } from "./PlicaQueue";
 import { PlicaRoutineExceptions } from "./PlicaRoutineExceptions";
+import { PlicaSegmented } from "./PlicaSegmented";
 import type { PlicaCompanyData } from "./usePlicaCompanyData";
 
 const MICRO = "text-[length:var(--plica-fs-micro,11px)] leading-[1.45]";
@@ -189,22 +190,28 @@ export function PlicaBoardPage({
   );
 
   return (
-    <div data-view="board" className="flex flex-col gap-4">
+    <div data-view="board" className="@container/board flex flex-col gap-4">
       {/* Live spans the whole width above the board. It is the one block whose
           height would otherwise track the size of the fleet, so it is the one
           block that must not be allowed a variable height: as a single row of
           pills it cannot change size, and everything below it stays put. */}
       <PlicaLiveStrip entries={live} />
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(300px,380px)_minmax(0,1fr)] xl:grid-cols-[420px_minmax(0,1fr)] [.plica-kiosk_&]:gap-6 [.plica-kiosk_&]:xl:grid-cols-[540px_minmax(0,1fr)]">
+      {/* Side by side only once the board itself is wide enough for the
+          ledger's full row (~52rem) beside a readable left column — measured
+          on the board, not the window, because the host sidebar decides how
+          much of the window Plica gets. Narrower, the ledger and queue lead
+          and the two lists sit side by side under them. */}
+      <div className="grid gap-4 @[76rem]/board:grid-cols-[minmax(300px,380px)_minmax(0,1fr)] @[90rem]/board:grid-cols-[420px_minmax(0,1fr)] [.plica-kiosk_&]:gap-6 [.plica-kiosk_&]:@[110rem]/board:grid-cols-[540px_minmax(0,1fr)]">
       {/* The rail is a sticky column capped at the viewport rather than pinned
           to it. A fixed height had to guess how much chrome sat above it, and
           guessed high — which pushed Routines off the bottom of the screen. A
           cap cannot: the column is as tall as its contents until that would
           overflow, and only then does Portfolio start scrolling inside itself.
           Routines is `shrink-0`, so it is the one thing that can never be
-          squeezed out of view. */}
-      <div className="flex min-w-0 flex-col gap-4 lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:self-start">
+          squeezed out of view. Stacked, it is a plain two-up grid after the
+          ledger and queue. */}
+      <div className="order-last grid min-w-0 gap-4 @[48rem]/board:grid-cols-2 @[48rem]/board:items-start @[76rem]/board:order-none @[76rem]/board:sticky @[76rem]/board:top-4 @[76rem]/board:flex @[76rem]/board:max-h-[calc(100vh-2rem)] @[76rem]/board:flex-col @[76rem]/board:items-stretch @[76rem]/board:self-start">
         <PlicaPortfolio
           items={projectEntries}
           nowMs={nowMs}
@@ -217,7 +224,7 @@ export function PlicaBoardPage({
       </div>
 
       <div className="flex min-w-0 flex-col gap-4">
-        <div className="overflow-hidden rounded-lg border bg-card">
+        <div className="@container overflow-x-auto rounded-lg border bg-card">
           <table className="w-full table-auto border-collapse text-[length:var(--plica-fs-body,14px)] leading-[1.45]">
             <thead>
               <tr>
@@ -226,7 +233,7 @@ export function PlicaBoardPage({
                     key={column.key}
                     scope="col"
                     className={cn(
-                      "whitespace-nowrap px-2 py-2 font-semibold uppercase tracking-wide text-muted-foreground",
+                      "whitespace-nowrap px-1.5 py-2 font-semibold uppercase tracking-(--tracking-label) text-muted-foreground",
                       MICRO,
                       column.align === "right" ? "text-right" : "text-left",
                       // Company takes every spare pixel; the figures take only
@@ -237,22 +244,16 @@ export function PlicaBoardPage({
                     {column.key === "company" ? (
                       <span className="flex items-center gap-2">
                         {column.label}
-                        <span role="group" aria-label="Pane order" className="flex items-center rounded-md border p-0.5 normal-case tracking-normal">
-                          {(["hot", "manual"] as const).map((mode) => (
-                            <button
-                              key={mode}
-                              type="button"
-                              aria-pressed={sortMode === mode}
-                              onClick={() => onSortMode(mode)}
-                              className={cn(
-                                "rounded px-1.5 py-0 font-normal",
-                                sortMode === mode ? "bg-muted font-medium text-foreground" : "text-muted-foreground hover:text-foreground",
-                              )}
-                            >
-                              {mode === "hot" ? "Hot first" : "My order"}
-                            </button>
-                          ))}
-                        </span>
+                        <PlicaSegmented
+                          label="Pane order"
+                          options={[
+                            { value: "hot", label: "Hot first" },
+                            { value: "manual", label: "My order" },
+                          ]}
+                          value={sortMode}
+                          onChange={onSortMode}
+                          className="font-normal"
+                        />
                       </span>
                     ) : (
                       column.label
@@ -281,14 +282,14 @@ export function PlicaBoardPage({
             {companies.length > 1 && (
               <tfoot>
                 <tr data-board-totals className={cn("border-t text-muted-foreground", MICRO)}>
-                  <td className="truncate py-2 pl-3 pr-2 uppercase tracking-wide">All</td>
-                  <td className="px-3 py-2 text-right tabular-nums">{totals.needs}</td>
-                  <td className="px-3 py-2 text-right tabular-nums">{totals.questions}</td>
-                  <td className="px-3 py-2 text-right tabular-nums">{totals.blocked}</td>
-                  <td className="px-3 py-2 text-right tabular-nums">{totals.review}</td>
-                  <td className="px-3 py-2 text-right tabular-nums">{totals.tasksOpen}</td>
-                  <td className="px-3 py-2 tabular-nums">{Math.round((totals.runs / 7) * 10) / 10} /day</td>
-                  <td className="px-3 py-2 tabular-nums">{formatTokensMillions(totals.tokens)}M</td>
+                  <td className="truncate py-2 pl-3 pr-2 uppercase tracking-(--tracking-label)">All</td>
+                  <td className="px-1.5 py-2 text-right tabular-nums">{totals.needs}</td>
+                  <td className="px-1.5 py-2 text-right tabular-nums">{totals.questions}</td>
+                  <td className="px-1.5 py-2 text-right tabular-nums">{totals.blocked}</td>
+                  <td className="px-1.5 py-2 text-right tabular-nums">{totals.review}</td>
+                  <td className="px-1.5 py-2 text-right tabular-nums">{totals.tasksOpen}</td>
+                  <td className="px-1.5 py-2 tabular-nums">{Math.round((totals.runs / 7) * 10) / 10} /day</td>
+                  <td className="px-1.5 py-2 tabular-nums">{formatTokensMillions(totals.tokens)}M</td>
                   <td />
                 </tr>
               </tfoot>

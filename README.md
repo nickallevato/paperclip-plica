@@ -149,6 +149,10 @@ Anything else that drifts is a bug. `CompanyPatternIcon.tsx` in particular must 
 Paperclip draws company avatars with its own copy, so any change here gives one company two
 different identities on screen.
 
+`pnpm check:vendored` compares every whole-file copy (and the route-root sets in `util.ts`)
+against the Paperclip checkout, ignoring imports. Run it after each Paperclip upgrade, beside
+`pnpm build`; `--diff` prints what moved.
+
 ## Development
 
 ```bash

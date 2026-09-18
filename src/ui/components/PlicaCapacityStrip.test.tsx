@@ -211,7 +211,7 @@ describe("PlicaCapacityStrip alignment", () => {
     );
     const slot = container.querySelector("[data-capacity-lead]");
     // Fixed width + truncate: a long name cannot shove the squares out of column.
-    expect(slot?.className).toMatch(/w-\[9\.5rem\]/);
+    expect(slot?.className).toMatch(/w-\[[\d.]+rem\]/);
     expect(slot?.className).toContain("truncate");
     expect(slot?.className).toContain("shrink-0");
   });

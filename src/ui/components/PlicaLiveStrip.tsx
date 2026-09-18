@@ -146,7 +146,7 @@ export function PlicaLiveStrip({ entries }: { entries: PlicaLiveEntry[] }) {
     >
       <h3
         className={cn(
-          "flex shrink-0 items-center gap-2 font-semibold uppercase tracking-wide text-muted-foreground",
+          "flex shrink-0 items-center gap-2 font-semibold uppercase tracking-(--tracking-label) text-muted-foreground",
           MICRO,
         )}
       >

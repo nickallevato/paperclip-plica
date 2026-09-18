@@ -137,6 +137,33 @@ async function resolvePrefix() {
   return active.issuePrefix;
 }
 
+/**
+ * Paperclip (v2026.916.0+) floats a product announcement card over the
+ * bottom-left of every page until the viewer dismisses it, and a full-page
+ * shot then carries it into the docs. Dismissing it is a per-user preference
+ * on the throwaway instance, so do that up front. Best effort: an instance
+ * without the endpoint simply has nothing to dismiss.
+ */
+async function dismissAnnouncement() {
+  try {
+    const current = await fetch(`${baseUrl}/api/announcements/current`);
+    if (!current.ok) return;
+    const announcement = await current.json();
+    if (!announcement?.id) return;
+    const companies = await getJson("/api/companies");
+    for (const company of companies) {
+      await fetch(`${baseUrl}/api/announcements/${announcement.id}/dismiss`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ companyId: company.id }),
+      });
+    }
+  } catch {
+    // Nothing to dismiss is the common case; a failure here only costs a
+    // stray card in a picture, which the reviewer will see.
+  }
+}
+
 async function resolvePluginId() {
   if (process.env.PLICA_SHOT_PLUGIN_ID) return process.env.PLICA_SHOT_PLUGIN_ID;
   const plugins = await getJson("/api/plugins");
@@ -337,6 +364,7 @@ if (list) {
 const { chromium } = loadPlaywright();
 const prefix = await resolvePrefix();
 const pluginId = await resolvePluginId();
+await dismissAnnouncement();
 const plicaUrl = `${baseUrl}/${prefix}/plica?demo=1`;
 
 mkdirSync(outDir, { recursive: true });

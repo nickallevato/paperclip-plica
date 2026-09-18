@@ -10,13 +10,14 @@ import {
   type PlicaProjectEntry,
 } from "../lib/queue";
 import { PlicaLink } from "./PlicaLink";
+import { PlicaSegmented } from "./PlicaSegmented";
 
 const MICRO = "text-[length:var(--plica-fs-micro,11px)] leading-[1.45]";
 
 /** Same two-button shape the board header uses for its own order. */
 const PORTFOLIO_SORTS = [
   { sort: "trouble" as const, label: "Trouble" },
-  { sort: "company" as const, label: "By company" },
+  { sort: "company" as const, label: "Company" },
 ] as const;
 
 /** The deadline, in as few characters as a right-aligned column can hold. */
@@ -49,9 +50,9 @@ function Bar({ entry, scale }: { entry: PlicaPortfolioEntry; scale: number }) {
       aria-label={`${entry.inProgress} moving, ${entry.waiting} waiting, ${entry.blocked} blocked, of ${entry.open} open`}
       title={`${entry.inProgress} moving · ${entry.waiting} waiting · ${entry.blocked} blocked`}
     >
-      <span className="bg-emerald-500/70 dark:bg-emerald-400/60" style={{ width: width(entry.inProgress) }} />
+      <span className="bg-plica-ok/70" style={{ width: width(entry.inProgress) }} />
       <span className="bg-muted-foreground/35" style={{ width: width(entry.waiting) }} />
-      <span className="bg-amber-500/80 dark:bg-amber-400/70" style={{ width: width(entry.blocked) }} />
+      <span className="bg-plica-wait/80" style={{ width: width(entry.blocked) }} />
     </span>
   );
 }
@@ -88,8 +89,8 @@ function CompanyHeader({ company, totals }: { company: Company; totals: CompanyT
       <span className="min-w-0 truncate font-semibold text-foreground">{company.name}</span>
       <span className="ml-auto flex shrink-0 items-center gap-2 tabular-nums text-muted-foreground">
         <span>{open}</span>
-        {blocked > 0 && <span className="text-amber-600 dark:text-amber-400">{blocked} blocked</span>}
-        {late > 0 && <span className="text-red-600 dark:text-red-400">{late} late</span>}
+        {blocked > 0 && <span className="text-plica-wait">{blocked} blocked</span>}
+        {late > 0 && <span className="text-plica-alarm">{late} late</span>}
       </span>
     </li>
   );
@@ -141,40 +142,26 @@ export function PlicaPortfolio({
     <section data-plica-portfolio className={cn("flex min-h-0 flex-col rounded-lg border bg-card", className)}>
       <h3
         className={cn(
-          "flex shrink-0 flex-wrap items-center gap-x-2 gap-y-1 px-3 pb-2 pt-3 font-semibold uppercase tracking-wide text-muted-foreground",
+          "flex shrink-0 flex-wrap items-center gap-x-2 gap-y-1 px-3 pb-2 pt-3 font-semibold uppercase tracking-(--tracking-label) text-muted-foreground",
           MICRO,
         )}
       >
         <FolderKanban className="h-3 w-3" />
         Portfolio
         {onSort && entries.length > 0 && (
-          <span
-            role="group"
-            aria-label="Portfolio order"
-            className="flex items-center rounded-md border p-0.5 normal-case tracking-normal"
-          >
-            {PORTFOLIO_SORTS.map(({ sort: mode, label }) => (
-              <button
-                key={mode}
-                type="button"
-                data-portfolio-sort={mode}
-                aria-pressed={sort === mode}
-                onClick={() => onSort(mode)}
-                className={cn(
-                  "rounded px-1.5 py-0 font-normal",
-                  sort === mode ? "bg-muted font-medium text-foreground" : "text-muted-foreground hover:text-foreground",
-                )}
-              >
-                {label}
-              </button>
-            ))}
-          </span>
+          <PlicaSegmented
+            label="Portfolio order"
+            options={PORTFOLIO_SORTS.map(({ sort: value, label }) => ({ value, label }))}
+            value={sort}
+            onChange={onSort}
+            optionProps={(value) => ({ "data-portfolio-sort": value })}
+          />
         )}
         {entries.length > 0 && (
           <span className="ml-auto flex items-center gap-2 font-normal normal-case tracking-normal tabular-nums">
             <span>{open} open</span>
-            {blocked > 0 && <span className="text-amber-600 dark:text-amber-400">{blocked} blocked</span>}
-            {overdue > 0 && <span className="text-red-600 dark:text-red-400">{overdue} late</span>}
+            {blocked > 0 && <span className="text-plica-wait">{blocked} blocked</span>}
+            {overdue > 0 && <span className="text-plica-alarm">{overdue} late</span>}
           </span>
         )}
       </h3>
@@ -211,7 +198,7 @@ export function PlicaPortfolio({
                     <PlicaLink
                       to={`/${entry.company.issuePrefix}/projects/${entry.project.urlKey ?? entry.project.id}`}
                       companyId={entry.company.id}
-                      className="min-w-0 flex-1 truncate text-foreground hover:underline decoration-dotted underline-offset-2"
+                      className="min-w-0 flex-1 truncate text-[length:var(--plica-fs-body,14px)] leading-[1.45] text-foreground hover:underline decoration-dotted underline-offset-2"
                       title={`${entry.project.name} · ${entry.company.name}`}
                     >
                       {entry.project.name}
@@ -221,7 +208,7 @@ export function PlicaPortfolio({
                       <span
                         className={cn(
                           "w-14 shrink-0 text-right tabular-nums",
-                          entry.overdue ? "font-semibold text-red-600 dark:text-red-400" : "text-muted-foreground",
+                          entry.overdue ? "font-semibold text-plica-alarm" : "text-muted-foreground",
                         )}
                         title={new Date(entry.dueMs as number).toLocaleDateString()}
                       >
@@ -238,13 +225,13 @@ export function PlicaPortfolio({
           </ul>
           <p className={cn("flex shrink-0 items-center gap-3 border-t px-3 py-1.5 text-muted-foreground", MICRO)}>
             <span className="flex items-center gap-1">
-              <span className="h-1.5 w-3 rounded-full bg-emerald-500/70 dark:bg-emerald-400/60" /> moving
+              <span className="h-1.5 w-3 rounded-full bg-plica-ok/70" /> moving
             </span>
             <span className="flex items-center gap-1">
               <span className="h-1.5 w-3 rounded-full bg-muted-foreground/35" /> waiting
             </span>
             <span className="flex items-center gap-1">
-              <span className="h-1.5 w-3 rounded-full bg-amber-500/80 dark:bg-amber-400/70" /> blocked
+              <span className="h-1.5 w-3 rounded-full bg-plica-wait/80" /> blocked
             </span>
           </p>
         </>

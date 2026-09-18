@@ -39,7 +39,10 @@ export const PLICA_BOARD_COLUMNS: ReadonlyArray<{ key: string; label: string; al
   { key: "actions", label: "", align: "right" },
 ];
 
+/** Need you: the headline figure of the row. */
 const NUM = "text-[length:var(--plica-fs-title,20px)] leading-[1.15] font-semibold tabular-nums tracking-tight";
+/** The breakdown and context columns, a step down so Need you leads. */
+const FIG = "text-[length:var(--plica-fs-stat,16px)] leading-[1.15] font-medium tabular-nums";
 const MICRO = "text-[length:var(--plica-fs-micro,11px)] leading-[1.45]";
 /** A zero is quieter than muted text: a clear company should read as empty field. */
 const ZERO = "text-muted-foreground/40";
@@ -50,8 +53,10 @@ const ZERO = "text-muted-foreground/40";
  * Every cell is a single figure — the detail that used to sit under the
  * numbers (the oldest wait, the expired count, the in-progress/blocked split)
  * lives in each cell's title instead, so all rows are one height and nothing
- * has to be read twice. Colour marks only the exception: ochre for waiting,
- * brick for broken, and nothing at all for a company that is fine.
+ * has to be read twice. Colour marks only the exception, and only once per
+ * row: Need you is ochre or brick, because it is the one figure you act on.
+ * The breakdown beside it is plain ink — it is *what kind* of waiting, not a
+ * second alarm — and a zero recedes to near-nothing.
  */
 export function PlicaBoardRow({
   company,
@@ -115,7 +120,7 @@ export function PlicaBoardRow({
         "border-t align-middle hover:bg-muted/30",
         onFocusNeeds && "cursor-pointer",
         needsFocused && "bg-muted/40",
-        pulse && "animate-[pulse_3s_ease-in-out_infinite] bg-red-500/10 motion-reduce:animate-none",
+        pulse && "animate-[pulse_3s_ease-in-out_infinite] bg-plica-alarm/10 motion-reduce:animate-none",
       )}
     >
       <td className="w-full min-w-0 py-2.5 pl-3 pr-2">
@@ -190,7 +195,7 @@ export function PlicaBoardRow({
         </div>
       </td>
 
-      <td className="w-px whitespace-nowrap px-2 py-2 text-right">
+      <td className="w-px whitespace-nowrap px-1.5 py-2 text-right">
         {blind ? (
           dash
         ) : (
@@ -207,12 +212,12 @@ export function PlicaBoardRow({
         )}
       </td>
 
-      <td className="w-px whitespace-nowrap px-2 py-2 text-right">
+      <td className="w-px whitespace-nowrap px-1.5 py-2 text-right">
         {blind ? (
           dash
         ) : (
           <span
-            className={cn(NUM, needs.questions === 0 ? ZERO : "text-plica-wait")}
+            className={cn(FIG, needs.questions === 0 ? ZERO : "text-foreground")}
             title={
               needs.questions === 0
                 ? "No agent is waiting on an answer"
@@ -224,12 +229,12 @@ export function PlicaBoardRow({
         )}
       </td>
 
-      <td className="w-px whitespace-nowrap px-2 py-2 text-right">
+      <td className="w-px whitespace-nowrap px-1.5 py-2 text-right">
         {blind ? (
           dash
         ) : (
           <span
-            className={cn(NUM, needs.blocked === 0 ? ZERO : "text-plica-wait")}
+            className={cn(FIG, needs.blocked === 0 ? ZERO : "text-foreground")}
             title={
               needs.blocked === 0
                 ? "Nothing blocked is waiting on you"
@@ -241,12 +246,12 @@ export function PlicaBoardRow({
         )}
       </td>
 
-      <td className="w-px whitespace-nowrap px-2 py-2 text-right">
+      <td className="w-px whitespace-nowrap px-1.5 py-2 text-right">
         {blind ? (
           dash
         ) : (
           <span
-            className={cn(NUM, needs.review === 0 ? ZERO : "text-plica-wait")}
+            className={cn(FIG, needs.review === 0 ? ZERO : "text-foreground")}
             title={
               needs.review === 0
                 ? "Nothing is waiting on your review"
@@ -258,12 +263,12 @@ export function PlicaBoardRow({
         )}
       </td>
 
-      <td className="w-px whitespace-nowrap px-2 py-2 text-right">
+      <td className="w-px whitespace-nowrap px-1.5 py-2 text-right">
         {blind ? (
           dash
         ) : (
           <span
-            className={cn(NUM, stats.tasksOpen === 0 ? ZERO : stats.tasksBlocked > 0 ? "text-plica-wait" : undefined)}
+            className={cn(FIG, stats.tasksOpen === 0 ? ZERO : "text-muted-foreground")}
             title={
               `${stats.tasksOpen} open — every issue that is not done or cancelled, ` +
               `including the blocked and in-review ones counted to the left · ` +
@@ -275,7 +280,7 @@ export function PlicaBoardRow({
         )}
       </td>
 
-      <td className="w-px whitespace-nowrap px-2 py-2">
+      <td className="w-px whitespace-nowrap px-1.5 py-2">
         {blind ? (
           dash
         ) : (
@@ -289,7 +294,8 @@ export function PlicaBoardRow({
           >
             <span
               className={cn(
-                "text-[length:var(--plica-fs-stat,16px)] leading-none font-semibold tabular-nums tracking-tight",
+                FIG,
+                "text-muted-foreground",
                 throughput.total === 0 && ZERO,
                 // A high failure rate is the only thing that colours this cell.
                 throughput.failRatePct !== null && throughput.failRatePct >= 20 && "text-plica-alarm",
@@ -298,21 +304,25 @@ export function PlicaBoardRow({
               {throughput.perDay}
             </span>
             {/* The rate is the measure; the bars are texture, so they are the
-                first thing to go when the row is tight rather than a scrollbar. */}
-            <span className="hidden xl:inline-flex">
+                first thing to go when the ledger is tight rather than a
+                scrollbar. Keyed to the ledger's own width (@container on its
+                wrapper), not the viewport's: the sidebar and the left column
+                decide how much room the ledger gets, not the window. */}
+            <span className="hidden @[52rem]:inline-flex">
               <PlicaSparkline runActivity={data.summary?.runActivity ?? []} />
             </span>
           </span>
         )}
       </td>
 
-      <td className="w-px whitespace-nowrap px-2 py-2">
+      <td className="w-px whitespace-nowrap px-1.5 py-2">
         {blind || stats.tokens === undefined ? (
           dash
         ) : (
           <span
             className={cn(
-              "text-[length:var(--plica-fs-stat,16px)] leading-none font-semibold tabular-nums tracking-tight",
+              FIG,
+              "text-muted-foreground",
               stats.tokens === 0 && ZERO,
               tokenTone === "crit" && "text-plica-alarm",
               tokenTone === "warn" && "text-plica-wait",

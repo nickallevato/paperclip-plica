@@ -23,7 +23,7 @@ const BEAT_ICON: Record<PlicaCeoHeartbeatState, typeof HeartPulse> = {
 };
 
 const BEAT_TONE: Record<PlicaCeoHeartbeatState, string> = {
-  ok: "text-plica-live",
+  ok: "text-muted-foreground",
   overdue: "text-plica-wait",
   off: "text-muted-foreground/40",
 };

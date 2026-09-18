@@ -158,9 +158,9 @@ export function PlicaTokenSettingsPanel({
 
           <label
             htmlFor="plica-warn"
-            className="flex items-baseline gap-2 text-[length:var(--plica-fs-micro,11px)] leading-[1.45] uppercase tracking-wide text-muted-foreground"
+            className="flex items-baseline gap-2 text-[length:var(--plica-fs-micro,11px)] leading-[1.45] uppercase tracking-(--tracking-label) text-muted-foreground"
           >
-            <span aria-hidden className="h-2 w-2 self-center rounded-sm bg-amber-500" />
+            <span aria-hidden className="h-2 w-2 self-center rounded-sm bg-plica-wait" />
             Warn above
             <output className="ml-auto text-[length:var(--plica-fs-body,14px)] leading-[1.45] font-semibold tabular-nums normal-case tracking-normal text-foreground">
               {formatTokens(editing.warn)}
@@ -180,9 +180,9 @@ export function PlicaTokenSettingsPanel({
 
           <label
             htmlFor="plica-crit"
-            className="flex items-baseline gap-2 text-[length:var(--plica-fs-micro,11px)] leading-[1.45] uppercase tracking-wide text-muted-foreground"
+            className="flex items-baseline gap-2 text-[length:var(--plica-fs-micro,11px)] leading-[1.45] uppercase tracking-(--tracking-label) text-muted-foreground"
           >
-            <span aria-hidden className="h-2 w-2 self-center rounded-sm bg-red-500" />
+            <span aria-hidden className="h-2 w-2 self-center rounded-sm bg-plica-alarm" />
             Critical above
             <output className="ml-auto text-[length:var(--plica-fs-body,14px)] leading-[1.45] font-semibold tabular-nums normal-case tracking-normal text-foreground">
               {formatTokens(editing.crit)}
@@ -208,7 +208,7 @@ export function PlicaTokenSettingsPanel({
         </div>
 
         <div className="space-y-1">
-          <span className="block text-[length:var(--plica-fs-micro,11px)] leading-[1.45] uppercase tracking-wide text-muted-foreground">
+          <span className="block text-[length:var(--plica-fs-micro,11px)] leading-[1.45] uppercase tracking-(--tracking-label) text-muted-foreground">
             Where your companies land
           </span>
           {/* The bands at the scope being edited, with a tick per company's
@@ -252,10 +252,10 @@ export function PlicaTokenSettingsPanel({
                     aria-hidden
                     className={cn(
                       "h-2 w-2 shrink-0 rounded-sm",
-                      state === "crit" ? "bg-red-500" : state === "warn" ? "bg-amber-500" : "bg-muted-foreground/40",
+                      state === "crit" ? "bg-plica-alarm" : state === "warn" ? "bg-plica-wait" : "bg-muted-foreground/40",
                     )}
                   />
-                  <span className="w-14 shrink-0 uppercase tracking-wide text-muted-foreground">
+                  <span className="w-14 shrink-0 uppercase tracking-(--tracking-label) text-muted-foreground">
                     {state === "crit" ? "Critical" : state === "warn" ? "Warn" : "Normal"}
                   </span>
                   <span className="w-4 shrink-0 text-right font-semibold tabular-nums">{inBand.length}</span>
