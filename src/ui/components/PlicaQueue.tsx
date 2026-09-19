@@ -211,7 +211,8 @@ function triageNote(item: PlicaQueueItem, nowMs: number): { text: string; tone: 
 
 /**
  * Unsorted rows carry the three answers inline — sorting the new pile is the
- * whole job of that lane, so it should be one click, not a menu away.
+ * whole job of that lane, so it should be one click, not a menu away. On a
+ * phone they sit on the row's action line rather than disappearing.
  */
 function DecideQuickPicks({ onPick, disabled }: { onPick: (decideBy: string) => void; disabled: boolean }) {
   return (
@@ -219,7 +220,7 @@ function DecideQuickPicks({ onPick, disabled }: { onPick: (decideBy: string) => 
       role="group"
       aria-label="Decide by"
       data-decide-quick
-      className="mr-1 hidden items-center rounded-md bg-muted p-0.5 @[36rem]:inline-flex"
+      className="mr-1 inline-flex items-center rounded-md bg-muted p-0.5"
     >
       {DECIDE_PRESETS.map((preset) => (
         <button
@@ -468,8 +469,11 @@ export function PlicaQueueItemRow({
   const note = item.triage ? triageNote(item, nowMs) : null;
   const canTriage = Boolean(onTriage && item.triage);
 
+  // Narrow (a phone, or a squeezed column), the actions drop to their own
+  // line under the text instead of crushing the title to "Budget…" and the
+  // meta to one word per line; the body then takes the whole first line.
   const body = (
-    <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+    <div className="flex min-w-0 flex-1 basis-[calc(100%-2rem)] flex-col gap-0.5 @[36rem]:basis-0">
       <div className={cn("flex items-baseline gap-1.5", BODY)}>
         {critical ? (
           <AlertTriangle
@@ -561,7 +565,7 @@ export function PlicaQueueItemRow({
       data-triage-busy={triageBusy || undefined}
       className={cn(
         triageBusy && "opacity-60",
-        "flex items-start gap-2.5 py-2 pl-3 pr-3 hover:bg-muted/30",
+        "flex flex-wrap items-start gap-x-2.5 gap-y-1.5 py-2 pl-3 pr-3 hover:bg-muted/30 @[36rem]:flex-nowrap",
         // An edge and a breath of tint, not a filled band: three critical
         // rows in a row used to paint the heaviest block on the page, heavier
         // than the approvals under them that you can actually clear inline.
@@ -570,7 +574,7 @@ export function PlicaQueueItemRow({
     >
       <Avatar company={company} />
       {body}
-      <span className="flex shrink-0 items-center gap-1 self-center">
+      <span className="ml-[30px] flex flex-wrap items-center gap-1 @[36rem]:ml-0 @[36rem]:shrink-0 @[36rem]:flex-nowrap @[36rem]:self-center">
         {canTriage && lane === "unsorted" && (
           <DecideQuickPicks disabled={triageBusy} onPick={(decideBy) => onTriage?.({ decideBy })} />
         )}

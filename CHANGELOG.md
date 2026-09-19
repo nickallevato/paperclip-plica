@@ -5,6 +5,15 @@ Short-form. The reader-facing write-up for each version is in
 
 ## Unreleased
 
+## 0.4.0
+
+### On a phone
+
+- **Queue rows stay readable at phone width.** A row's actions drop to their
+  own line under the title instead of crushing it to "Budget…" and the meta to
+  one word per line; the Today / This week / Whenever picks come back there
+  instead of hiding.
+
 ### Decide by
 
 - **"Orgs", not "companies"**, everywhere Plica labels them: the list, the

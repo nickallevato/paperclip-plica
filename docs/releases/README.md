@@ -3,6 +3,8 @@
 One page per version, written for someone deciding whether to upgrade: what
 changed, what it means for them, and anything they have to do by hand.
 
+- [0.4.0](0.4.0.md) — the queue owns the page: decide-by lanes backed by
+  Paperclip's decision triage, the Orgs list, a calmer board.
 - [0.3.0](0.3.0.md) — demo mode, the live strip, the portfolio chart, routine
   exceptions, queue age filters.
 - 0.2.0 — the board. See the [changelog](../../CHANGELOG.md#020).
