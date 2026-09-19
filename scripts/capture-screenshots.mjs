@@ -226,7 +226,7 @@ const SHOTS = [
   },
   {
     name: "toolbar-button",
-    doc: "The Plica launcher the plugin adds to the host's breadcrumb bar.",
+    doc: "The Plica mark the plugin adds to the host's breadcrumb bar.",
     take: async (page) => ({ clip: await region(page, ['a[aria-label="Plica — all orgs"]'], 16) }),
   },
   {
