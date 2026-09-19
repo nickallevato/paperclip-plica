@@ -1,16 +1,18 @@
 # Plica
 
-A cross-company HUD for [Paperclip](https://github.com/paperclipai/paperclip). One page that
-answers "what needs me, across every company, right now" — instead of visiting each company's
-dashboard in turn.
+A cross-org HUD for [Paperclip](https://github.com/paperclipai/paperclip). One page that
+answers "what needs me, across every org, right now" — and lets you say *when* you will deal
+with each thing — instead of visiting each org's dashboard in turn.
 
 Plica is UI-only. It contributes one page (mounted at `/:companyPrefix/plica`) and a toolbar
 launcher that navigates there. Its worker is a deliberate no-op.
 
-![The Plica page: portfolio and routines at left, the company board top right, the cross-company queue below](docs/screenshots/plica-page.png)
+![The Plica page: Orgs, portfolio and routines at left; the Needs-you queue, grouped by when you'll decide, owning the main column](docs/screenshots/plica-page.png)
 
 > Every screenshot in this repository is Plica's own [demo mode](docs/configuration.md#demo-mode) —
-> invented companies, tickets and agents, not a real instance.
+> invented orgs, tickets and agents, not a real instance. Try it on your own install: add
+> `?demo=1` to the Plica page's URL (e.g. `/ACME/plica?demo=1`). Nothing you click in demo mode
+> reaches the server.
 
 **Documentation:** [install](docs/install.md) · [configuration](docs/configuration.md) ·
 [the board](docs/board.md) · [the queue](docs/queue.md) ·
@@ -18,28 +20,44 @@ launcher that navigates there. Its worker is a deliberate no-op.
 
 ## What it shows
 
-**Board** — a compact Orgs list beside the queue: one line per company with capacity, runs
-per day and what is waiting on you; hover a name for the rest (questions, blockers, review, open
-work, token burn, a sparkline of recent runs). Orgs can be watched, sorted by heat, and
+**Queue** — the main column. Every item across every org that wants a human, in one list:
+approvals, questions and confirmations awaiting a response, blockers, failed runs, overdue
+heartbeats and routine exceptions. Actions are inline — Approve, Reject, Reply — so you rarely
+need to open the org.
+
+By default it groups by **when you said you'd decide**: Today (and anything overdue), Unsorted,
+This week, Alerts, Whenever and Snoozed. New items land in Unsorted with **Today · This week ·
+Whenever** right on the row, and every row has a menu to set a day, snooze or archive it. These
+are Paperclip's own decision-triage records, so a day set in Plica is the day Paperclip's
+Decisions page shows — and it works on stock Paperclip, through its existing web API.
+
+![The queue grouped by when you'll decide: Today, Unsorted, This week](docs/screenshots/queue-by-decide.png)
+
+It can also group by severity, org, kind, project or age — by project is how you find the one
+project quietly generating half the noise.
+
+**Orgs** — the left column: one line per org with who is working, runs per day and how much is
+waiting on you. Hover a name for everything else (questions, blockers, review, open work, token
+burn, a sparkline of recent runs, the lead agent). Orgs can be watched, sorted by heat, and
 clicked to filter the queue.
 
-Each company's capacity is a row of squares, one per agent — working, stalled, queued, errored
-or idle. Hovering one says who it is and what they are actually doing, which is the thing a bare
+![An org's detail card: every figure the line leaves out](docs/screenshots/company-detail.png)
+
+Each org's capacity is a row of squares, one per agent — working, stalled, queued, errored or
+idle. Hovering one says who it is and what they are actually doing, which is the thing a bare
 "3 running" count cannot tell you.
 
 ![A capacity square's hover card: the agent, their ticket, and what they are doing right now](docs/screenshots/capacity-hover.png)
 
-**Queue** — every item across every company that wants a human, in one list: approvals,
-interactions awaiting a response, failed runs, overdue heartbeats and routine exceptions.
-Actions are inline — Approve, Reject, Reply — so you rarely need to open the company.
-
-It groups by severity, company, kind, project or age. Grouping by company reads as a per-company
-worklist; grouping by project cuts the same items the other way, which is how you find the one
-project quietly generating half the noise.
-
-![The queue grouped by company](docs/screenshots/queue-by-company.png)
+**Portfolio and Routines** — projects by how much is moving, waiting or blocked, and the
+routines that failed or stopped firing.
 
 **Briefing** — what changed since your last visit.
+
+**On a phone** — the page stacks Orgs, the queue, then Portfolio and Routines, and each queue
+row puts its actions on a line of their own.
+
+<img src="docs/screenshots/phone.png" alt="Plica at phone width: the Orgs list above the queue" width="320">
 
 Full tours: [the board](docs/board.md), [the queue](docs/queue.md).
 

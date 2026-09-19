@@ -212,22 +212,22 @@ const HUD_SELECTORS = ["[data-plica-live]", "[data-plica-portfolio]", "[data-pli
 const SHOTS = [
   {
     name: "plica-page",
-    doc: "The whole page: portfolio and routines at left, the board top right, the queue below.",
+    doc: "The whole page: Orgs, portfolio and routines at left, the queue owning the main column.",
     take: async (page) => ({ clip: await region(page, [...HUD_SELECTORS, "h1"]) }),
   },
   {
     name: "toolbar-button",
-    doc: "The Telescope launcher the plugin adds to the host's breadcrumb bar.",
+    doc: "The Plica launcher the plugin adds to the host's breadcrumb bar.",
     take: async (page) => ({ clip: await region(page, ['a[aria-label="Plica — all orgs"]'], 16) }),
   },
   {
     name: "board",
-    doc: "The Companies list: one line per company, capacity, and the totals line.",
+    doc: "The Orgs list: one line per org, capacity, and the totals line.",
     take: async (page) => ({ clip: await region(page, ["[data-plica-companies]"]) }),
   },
   {
     name: "company-detail",
-    doc: "A company's detail card: every figure the line leaves out.",
+    doc: "An org's detail card: every figure the line leaves out.",
     before: async (page) => {
       await page.locator("[data-company-line] [data-company-filter]").nth(2).hover();
       await page.waitForSelector("[data-company-detail]", { timeout: 10_000 });
@@ -251,6 +251,22 @@ const SHOTS = [
     take: async (page) => ({
       clip: await region(page, ["[data-capacity-strip]", "[data-radix-popper-content-wrapper]"]),
     }),
+  },
+  {
+    name: "phone",
+    doc: "Plica at phone width: the Orgs list, then the queue, each row's actions on a line of their own.",
+    // Phone-sized, and scaled like the desktop shots so text stays crisp. The
+    // host scrolls an inner <main>, so a tall viewport is what puts the Orgs
+    // list and the head of the queue in one frame (see VIEWPORT above).
+    context: {
+      viewport: { width: 390, height: 1500 },
+      deviceScaleFactor: 2,
+      isMobile: true,
+      hasTouch: true,
+      userAgent:
+        "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
+    },
+    take: async (page) => ({ clip: await region(page, ["[data-plica-companies]", "[data-queue-group='decide:today']"]) }),
   },
   {
     name: "queue-by-decide",
@@ -277,7 +293,7 @@ const SHOTS = [
   },
   {
     name: "queue-by-company",
-    doc: "The same queue grouped by company — a per-company worklist.",
+    doc: "The same queue grouped by org — a per-org worklist.",
     before: async (page) => groupQueueBy(page, "Org"),
     take: async (page) => ({ clip: await region(page, ["[data-plica-queue]"]) }),
   },
@@ -436,7 +452,9 @@ try {
       continue;
     }
 
-    const context = await browser.newContext(contextOptions);
+    // A shot may override the context — the phone shot swaps the desktop
+    // viewport for a phone-sized one with touch and a mobile user agent.
+    const context = await browser.newContext({ ...contextOptions, ...(shot.context ?? {}) });
     const page = await context.newPage();
     try {
       if (shot.seed) {
