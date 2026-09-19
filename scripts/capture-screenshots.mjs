@@ -32,6 +32,7 @@
  *                         (default: the Paperclip checkout under $HOME)
  *   PLICA_CHROME          browser executable (default /usr/bin/google-chrome)
  *   PLICA_SHOT_OUT        output directory (default docs/screenshots)
+ *   PLICA_SHOT_THEME      "dark" (default) or "light"
  *
  * See docs/screenshots/README.md for how to stand up the instance it needs.
  */
@@ -46,6 +47,14 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const outDir = process.env.PLICA_SHOT_OUT
   ? resolve(process.env.PLICA_SHOT_OUT)
   : join(root, "docs", "screenshots");
+
+/**
+ * The docs are shot in dark mode — the owner's choice, and the theme most of
+ * Plica's time is spent in. Both the browser's colour scheme and Paperclip's
+ * own theme preference (`paperclip.theme` in localStorage) are set, so the
+ * host chrome and the plugin can never disagree about which one they are in.
+ */
+const theme = process.env.PLICA_SHOT_THEME === "light" ? "light" : "dark";
 
 const baseUrl = (process.env.PLICA_SHOT_URL ?? "http://127.0.0.1:3199").replace(/\/+$/, "");
 const chrome = process.env.PLICA_CHROME ?? "/usr/bin/google-chrome";
@@ -432,7 +441,7 @@ const browser = await chromium.launch({
 const contextOptions = {
   viewport: VIEWPORT,
   deviceScaleFactor: SCALE,
-  colorScheme: "light",
+  colorScheme: theme,
   // Fixed so relative timestamps in the fixture ("3h ago") and the locale of
   // every date label read the same on every machine that runs this.
   locale: "en-US",
@@ -457,15 +466,14 @@ try {
     const context = await browser.newContext({ ...contextOptions, ...(shot.context ?? {}) });
     const page = await context.newPage();
     try {
-      if (shot.seed) {
-        await page.goto(`${baseUrl}/`, { waitUntil: "domcontentloaded" });
-        await page.evaluate((entries) => {
-          for (const [key, value] of Object.entries(entries)) {
-            if (key.startsWith("__")) continue;
-            localStorage.setItem(key, value);
-          }
-        }, shot.seed(prefix));
-      }
+      // Always seed: the theme preference, plus whatever the shot needs.
+      await page.goto(`${baseUrl}/`, { waitUntil: "domcontentloaded" });
+      await page.evaluate((entries) => {
+        for (const [key, value] of Object.entries(entries)) {
+          if (key.startsWith("__")) continue;
+          localStorage.setItem(key, value);
+        }
+      }, { "paperclip.theme": theme, ...(shot.seed ? shot.seed(prefix) : {}) });
 
       const url = shot.route ? `${baseUrl}${shot.route({ prefix, pluginId })}` : plicaUrl;
       await page.goto(url, { waitUntil: "domcontentloaded", timeout: 90_000 });

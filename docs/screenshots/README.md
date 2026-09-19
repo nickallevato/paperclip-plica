@@ -11,6 +11,9 @@ Plica installed in it. To refresh that one, follow the README's recipe (point
 `PLICA_HOST_CSS` at a different sheet, `pnpm build`, load the page), capture the
 header, then rebuild normally.
 
+They are shot in **dark mode**. `PLICA_SHOT_THEME=light` shoots the light theme
+instead, for a one-off comparison; commit the dark ones.
+
 ```bash
 node scripts/capture-screenshots.mjs           # all of them
 node scripts/capture-screenshots.mjs --list    # what each one is
