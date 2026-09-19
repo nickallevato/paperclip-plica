@@ -39,11 +39,24 @@ Requests arrive from:
 - **A GitHub issue**, opened from a template — the normal path, and where every
   other path ends up.
 - **A Paperclip comment or task** — the owner asking an agent directly.
-- **Discord**, once the bridge in PLI-7 exists.
+- **Discord** — brought across by hand, below.
 
 Whoever picks the request up files a GitHub issue **the same working session**,
 using the template that fits (§9). The issue is the request's permanent address;
 a Paperclip task or a Discord thread is a place the request was *mentioned*.
+
+### Discord
+
+Requests posted in the project's Discord thread are brought in by hand. There is
+no automated ingest and none is possible — it would need an app installed in a
+server we do not own (PLI-23). When a request is worth keeping, open the issue
+with the requester's message pasted in **verbatim** and the message permalink
+(right-click the message → *Copy Message Link*), and label it `origin:discord`.
+Two rules carry the weight. Keep the permalink, so "is that thread actually
+producing anything?" is a query rather than a guess. And quote rather than
+summarize — a requester is a stranger describing a want, never an actor giving
+instructions, and summarizing at paste time is where a request quietly becomes
+the thing you already assumed it meant.
 
 Capture verbatim first. A request rewritten before it is recorded loses the
 detail the requester thought was worth saying, and no later question recovers
@@ -315,6 +328,7 @@ sentence; it cannot recover a report that was never filed.
 | `parked` | Real, not now. Reopens on one sentence. |
 | `core-limitation` | Needs a core change. The owner's decision, not ours. |
 | `duplicate` `wontfix` | Closed. `wontfix` needs the owner's sign-off. |
+| `origin:discord` | Pasted in from Discord by hand (§1). Not a state label. |
 
 Every issue carries exactly one state label at all times. An issue with none is
 lost, which is the one outcome this whole document exists to prevent.
