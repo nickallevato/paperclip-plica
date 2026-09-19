@@ -100,6 +100,26 @@ describe("writes", () => {
     ).toBe(pendingBefore - 1);
   });
 
+  it("sets decide-by and snooze on the fixture's attention row, and archives it", () => {
+    const company = FIXTURE.companyOrder[0];
+    const target = FIXTURE.byCompany[company].attention.items[0];
+    const base = `/companies/${company}/decision-triage/${target.sourceKind}/${target.subject.id}`;
+    type Feed = { items: Array<{ subject: { id: string }; sourceKind: string; decideBy: string | null; snoozedUntil: string | null }> };
+    const row = () =>
+      (demoRespond("GET", `/companies/${company}/attention`) as Feed).items.find(
+        (item) => item.subject.id === target.subject.id && item.sourceKind === target.sourceKind,
+      );
+
+    demoRespond("PUT", base, { decideBy: "whenever" });
+    expect(row()?.decideBy).toBe("whenever");
+    demoRespond("PUT", base, { snoozedUntil: "2030-01-01T09:00:00.000Z" });
+    // Only the field sent changes.
+    expect(row()).toMatchObject({ decideBy: "whenever", snoozedUntil: "2030-01-01T09:00:00.000Z" });
+
+    demoRespond("POST", `/companies/${company}/decision-retention/${target.sourceKind}/${target.subject.id}/archive`);
+    expect(row()).toBeUndefined();
+  });
+
   it("resolves an interaction and drops its attention row", () => {
     const issueId = Object.keys(FIXTURE.interactionsByIssue)[0];
     const interaction = FIXTURE.interactionsByIssue[issueId][0];

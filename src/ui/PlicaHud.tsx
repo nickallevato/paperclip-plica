@@ -325,7 +325,7 @@ export function PlicaHud({ demo = false }: PlicaHudProps = {}) {
         <div className="flex items-center gap-2">
           <PlicaMark className="h-5 w-5 text-muted-foreground" />
           <h1 className="text-[length:var(--plica-fs-title,20px)] leading-[1.3] font-semibold tracking-tight">Plica</h1>
-          <span className="text-[length:var(--plica-fs-body,14px)] leading-[1.45] text-muted-foreground">all companies</span>
+          <span className="text-[length:var(--plica-fs-body,14px)] leading-[1.45] text-muted-foreground">all orgs</span>
           {demo && (
             /* Deliberately hard to miss. A screenshot of this page is meant to
                be shareable, which only works if nobody can mistake the fixture
@@ -390,9 +390,9 @@ export function PlicaHud({ demo = false }: PlicaHudProps = {}) {
       )}
 
       {companiesQuery.isLoading ? (
-        <p className="text-[length:var(--plica-fs-body,14px)] leading-[1.45] text-muted-foreground">Loading companies…</p>
+        <p className="text-[length:var(--plica-fs-body,14px)] leading-[1.45] text-muted-foreground">Loading orgs…</p>
       ) : companies.length === 0 ? (
-        <p className="text-[length:var(--plica-fs-body,14px)] leading-[1.45] text-muted-foreground">No companies to show.</p>
+        <p className="text-[length:var(--plica-fs-body,14px)] leading-[1.45] text-muted-foreground">No orgs to show.</p>
       ) : (
         <PlicaBoardPage
           companies={boardCompanies}

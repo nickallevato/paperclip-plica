@@ -18,6 +18,8 @@ import {
   filterQueueByAge,
   flattenLiveRuns,
   groupQueue,
+  isSnoozed,
+  summarizeDecide,
   summarizeQueue,
   upcomingProjects,
   upcomingRoutines,
@@ -26,7 +28,6 @@ import {
   type PlicaQueueGrouping,
   type PlicaQueueSort,
 } from "../lib/queue";
-import { PLICA_BOARD_COLUMNS } from "./PlicaBoardRow";
 import { PlicaCompanySlot } from "./PlicaCompanySlot";
 import { PlicaLiveStrip } from "./PlicaLiveStrip";
 import { PlicaPortfolio } from "./PlicaPortfolio";
@@ -34,6 +35,7 @@ import { PlicaQueue } from "./PlicaQueue";
 import { PlicaRoutineExceptions } from "./PlicaRoutineExceptions";
 import { PlicaSegmented } from "./PlicaSegmented";
 import type { PlicaCompanyData } from "./usePlicaCompanyData";
+import { applyTriageOverrides, useQueueTriage } from "./useQueueTriage";
 
 const MICRO = "text-[length:var(--plica-fs-micro,11px)] leading-[1.45]";
 
@@ -49,11 +51,11 @@ function useNowMs(intervalMs = 30_000): number {
 }
 
 /**
- * Queue + Board: the two cross-company lists (live runs, upcoming routines)
- * stacked on the left, one ledger row per company on the right with the
- * action rail under the ledger. Each company still has exactly one PlicaCompanySlot —
- * here it renders the board row and reports its data up, and the page
- * derives the rail and the lists from what it has been told.
+ * Queue + Board: a column of context on the left — one line per company, the
+ * portfolio, routines that need attention — and the Needs-you queue owning the
+ * main column. Each company still has exactly one PlicaCompanySlot; it renders
+ * the company's line and reports its data up, and the page derives the queue
+ * and the lists from what it has been told.
  */
 export function PlicaBoardPage({
   companies,
@@ -142,22 +144,34 @@ export function PlicaBoardPage({
       ),
     [loaded, nowMs, focusCompanyId],
   );
+  const { overrides, busy: triageBusy, triage } = useQueueTriage((companyId) => dataByCompany[companyId]?.invalidate());
+  // Pending decide-by / snooze / archive writes applied on top, so a row moves
+  // when clicked rather than a poll later. Snoozed items only exist in the
+  // Decide-by grouping's Snoozed lane; everywhere else they are simply away.
+  const triagedItems = useMemo(() => {
+    const applied = applyTriageOverrides(queueItems, overrides);
+    return grouping === "decide" ? applied : applied.filter((item) => !isSnoozed(item, nowMs));
+  }, [queueItems, overrides, grouping, nowMs]);
   const projects = useMemo(() => loaded.flatMap(({ data }) => data.projects), [loaded]);
   // Counted before the filter is applied, so each chip can say how much it is
   // holding back — a chip that reported its own post-filter count would read
   // "0" for every bucket you are not standing in.
-  const ageCounts = useMemo(() => countQueueByAge(queueItems, nowMs), [queueItems, nowMs]);
+  const ageCounts = useMemo(() => countQueueByAge(triagedItems, nowMs), [triagedItems, nowMs]);
   const visibleItems = useMemo(
-    () => filterQueueByAge(queueItems, ageFilter, nowMs),
-    [queueItems, ageFilter, nowMs],
+    () => filterQueueByAge(triagedItems, ageFilter, nowMs),
+    [triagedItems, ageFilter, nowMs],
   );
+  const decideSummary = useMemo(() => summarizeDecide(visibleItems, nowMs), [visibleItems, nowMs]);
   const groups = useMemo(
     () => groupQueue(visibleItems, grouping, companies, { projects, nowMs, sort: queueSort }),
     [visibleItems, grouping, companies, projects, nowMs, queueSort],
   );
   // The badge counts what is on screen: a rail filtered to "today" that still
   // claimed 137 would be describing a list the reader cannot see.
-  const summary = useMemo(() => summarizeQueue(visibleItems, nowMs), [visibleItems, nowMs]);
+  const summary = useMemo(
+    () => summarizeQueue(visibleItems.filter((item) => !isSnoozed(item, nowMs)), nowMs),
+    [visibleItems, nowMs],
+  );
   const live = useMemo(
     () => flattenLiveRuns(loaded.map(({ company, data }) => ({ company, runs: data.liveRuns, issues: data.issues }))),
     [loaded],
@@ -178,17 +192,21 @@ export function PlicaBoardPage({
       const actionable = actionableByCompany[company.id];
       return {
         needs: sum.needs + (actionable?.count ?? 0),
-        questions: sum.questions + (data?.needsBreakdown?.questions ?? 0),
-        blocked: sum.blocked + (data?.needsBreakdown?.blocked ?? 0),
-        review: sum.review + (data?.needsBreakdown?.review ?? 0),
-        tasksOpen: sum.tasksOpen + (stats?.tasksOpen ?? 0),
         runs: sum.runs + deriveThroughput(data?.summary?.runActivity ?? []).total,
         tokens: sum.tokens + (stats?.tokens ?? 0),
       };
     },
-    { needs: 0, questions: 0, blocked: 0, review: 0, tasksOpen: 0, runs: 0, tokens: 0 },
+    { needs: 0, runs: 0, tokens: 0 },
   );
 
+  // Wide: one sticky column of context (Companies, Portfolio, Routines) beside
+  // the queue, which owns the main column because it is where the work is.
+  // The left column's wrapper is `display: contents` when narrow, so its three
+  // panels join the page grid and `order` can slot the queue in after
+  // Companies instead of after everything. Widths are measured on the board,
+  // not the window — the host sidebar decides how much of the window Plica
+  // gets. 64rem is a 400px column plus a queue wide enough for its inline
+  // decide-by picks.
   return (
     <div data-view="board" className="@container/board flex flex-col gap-4">
       {/* Live spans the whole width above the board. It is the one block whose
@@ -197,72 +215,33 @@ export function PlicaBoardPage({
           pills it cannot change size, and everything below it stays put. */}
       <PlicaLiveStrip entries={live} />
 
-      {/* Side by side only once the board itself is wide enough for the
-          ledger's full row (~52rem) beside a readable left column — measured
-          on the board, not the window, because the host sidebar decides how
-          much of the window Plica gets. Narrower, the ledger and queue lead
-          and the two lists sit side by side under them. */}
-      <div className="grid gap-4 @[76rem]/board:grid-cols-[minmax(300px,380px)_minmax(0,1fr)] @[90rem]/board:grid-cols-[420px_minmax(0,1fr)] [.plica-kiosk_&]:gap-6 [.plica-kiosk_&]:@[110rem]/board:grid-cols-[540px_minmax(0,1fr)]">
-      {/* The rail is a sticky column capped at the viewport rather than pinned
-          to it. A fixed height had to guess how much chrome sat above it, and
-          guessed high — which pushed Routines off the bottom of the screen. A
-          cap cannot: the column is as tall as its contents until that would
-          overflow, and only then does Portfolio start scrolling inside itself.
-          Routines is `shrink-0`, so it is the one thing that can never be
-          squeezed out of view. Stacked, it is a plain two-up grid after the
-          ledger and queue. */}
-      <div className="order-last grid min-w-0 gap-4 @[48rem]/board:grid-cols-2 @[48rem]/board:items-start @[76rem]/board:order-none @[76rem]/board:sticky @[76rem]/board:top-4 @[76rem]/board:flex @[76rem]/board:max-h-[calc(100vh-2rem)] @[76rem]/board:flex-col @[76rem]/board:items-stretch @[76rem]/board:self-start">
-        <PlicaPortfolio
-          items={projectEntries}
-          nowMs={nowMs}
-          companies={companies}
-          sort={portfolioSort}
-          onSort={onPortfolioSort}
-          className="min-h-0 flex-1"
-        />
-        <PlicaRoutineExceptions items={routines} nowMs={nowMs} />
-      </div>
-
-      <div className="flex min-w-0 flex-col gap-4">
-        <div className="@container overflow-x-auto rounded-lg border bg-card">
-          <table className="w-full table-auto border-collapse text-[length:var(--plica-fs-body,14px)] leading-[1.45]">
-            <thead>
-              <tr>
-                {PLICA_BOARD_COLUMNS.map((column) => (
-                  <th
-                    key={column.key}
-                    scope="col"
-                    className={cn(
-                      "whitespace-nowrap px-1.5 py-2 font-semibold uppercase tracking-(--tracking-label) text-muted-foreground",
-                      MICRO,
-                      column.align === "right" ? "text-right" : "text-left",
-                      // Company takes every spare pixel; the figures take only
-                      // what they need, so the row never has to scroll.
-                      column.key === "company" ? "w-full pl-3" : "w-px",
-                    )}
-                  >
-                    {column.key === "company" ? (
-                      <span className="flex items-center gap-2">
-                        {column.label}
-                        <PlicaSegmented
-                          label="Pane order"
-                          options={[
-                            { value: "hot", label: "Hot first" },
-                            { value: "manual", label: "My order" },
-                          ]}
-                          value={sortMode}
-                          onChange={onSortMode}
-                          className="font-normal"
-                        />
-                      </span>
-                    ) : (
-                      column.label
-                    )}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
+      <div className="grid gap-4 @[64rem]/board:grid-cols-[minmax(320px,400px)_minmax(0,1fr)] @[96rem]/board:grid-cols-[440px_minmax(0,1fr)] [.plica-kiosk_&]:gap-6 [.plica-kiosk_&]:@[110rem]/board:grid-cols-[540px_minmax(0,1fr)]">
+        {/* Capped at the viewport rather than pinned to it: the column is as
+            tall as its contents until that would overflow, and only then does
+            Portfolio scroll inside itself. Companies and Routines are
+            `shrink-0`, so neither can be squeezed out of view. */}
+        <div className="contents @[64rem]/board:sticky @[64rem]/board:top-4 @[64rem]/board:flex @[64rem]/board:max-h-[calc(100vh-2rem)] @[64rem]/board:min-w-0 @[64rem]/board:flex-col @[64rem]/board:gap-4 @[64rem]/board:self-start">
+          <section
+            data-plica-companies
+            aria-label="Orgs"
+            className="order-1 flex shrink-0 flex-col rounded-lg border bg-card @[64rem]/board:order-none"
+          >
+            <div className="flex items-center gap-2 border-b px-3 py-2">
+              <h2 className={cn(MICRO, "font-semibold uppercase tracking-(--tracking-label) text-muted-foreground")}>
+                Orgs
+              </h2>
+              <PlicaSegmented
+                label="Org order"
+                options={[
+                  { value: "hot", label: "Hot first" },
+                  { value: "manual", label: "My order" },
+                ]}
+                value={sortMode}
+                onChange={onSortMode}
+              />
+              <span className={cn(MICRO, "ml-auto text-muted-foreground")}>need you</span>
+            </div>
+            <ul className="flex flex-col">
               {companies.map((company) => (
                 <PlicaCompanySlot
                   key={company.id}
@@ -278,43 +257,54 @@ export function PlicaBoardPage({
                   needsFocused={focusCompanyId === company.id}
                 />
               ))}
-            </tbody>
+            </ul>
             {companies.length > 1 && (
-              <tfoot>
-                <tr data-board-totals className={cn("border-t text-muted-foreground", MICRO)}>
-                  <td className="truncate py-2 pl-3 pr-2 uppercase tracking-(--tracking-label)">All</td>
-                  <td className="px-1.5 py-2 text-right tabular-nums">{totals.needs}</td>
-                  <td className="px-1.5 py-2 text-right tabular-nums">{totals.questions}</td>
-                  <td className="px-1.5 py-2 text-right tabular-nums">{totals.blocked}</td>
-                  <td className="px-1.5 py-2 text-right tabular-nums">{totals.review}</td>
-                  <td className="px-1.5 py-2 text-right tabular-nums">{totals.tasksOpen}</td>
-                  <td className="px-1.5 py-2 tabular-nums">{Math.round((totals.runs / 7) * 10) / 10} /day</td>
-                  <td className="px-1.5 py-2 tabular-nums">{formatTokensMillions(totals.tokens)}M</td>
-                  <td />
-                </tr>
-              </tfoot>
+              <div
+                data-board-totals
+                className={cn(MICRO, "flex items-center gap-2.5 border-t px-3 py-1.5 tabular-nums text-muted-foreground")}
+              >
+                <span className="uppercase tracking-(--tracking-label)">All</span>
+                <span className="ml-auto">{formatTokensMillions(totals.tokens)}M tokens</span>
+                <span className="w-12 text-right">{Math.round((totals.runs / 7) * 10) / 10}/d</span>
+                <span className="w-8 text-right font-semibold text-foreground">{totals.needs}</span>
+              </div>
             )}
-          </table>
+          </section>
+          <PlicaPortfolio
+            items={projectEntries}
+            nowMs={nowMs}
+            companies={companies}
+            sort={portfolioSort}
+            onSort={onPortfolioSort}
+            className="order-3 min-h-0 flex-1 @[64rem]/board:order-none"
+          />
+          <div className="order-4 shrink-0 @[64rem]/board:order-none">
+            <PlicaRoutineExceptions items={routines} nowMs={nowMs} />
+          </div>
         </div>
 
-        <PlicaQueue
-          groups={groups}
-          summary={summary}
-          grouping={grouping}
-          onGrouping={onGrouping}
-          sort={queueSort}
-          onSort={onQueueSort}
-          ageFilter={ageFilter}
-          onAgeFilter={onAgeFilter}
-          ageCounts={ageCounts}
-          companiesById={companiesById}
-          nowMs={nowMs}
-          onActed={(companyId) => dataByCompany[companyId]?.invalidate()}
-          footer={footer}
-          filterCompany={focusCompany}
-          onClearFilter={() => setFocusCompanyId(null)}
-        />
-      </div>
+        <div className="order-2 min-w-0 @[64rem]/board:order-none">
+          <PlicaQueue
+            groups={groups}
+            summary={summary}
+            grouping={grouping}
+            onGrouping={onGrouping}
+            sort={queueSort}
+            onSort={onQueueSort}
+            ageFilter={ageFilter}
+            onAgeFilter={onAgeFilter}
+            ageCounts={ageCounts}
+            companiesById={companiesById}
+            nowMs={nowMs}
+            onActed={(companyId) => dataByCompany[companyId]?.invalidate()}
+            decideSummary={decideSummary}
+            onTriage={triage}
+            triageBusy={triageBusy}
+            footer={footer}
+            filterCompany={focusCompany}
+            onClearFilter={() => setFocusCompanyId(null)}
+          />
+        </div>
       </div>
     </div>
   );

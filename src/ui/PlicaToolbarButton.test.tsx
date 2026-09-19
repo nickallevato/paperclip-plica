@@ -14,7 +14,7 @@ describe("PlicaToolbarButton", () => {
     const { container } = render(<PlicaToolbarButton context={{ companyPrefix: "LIOA" }} />);
     expect(container.querySelector("[data-plica-mark]")).not.toBeNull();
     // The link is labelled once, by its own aria-label.
-    expect(screen.getByRole("link", { name: "Plica — all companies" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Plica — all orgs" })).toBeInTheDocument();
   });
 
   it("falls back to the host context prefix when the slot passes none", () => {

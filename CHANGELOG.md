@@ -5,6 +5,34 @@ Short-form. The reader-facing write-up for each version is in
 
 ## Unreleased
 
+### Decide by
+
+- **"Orgs", not "companies"**, everywhere Plica labels them: the list, the
+  queue and portfolio grouping, the header ("all orgs").
+
+- **The queue owns the page.** The wide company ledger is now a compact
+  **Orgs** list in the left column — name, who is working, runs per day,
+  and Need you — so the queue takes the main column. Every figure the ledger
+  showed (Questions, Blocked, Review, Open, Tokens, the run sparkline, the
+  lead agent) is in a card on hovering a company's name, with Watch and Open.
+  Narrow, the page stacks Orgs, the queue, then Portfolio and Routines.
+
+- **The queue is grouped by when you'll decide.** Today, Unsorted, This week,
+  Alerts, Whenever and Snoozed replace Now / Soon / Later as the default
+  grouping (Severity is still one click away). The lanes come from Paperclip's
+  own decision triage, so a day set in Plica is the day Paperclip's Decisions
+  page shows.
+- **Unsorted rows sort in one click**: Today · This week · Whenever sit inline.
+- **Every row has a triage menu**: decide by, snooze (1 hour to a week), wake,
+  archive. Changes apply immediately and are rolled back with a toast if
+  Paperclip refuses them.
+- **Snoozed items are away.** They sit folded in the Snoozed lane and nowhere
+  else, and they no longer count toward the Needs you badge.
+- The header reads *N today (N overdue) · N unsorted · N snoozed*.
+- The demo fixture now carries realistic triage (it used to store an instant
+  where Paperclip stores a preset or a date), and demo mode accepts the triage
+  and archive writes.
+
 ### A calmer board
 
 - **Colour marks one thing per row.** The ledger's Questions, Blocked and

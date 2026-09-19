@@ -218,12 +218,22 @@ const SHOTS = [
   {
     name: "toolbar-button",
     doc: "The Telescope launcher the plugin adds to the host's breadcrumb bar.",
-    take: async (page) => ({ clip: await region(page, ['a[aria-label="Plica — all companies"]'], 16) }),
+    take: async (page) => ({ clip: await region(page, ['a[aria-label="Plica — all orgs"]'], 16) }),
   },
   {
     name: "board",
-    doc: "The board: one row per company, capacity, and the totals row.",
-    take: async (page) => ({ clip: await region(page, ["[data-board-totals]", "table"]) }),
+    doc: "The Companies list: one line per company, capacity, and the totals line.",
+    take: async (page) => ({ clip: await region(page, ["[data-plica-companies]"]) }),
+  },
+  {
+    name: "company-detail",
+    doc: "A company's detail card: every figure the line leaves out.",
+    before: async (page) => {
+      await page.locator("[data-company-line] [data-company-filter]").nth(2).hover();
+      await page.waitForSelector("[data-company-detail]", { timeout: 10_000 });
+      await page.waitForTimeout(400);
+    },
+    take: async (page) => ({ clip: await region(page, ["[data-plica-companies]", "[data-company-detail]"]) }),
   },
   {
     name: "live-strip",
@@ -243,14 +253,32 @@ const SHOTS = [
     }),
   },
   {
+    name: "queue-by-decide",
+    doc: "The queue in its default grouping: Today, Unsorted, This week, and the rest by when you said you'd decide.",
+    take: async (page) => ({ clip: await region(page, ["[data-plica-queue]"]) }),
+  },
+  {
+    name: "queue-triage-menu",
+    doc: "A row's triage menu: decide by, snooze, archive.",
+    before: async (page) => {
+      await page.locator("[data-queue-group='decide:unsorted'] [data-triage-menu]").first().click();
+      await page.waitForSelector("[role='menu']", { timeout: 10_000 });
+      await page.waitForTimeout(300);
+    },
+    take: async (page) => ({
+      clip: await region(page, ["[data-queue-group='decide:unsorted'] [data-queue-item]:first-of-type", "[role='menu']"]),
+    }),
+  },
+  {
     name: "queue-by-severity",
-    doc: "The queue in its default grouping: Now, Soon, Later.",
+    doc: "The same queue grouped by severity: Now, Soon, Later.",
+    before: async (page) => groupQueueBy(page, "Severity"),
     take: async (page) => ({ clip: await region(page, ["[data-plica-queue]"]) }),
   },
   {
     name: "queue-by-company",
     doc: "The same queue grouped by company — a per-company worklist.",
-    before: async (page) => groupQueueBy(page, "Company"),
+    before: async (page) => groupQueueBy(page, "Org"),
     take: async (page) => ({ clip: await region(page, ["[data-plica-queue]"]) }),
   },
   {

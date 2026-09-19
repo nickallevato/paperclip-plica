@@ -97,6 +97,8 @@ const api = {
     request<T>(path, { method: "POST", body: JSON.stringify(body ?? {}) }),
   patch: <T>(path: string, body?: unknown) =>
     request<T>(path, { method: "PATCH", body: JSON.stringify(body ?? {}) }),
+  put: <T>(path: string, body?: unknown) =>
+    request<T>(path, { method: "PUT", body: JSON.stringify(body ?? {}) }),
 };
 
 // ---------------------------------------------------------------------------
@@ -151,6 +153,39 @@ export const attentionApi = {
     api.get<AttentionFeed>(
       `/companies/${companyId}/attention${options.includeDismissed ? "?includeDismissed=true" : ""}`,
     ),
+};
+
+/**
+ * Decide-by, snooze and archive for one attention item — the same writes
+ * Paperclip's own DecisionTriageStrip makes (ui/src/api/decisionQueues.ts),
+ * so a day set in Plica is the day the host's Decisions page shows.
+ *
+ * Keyed by the item's source identity: `item.sourceKind` and
+ * `item.subject.id`, never `item.id`.
+ *
+ * `decideBy` is a preset ("today" | "this_week" | "whenever") or a calendar
+ * date (YYYY-MM-DD); null clears it. `snoozedUntil` is an ISO timestamp; null
+ * wakes the item. The server needs at least one of the two.
+ */
+export interface DecisionTriageUpdate {
+  decideBy?: string | null;
+  snoozedUntil?: string | null;
+}
+
+const triagePath = (companyId: string, sourceKind: string, sourceId: string) =>
+  `${encodeURIComponent(companyId)}/decision-triage/${encodeURIComponent(sourceKind)}/${encodeURIComponent(sourceId)}`;
+
+const retentionPath = (companyId: string, sourceKind: string, sourceId: string) =>
+  `${encodeURIComponent(companyId)}/decision-retention/${encodeURIComponent(sourceKind)}/${encodeURIComponent(sourceId)}`;
+
+export const decisionTriageApi = {
+  update: (companyId: string, sourceKind: string, sourceId: string, update: DecisionTriageUpdate) =>
+    api.put<unknown>(`/companies/${triagePath(companyId, sourceKind, sourceId)}`, update),
+  /** Takes the item off the feed; `revive` brings it back. */
+  archive: (companyId: string, sourceKind: string, sourceId: string) =>
+    api.post<unknown>(`/companies/${retentionPath(companyId, sourceKind, sourceId)}/archive`),
+  revive: (companyId: string, sourceKind: string, sourceId: string) =>
+    api.post<unknown>(`/companies/${retentionPath(companyId, sourceKind, sourceId)}/revive`),
 };
 
 // ---------------------------------------------------------------------------

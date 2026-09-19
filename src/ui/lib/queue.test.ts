@@ -237,8 +237,10 @@ describe("compareQueueItems / summarizeQueue / groupQueue", () => {
 
   it("normalises the grouping preference", () => {
     expect(normalizeQueueGrouping("company")).toBe("company");
-    expect(normalizeQueueGrouping("nonsense")).toBe("severity");
-    expect(normalizeQueueGrouping(null)).toBe("severity");
+    expect(normalizeQueueGrouping("severity")).toBe("severity");
+    // Decide-by is the default: the rail is organised by when you said you'd decide.
+    expect(normalizeQueueGrouping("nonsense")).toBe("decide");
+    expect(normalizeQueueGrouping(null)).toBe("decide");
   });
 });
 

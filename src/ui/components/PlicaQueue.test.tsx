@@ -299,9 +299,10 @@ describe("PlicaQueue", () => {
     const headers = Array.from(container.querySelectorAll("[data-queue-group]")).map((group) => group.getAttribute("data-queue-group"));
     expect(headers).toEqual(["c1", "c2"]);
     const grouping = Array.from(container.querySelectorAll('[aria-label="Queue grouping"] button'));
-    expect(grouping.map((button) => button.getAttribute("aria-pressed"))).toEqual(["false", "true", "false", "false", "false"]);
+    // Decide by, Severity, Company, Kind, Project, Age.
+    expect(grouping.map((button) => button.getAttribute("aria-pressed"))).toEqual(["false", "false", "true", "false", "false", "false"]);
     act(() => {
-      grouping[0].dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      grouping[1].dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
     expect(onGrouping).toHaveBeenCalledWith("severity");
     act(() => root.unmount());
@@ -354,7 +355,7 @@ describe("PlicaQueue", () => {
     const rows = Array.from(container.querySelectorAll("[data-queue-item]")).map((row) => row.getAttribute("data-queue-item"));
     expect(rows).toEqual(["heartbeat:ceo-2"]);
     act(() => {
-      (container.querySelector('[aria-label="Show all companies"]') as HTMLButtonElement).dispatchEvent(
+      (container.querySelector('[aria-label="Show all orgs"]') as HTMLButtonElement).dispatchEvent(
         new MouseEvent("click", { bubbles: true }),
       );
     });

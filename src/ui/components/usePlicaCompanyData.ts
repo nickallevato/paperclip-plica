@@ -57,7 +57,8 @@ export interface PlicaCompanyData {
    */
   unavailable: boolean;
   staleSince: number | null;
-  invalidate: () => void;
+  /** Refetches this company's queries; resolves once they have landed. */
+  invalidate: () => Promise<void>;
 }
 
 /**
@@ -184,7 +185,7 @@ export function usePlicaCompanyData(companyId: string): PlicaCompanyData {
   );
 
   const invalidate = useCallback(() => {
-    queryClient.invalidateQueries({ queryKey: ["plica"], predicate: (query) => query.queryKey[2] === companyId });
+    return queryClient.invalidateQueries({ queryKey: ["plica"], predicate: (query) => query.queryKey[2] === companyId });
   }, [companyId, queryClient]);
 
   return {
