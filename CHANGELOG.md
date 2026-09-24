@@ -5,6 +5,24 @@ Short-form. The reader-facing write-up for each version is in
 
 ## Unreleased
 
+### Fixed
+
+- **A "Stylesheet stale" badge that would not clear after a good `pnpm build`.**
+  The build located the host stylesheet by taking the largest `index-*.css` in
+  the host's assets dir, so an abandoned sheet from an earlier build — bigger
+  than the live one, left behind in an unclean `dist/` — was recorded instead,
+  and no number of rebuilds cleared the badge. It now reads the sheet the host's
+  own `index.html` links, which is the same tag the runtime check compares
+  against; falling back to the most recently modified only when there is no
+  `index.html`.
+
+- **The build says which stylesheet it read, and what it passed over.** Warnings
+  for every ambiguity it had to resolve, including a `PLICA_HOST_CSS` override
+  that disagrees with the dist it overrides — a stale export in a shell profile
+  used to win silently. `docs/troubleshooting.md` gains a section for the badge
+  surviving a rebuild, and `docs/install.md` documents that Paperclip's UI must
+  be rebuilt before Plica's.
+
 ## 0.4.0
 
 ### On a phone
