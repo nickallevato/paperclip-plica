@@ -67,6 +67,8 @@ amber at twenty minutes of silence.
 
 In the left column, under Orgs: one line per task, newest first.
 
+![Recent: one line per task, the live ones marked](screenshots/recent-tasks.png)
+
 Live rows come first — the ones an agent is on now, then the runs waiting for a
 runner — and behind them the tasks touched in the last day. A **pulsing dot**
 marks a row an agent is working, a **hollow ring** one that is queued, and
