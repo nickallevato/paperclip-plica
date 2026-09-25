@@ -1,12 +1,12 @@
 # The Board
 
 The Plica page is two columns. On the left, context: **Orgs** (one line per
-org), the **Portfolio**, and **Routines** that need attention. On the right,
-owning the main column, the **[queue](queue.md)** — because that is where the
-work is. A strip of everything running right now spans the top.
+org), **Recent** (what the fleet is on), the **Portfolio**, and **Routines**
+that need attention. On the right, owning the main column, the
+**[queue](queue.md)** — because that is where the work is.
 
 When there is not room for both columns, the page stacks: Orgs, then the
-queue, then Portfolio and Routines.
+queue, then Recent, Portfolio and Routines.
 
 ![The Orgs list: one line per org, with the totals beneath](screenshots/board.png)
 
@@ -63,18 +63,27 @@ A stall is the case worth knowing about: the run has not failed, so nothing
 alerts, and the count still says three agents are working. The square goes
 amber at twenty minutes of silence.
 
-## Live
+## Recent
 
-Across the top of the page, one pill per run in flight: company, ticket, agent,
-elapsed.
+In the left column, under Orgs: one line per task, newest first.
 
-![The live strip: one pill per running agent](screenshots/live-strip.png)
+Live rows come first — the ones an agent is on now, then the runs waiting for a
+runner — and behind them the tasks touched in the last day. A **pulsing dot**
+marks a row an agent is working, a **hollow ring** one that is queued, and
+anything with nothing running shows the task's own status glyph instead. The
+figure on the right is how long the run has been going, or how long ago the task
+was last touched.
 
-The strip is exactly one row tall and cannot grow. Titles and agent narration
-live in the hover card, so a long ticket title can never wrap a pill onto a
-second line and shove the whole board down the page. There is no cap and no
-"+N more" — the row scrolls sideways, so the header count and what you can
-actually reach always agree.
+One row per task, not per run: a retry queued behind a run still finishing is one
+line, showing the attempt being worked.
+
+Hovering a row opens what the agent last said — the same narration the run
+detail shows — with the ticket's status and, when nothing has been reported yet,
+the start of its description.
+
+The list scrolls inside a capped height rather than growing with the fleet, so a
+run starting or finishing never shoves Portfolio and Routines down the page. When
+more tasks were touched today than fit, the footer says how many.
 
 ## Ordering companies
 
@@ -121,6 +130,8 @@ appears in the page header. See
 Down the left of the board:
 
 ![The portfolio chart and the routine exceptions beneath it](screenshots/portfolio.png)
+
+**Recent** — what the fleet is on, as described above.
 
 **Portfolio** — every project with open work, across every company, as one
 chart. Each bar splits into moving / waiting / blocked, and the header carries

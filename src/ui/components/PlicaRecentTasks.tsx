@@ -1,0 +1,212 @@
+import {
+  CompanyPatternIcon,
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+  IssueStatusBadge,
+  StatusGlyph,
+} from "../host/ui-kit";
+import { cn } from "../host/util";
+import { formatAgeMinutes } from "../lib/plica";
+import type { PlicaRecentTask, PlicaRecentTasks as PlicaRecentTasksModel } from "../lib/queue";
+import { elapsedLabel, humanStatus, isStartingUp, runNarration } from "../lib/runs";
+import { LiveDot, QueuedDot } from "./LiveDot";
+import { PlicaLink } from "./PlicaLink";
+
+const MICRO = "text-[length:var(--plica-fs-micro,11px)] leading-[1.45]";
+const BODY = "text-[length:var(--plica-fs-body,14px)] leading-[1.45]";
+
+/** Markdown emphasis/headings/code marks read as noise in a four-line excerpt. */
+function plainText(markdown: string): string {
+  return markdown
+    .replace(/```[\s\S]*?```/g, " ")
+    .replace(/[*_`#>]+/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/**
+ * The hover detail: the agent's own last words (the human-readable summary the
+ * host shows in the thread), with the terse status line only as a fallback. No
+ * tool names or runtime plumbing.
+ *
+ * A row has space for a ticket, a title and an age, so this is the only place
+ * the narration lives — and the only reason a row can be a single line.
+ */
+function TaskDetail({ company, issue, run, phase, atMs, nowMs }: PlicaRecentTask & { nowMs: number }) {
+  const queued = phase === "queued";
+  const summary = run && !queued ? (humanStatus(run) ?? run.nextAction?.trim() ?? null) : null;
+  const startingUp = !summary && run !== undefined && isStartingUp(run);
+  return (
+    <div className={cn("flex flex-col gap-2", BODY)}>
+      <div className="flex items-start gap-2">
+        <div className="min-w-0 flex-1">
+          {issue?.identifier && <span className={cn("mr-1.5 font-mono text-muted-foreground", MICRO)}>{issue.identifier}</span>}
+          <span className="font-medium">{issue?.title ?? run?.triggerDetail ?? run?.invocationSource}</span>
+        </div>
+        {issue?.status && <IssueStatusBadge status={issue.status} />}
+      </div>
+      {summary ? (
+        <p className="whitespace-pre-line">{summary}</p>
+      ) : (
+        <>
+          {run && (
+            <p className="italic text-muted-foreground">
+              {queued
+                ? "queued — waiting for a runner, no agent on it yet"
+                : startingUp
+                  ? "starting up — nothing to report yet"
+                  : "working — nothing reported yet"}
+            </p>
+          )}
+          {issue?.description?.trim() && <p className="line-clamp-4 text-muted-foreground">{plainText(issue.description)}</p>}
+        </>
+      )}
+      <p className={cn("text-muted-foreground", MICRO)}>
+        {run ? `${run.agentName} · ` : ""}
+        {company.name} ·{" "}
+        {run
+          ? queued
+            ? `queued ${elapsedLabel(run, nowMs)}`
+            : elapsedLabel(run, nowMs)
+          : `touched ${formatAgeMinutes(ageMinutes(atMs, nowMs))} ago`}
+      </p>
+    </div>
+  );
+}
+
+function ageMinutes(atMs: number, nowMs: number): number {
+  return Math.max(0, Math.round((nowMs - atMs) / 60_000));
+}
+
+/**
+ * One task as a line: whose it is, what state it is in, which ticket, how long.
+ *
+ * Deliberately one line and no more. This list sits in the rail above Portfolio,
+ * so a row that could wrap would move everything under it every time an agent
+ * changed what it was saying.
+ */
+function TaskRow({ task, nowMs }: { task: PlicaRecentTask; nowMs: number }) {
+  const { company, issue, run, phase, atMs } = task;
+  // A run without a ticket has no title to show, so it borrows the narration
+  // the strip used to put on its pill.
+  const title = issue?.title ?? (run ? runNarration(run, undefined) : "");
+  const body = (
+    <span className="flex min-w-0 items-center gap-2">
+      <CompanyPatternIcon
+        companyName={company.name}
+        logoUrl={company.logoUrl}
+        className="size-4 shrink-0 rounded text-[7px]"
+      />
+      {/* One slot, three meanings: a pulsing dot for a run being worked, a
+          still ring for one waiting on a runner, and the task's own status
+          glyph when nothing is running — so the live rows are the only ones
+          that move. */}
+      {phase === "working" ? (
+        <LiveDot />
+      ) : phase === "queued" ? (
+        <QueuedDot />
+      ) : (
+        <StatusGlyph status={issue?.status ?? "backlog"} size="sm" className="h-3.5 w-3.5" />
+      )}
+      {issue?.identifier && <span className={cn("shrink-0 font-mono font-medium text-foreground", MICRO)}>{issue.identifier}</span>}
+      <span className={cn("min-w-0 flex-1 truncate", phase === null && "text-muted-foreground")}>{title}</span>
+      <span className={cn("shrink-0 tabular-nums text-muted-foreground", MICRO)}>
+        {run ? elapsedLabel(run, nowMs) : formatAgeMinutes(ageMinutes(atMs, nowMs))}
+      </span>
+    </span>
+  );
+  return (
+    <li data-recent-task={phase ?? "idle"} className={cn("flex items-center", BODY)}>
+      <HoverCard>
+        {/* The trigger's child is a plain span, not the link: `asChild` clones
+            its child with a ref and a data-slot, and PlicaLink accepts a fixed
+            prop set that would silently drop both. */}
+        <HoverCardTrigger asChild>
+          <span className="block min-w-0 flex-1 py-1">
+            {issue ? (
+              <PlicaLink
+                to={`/${company.issuePrefix}/issues/${issue.identifier ?? issue.id}`}
+                companyId={company.id}
+                className="block min-w-0"
+                title={`${title} · ${company.name}`}
+              >
+                {body}
+              </PlicaLink>
+            ) : (
+              body
+            )}
+          </span>
+        </HoverCardTrigger>
+        <HoverCardContent data-recent-detail>
+          <TaskDetail {...task} nowMs={nowMs} />
+        </HoverCardContent>
+      </HoverCard>
+    </li>
+  );
+}
+
+/**
+ * Recent, in the rail: what the fleet is on, live rows first and newest first.
+ *
+ * It replaces the full-width "Live now" strip, which could only say that a run
+ * existed — a pill had room for a ticket key, an agent and a clock, and nothing
+ * else. The questions actually being asked of that strip were "what is
+ * happening" and "what just happened", and the second one it could not answer at
+ * all: the moment a run finished, its pill vanished and the work left no trace
+ * on the page.
+ *
+ * A rail list answers both. A row is as wide as the column, so the ticket title
+ * fits; the tasks that just finished stay in place under the live ones; and the
+ * same live dot the strip used still marks the rows an agent is on right now.
+ *
+ * The strip's one real virtue was a height that could not change — it was moved
+ * out of the rail in the first place because a pane that grew with the fleet
+ * shoved Portfolio and Routines down the page. That is kept here by a cap: the
+ * list scrolls inside a fixed maximum instead of growing, so a run starting can
+ * move rows within this pane and nothing outside it.
+ */
+export function PlicaRecentTasks({ tasks, nowMs }: { tasks: PlicaRecentTasksModel; nowMs: number }) {
+  const { items, working, queued, hidden } = tasks;
+  return (
+    <section data-plica-recent aria-label="Recent tasks" className="flex shrink-0 flex-col rounded-lg border bg-card">
+      <h3
+        className={cn(
+          "flex shrink-0 items-center gap-2 px-3 pb-2 pt-3 font-semibold uppercase tracking-(--tracking-label) text-muted-foreground",
+          MICRO,
+        )}
+      >
+        {working > 0 ? <LiveDot /> : <QueuedDot />}
+        Recent
+        <span className="ml-auto flex items-center gap-2 font-normal normal-case tracking-normal tabular-nums">
+          {working > 0 ? <span>{working} working</span> : <span className="italic">nothing running</span>}
+          {queued > 0 && (
+            <span className="flex items-center gap-1">
+              <QueuedDot />
+              {queued} queued
+            </span>
+          )}
+        </span>
+      </h3>
+
+      {items.length === 0 ? (
+        <p className={cn("px-3 pb-3 italic text-muted-foreground", MICRO)}>nothing has moved today</p>
+      ) : (
+        <>
+          {/* Capped and scrolled rather than grown: this pane's height must not
+              track the size of the fleet. */}
+          <ul className="max-h-64 min-h-0 overflow-y-auto px-3">
+            {items.map((task) => (
+              <TaskRow key={task.key} task={task} nowMs={nowMs} />
+            ))}
+          </ul>
+          {hidden > 0 && (
+            <p className={cn("shrink-0 border-t px-3 py-1.5 text-muted-foreground", MICRO)}>
+              {hidden} more touched today
+            </p>
+          )}
+        </>
+      )}
+    </section>
+  );
+}

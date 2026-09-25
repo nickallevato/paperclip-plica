@@ -209,7 +209,7 @@ async function region(page, selectors, pad = PAD) {
 }
 
 /** The HUD, without the host's sidebar and breadcrumb chrome around it. */
-const HUD_SELECTORS = ["[data-plica-live]", "[data-plica-portfolio]", "[data-plica-queue]"];
+const HUD_SELECTORS = ["[data-plica-companies]", "[data-plica-portfolio]", "[data-plica-queue]"];
 
 /**
  * The shots, in the order the docs introduce them.
@@ -245,9 +245,9 @@ const SHOTS = [
     take: async (page) => ({ clip: await region(page, ["[data-plica-companies]", "[data-company-detail]"]) }),
   },
   {
-    name: "live-strip",
-    doc: "The live strip: one pill per running agent, fixed height.",
-    take: async (page) => ({ clip: await region(page, ["[data-plica-live]"]) }),
+    name: "recent-tasks",
+    doc: "Recent: one line per task, live rows first, capped height.",
+    take: async (page) => ({ clip: await region(page, ["[data-plica-recent]"]) }),
   },
   {
     name: "capacity-hover",
