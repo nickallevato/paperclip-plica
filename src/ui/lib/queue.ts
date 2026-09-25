@@ -683,6 +683,125 @@ export function flattenLiveRuns(
   );
 }
 
+// ---------------------------------------------------------------------------
+// Recent tasks (the rail's list of what the fleet is on)
+// ---------------------------------------------------------------------------
+
+export interface PlicaRecentTask {
+  /** Stable per row: the ticket it is about, or the run when there is no ticket. */
+  key: string;
+  company: Company;
+  /** The ticket. Absent only for a run triggered without one. */
+  issue: Issue | undefined;
+  /** The run in flight on this task, when there is one. */
+  run: LiveRunForIssue | undefined;
+  /** working/queued while a run is in flight; null for a task merely touched recently. */
+  phase: RunPhase | null;
+  /** What the row is sorted and dated by: the run's start, or the last touch. */
+  atMs: number;
+}
+
+export interface PlicaRecentTasks {
+  items: PlicaRecentTask[];
+  /** Live counts, taken before the cap — every live run is always a row. */
+  working: number;
+  queued: number;
+  /** Tasks touched inside the window that the cap left out. */
+  hidden: number;
+}
+
+/**
+ * How many rows the list draws before it starts holding tasks back. Comfortably
+ * more than the pane's capped height shows, because the pane scrolls: the cap is
+ * here to bound the work, and a list that ended exactly where the fold is would
+ * have nothing to scroll to.
+ */
+export const PLICA_RECENT_LIMIT = 16;
+
+/** How far back "recent" reaches for a task with no run on it. */
+export const PLICA_RECENT_WINDOW_MS = 24 * 60 * 60_000;
+
+/**
+ * What the fleet is on, newest first: every live run, then the tasks touched
+ * most recently behind them.
+ *
+ * Three ordering rules, in this order:
+ *
+ *   1. Live before idle. A run in flight is the only row that can change while
+ *      you are looking at it.
+ *   2. Working before queued. A run waiting on a runner has no agent on it yet,
+ *      so it is a different thing to look at.
+ *   3. Newest first inside each of those. "What just started" is the question
+ *      this list answers; the queue answers "what has waited longest".
+ *
+ * One row per task, not per run: a retry queued behind a run still finishing is
+ * one thing happening, and the working attempt is the one worth showing. Live
+ * rows are never capped away — the header counts them, and a count that
+ * disagreed with the list would be worse than a longer list.
+ */
+export function recentTasks(
+  entries: ReadonlyArray<{ company: Company; runs: ReadonlyArray<LiveRunForIssue>; issues: ReadonlyArray<Issue> }>,
+  options: { nowMs: number; limit?: number; windowMs?: number },
+): PlicaRecentTasks {
+  const limit = options.limit ?? PLICA_RECENT_LIMIT;
+  const windowMs = options.windowMs ?? PLICA_RECENT_WINDOW_MS;
+
+  // Collapse the runs to one per task first, so a ticket with two active runs
+  // takes one row and the phase counts describe rows rather than runs.
+  const byTask = new Map<string, PlicaLiveEntry>();
+  const unticketed: PlicaLiveEntry[] = [];
+  for (const entry of flattenLiveRuns(entries)) {
+    if (!entry.run.issueId) {
+      unticketed.push(entry);
+      continue;
+    }
+    const key = `${entry.company.id}:${entry.run.issueId}`;
+    const held = byTask.get(key);
+    // Working wins over queued; between two of the same phase, the latest
+    // attempt is the one still moving.
+    const phases = held ? PHASE_ORDER[entry.phase] - PHASE_ORDER[held.phase] : 0;
+    if (!held || phases < 0 || (phases === 0 && entry.startedMs > held.startedMs)) {
+      byTask.set(key, entry);
+    }
+  }
+  const live = [...byTask.values(), ...unticketed].sort(
+    (a, b) => PHASE_ORDER[a.phase] - PHASE_ORDER[b.phase] || b.startedMs - a.startedMs,
+  );
+  const items: PlicaRecentTask[] = live.map((entry) => ({
+    key: entry.run.issueId ? `${entry.company.id}:${entry.run.issueId}` : entry.run.id,
+    company: entry.company,
+    issue: entry.issue,
+    run: entry.run,
+    phase: entry.phase,
+    atMs: entry.startedMs,
+  }));
+  const working = live.filter((entry) => entry.phase === "working").length;
+  const queued = live.length - working;
+  const liveKeys = new Set(items.map((item) => item.key));
+
+  // Everything else touched inside the window, newest first. A ticket with a
+  // run on it is already a row above, so it is not repeated here.
+  const idle: PlicaRecentTask[] = [];
+  for (const { company, issues } of entries) {
+    for (const issue of issues) {
+      if (issue.hiddenAt || issue.archivedAt) continue;
+      const key = `${company.id}:${issue.id}`;
+      if (liveKeys.has(key)) continue;
+      const atMs = epochMs(issue.lastActivityAt ?? issue.updatedAt);
+      if (atMs === null || options.nowMs - atMs > windowMs) continue;
+      idle.push({ key, company, issue, run: undefined, phase: null, atMs });
+    }
+  }
+  idle.sort((a, b) => b.atMs - a.atMs);
+  const room = Math.max(0, limit - items.length);
+  return {
+    items: [...items, ...idle.slice(0, room)],
+    working,
+    queued,
+    hidden: Math.max(0, idle.length - room),
+  };
+}
+
 export interface PlicaUpcomingRoutine {
   company: Company;
   routine: RoutineListItem;

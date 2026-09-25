@@ -16,9 +16,9 @@ import {
   countQueueByAge,
   deriveQueueItems,
   filterQueueByAge,
-  flattenLiveRuns,
   groupQueue,
   isSnoozed,
+  recentTasks,
   summarizeDecide,
   summarizeQueue,
   upcomingProjects,
@@ -29,9 +29,9 @@ import {
   type PlicaQueueSort,
 } from "../lib/queue";
 import { PlicaCompanySlot } from "./PlicaCompanySlot";
-import { PlicaLiveStrip } from "./PlicaLiveStrip";
 import { PlicaPortfolio } from "./PlicaPortfolio";
 import { PlicaQueue } from "./PlicaQueue";
+import { PlicaRecentTasks } from "./PlicaRecentTasks";
 import { PlicaRoutineExceptions } from "./PlicaRoutineExceptions";
 import { PlicaSegmented } from "./PlicaSegmented";
 import type { PlicaCompanyData } from "./usePlicaCompanyData";
@@ -172,9 +172,13 @@ export function PlicaBoardPage({
     () => summarizeQueue(visibleItems.filter((item) => !isSnoozed(item, nowMs)), nowMs),
     [visibleItems, nowMs],
   );
-  const live = useMemo(
-    () => flattenLiveRuns(loaded.map(({ company, data }) => ({ company, runs: data.liveRuns, issues: data.issues }))),
-    [loaded],
+  const recent = useMemo(
+    () =>
+      recentTasks(
+        loaded.map(({ company, data }) => ({ company, runs: data.liveRuns, issues: data.issues })),
+        { nowMs },
+      ),
+    [loaded, nowMs],
   );
   const routines = useMemo(
     () => upcomingRoutines(loaded.map(({ company, data }) => ({ company, routines: data.routines })), nowMs),
@@ -199,9 +203,9 @@ export function PlicaBoardPage({
     { needs: 0, runs: 0, tokens: 0 },
   );
 
-  // Wide: one sticky column of context (Companies, Portfolio, Routines) beside
-  // the queue, which owns the main column because it is where the work is.
-  // The left column's wrapper is `display: contents` when narrow, so its three
+  // Wide: one sticky column of context (Companies, Recent, Portfolio, Routines)
+  // beside the queue, which owns the main column because it is where the work
+  // is. The left column's wrapper is `display: contents` when narrow, so its
   // panels join the page grid and `order` can slot the queue in after
   // Companies instead of after everything. Widths are measured on the board,
   // not the window — the host sidebar decides how much of the window Plica
@@ -209,12 +213,6 @@ export function PlicaBoardPage({
   // decide-by picks.
   return (
     <div data-view="board" className="@container/board flex flex-col gap-4">
-      {/* Live spans the whole width above the board. It is the one block whose
-          height would otherwise track the size of the fleet, so it is the one
-          block that must not be allowed a variable height: as a single row of
-          pills it cannot change size, and everything below it stays put. */}
-      <PlicaLiveStrip entries={live} />
-
       <div className="grid gap-4 @[64rem]/board:grid-cols-[minmax(320px,400px)_minmax(0,1fr)] @[96rem]/board:grid-cols-[440px_minmax(0,1fr)] [.plica-kiosk_&]:gap-6 [.plica-kiosk_&]:@[110rem]/board:grid-cols-[540px_minmax(0,1fr)]">
         {/* Capped at the viewport rather than pinned to it: the column is as
             tall as its contents until that would overflow, and only then does
@@ -270,15 +268,22 @@ export function PlicaBoardPage({
               </div>
             )}
           </section>
+          {/* Directly under Orgs, above Portfolio: it is the only pane on the
+              page that changes while you watch it, and it answers "what is the
+              fleet on" — the question the Orgs lines above it raise. Its own
+              height is capped, so a run starting cannot shove Portfolio. */}
+          <div className="order-3 shrink-0 @[64rem]/board:order-none">
+            <PlicaRecentTasks tasks={recent} nowMs={nowMs} />
+          </div>
           <PlicaPortfolio
             items={projectEntries}
             nowMs={nowMs}
             companies={companies}
             sort={portfolioSort}
             onSort={onPortfolioSort}
-            className="order-3 min-h-0 flex-1 @[64rem]/board:order-none"
+            className="order-4 min-h-0 flex-1 @[64rem]/board:order-none"
           />
-          <div className="order-4 shrink-0 @[64rem]/board:order-none">
+          <div className="order-5 shrink-0 @[64rem]/board:order-none">
             <PlicaRoutineExceptions items={routines} nowMs={nowMs} />
           </div>
         </div>

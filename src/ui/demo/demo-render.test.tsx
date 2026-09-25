@@ -53,6 +53,19 @@ describe("PlicaHud on demo data", () => {
     }
   });
 
+  it("fills Recent from the fixture, live rows before the rest", async () => {
+    renderHud();
+    const pane = await screen.findByLabelText("Recent tasks");
+    await waitFor(() => expect(pane.querySelectorAll("li").length).toBeGreaterThan(0));
+    const phases = Array.from(pane.querySelectorAll("li")).map((row) => row.getAttribute("data-recent-task"));
+    expect(phases).toContain("working");
+    // Nothing live may appear below something idle: that ordering is the whole
+    // reason the pane replaced a strip that only ever showed the live runs.
+    expect(phases.lastIndexOf("working")).toBeLessThan(
+      phases.includes("idle") ? phases.indexOf("idle") : phases.length,
+    );
+  });
+
   it("labels itself as demo data so a screenshot cannot be mistaken", async () => {
     renderHud();
     expect(await screen.findByText("Demo data")).toBeInTheDocument();

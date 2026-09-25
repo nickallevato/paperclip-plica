@@ -5,6 +5,15 @@ Short-form. The reader-facing write-up for each version is in
 
 ## Unreleased
 
+- **"Recent" replaces the live strip.** The full-width row of pills across the
+  top of the page is gone; the left column now carries **Recent** — one line per
+  task, live ones first and newest first, with the same pulsing dot on the rows
+  an agent is on right now and the task's own status glyph on the rest. A row is
+  as wide as the column, so the ticket title fits, and a task that has just
+  finished stays in place instead of vanishing with its run. The list scrolls
+  inside a capped height, so a run starting cannot shove Portfolio or Routines
+  down the page.
+
 ## 0.4.0
 
 ### On a phone
