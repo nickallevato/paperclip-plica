@@ -5,6 +5,12 @@ Short-form. The reader-facing write-up for each version is in
 
 ## Unreleased
 
+- **Plica reloads itself after an upgrade.** After a `git pull && pnpm build`
+  that bumps the version, a **Reload 0.x.y** chip appears in the header; one
+  click has Paperclip re-read the plugin from disk in place, where it used to
+  take a DevTools snippet. Instance admins only. A new version that adds a
+  capability shows **Reinstall needed** instead, since Paperclip only grants
+  capabilities on a fresh install.
 - **"Recent" replaces the live strip.** The full-width row of pills across the
   top of the page is gone; the left column now carries **Recent** — one line per
   task, live ones first and newest first, with the same pulsing dot on the rows

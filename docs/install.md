@@ -160,8 +160,17 @@ pnpm build
 ```
 
 The installed path has not changed, so Paperclip picks up the new `dist` on its
-own. If it does not, `paperclipai plugin disable nickallevato.plugin-plica`
-followed by `enable` reloads it.
+own — but only the code. The manifest (version, capabilities, slots) is read
+once, at install, and Paperclip keeps its own copy. When a pull bumps the
+version, Plica notices on the next page load and shows a **Reload 0.x.y** chip
+in its header. Clicking it asks Paperclip to re-read the plugin from disk in
+place (`POST /api/plugins/nickallevato.plugin-plica/upgrade`); settings are kept
+and the page reloads onto the new build. It needs an instance admin — anyone
+else gets a note saying so.
+
+If the new version adds a capability, Paperclip will not grant it in place, so
+the chip reads **Reinstall needed** instead: uninstall and reinstall Plica from
+the plugin manager.
 
 ## Uninstalling
 

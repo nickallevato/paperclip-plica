@@ -10,6 +10,7 @@ import { releaseStrandedPointerEvents } from "./lib/drafts";
 import { PlicaBoardPage } from "./components/PlicaBoardPage";
 import { PlicaBriefing } from "./components/PlicaBriefing";
 import { PlicaMark } from "./components/PlicaMark";
+import { PlicaReloadBadge } from "./components/PlicaReloadBadge";
 import { PlicaStaleStylesheetWarning } from "./components/PlicaStaleStylesheetWarning";
 import { PlicaTokenSettingsPanel } from "./components/PlicaTokenSettings";
 import type { PlicaCompanyData } from "./components/usePlicaCompanyData";
@@ -342,6 +343,9 @@ export function PlicaHud({ demo = false }: PlicaHudProps = {}) {
               what you are looking at. Silent unless Plica's stylesheet is
               provably stale. */}
           <PlicaStaleStylesheetWarning />
+          {/* Same family: the build on disk is newer than Paperclip's
+              registration of it. Silent otherwise. */}
+          <PlicaReloadBadge />
         </div>
         <div className="ml-auto flex items-center gap-3 text-[length:var(--plica-fs-body,14px)] leading-[1.45] text-muted-foreground">
           {anyStale && (

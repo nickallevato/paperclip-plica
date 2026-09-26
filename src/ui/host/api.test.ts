@@ -8,6 +8,7 @@ import {
   dashboardApi,
   heartbeatsApi,
   issuesApi,
+  pluginSelfApi,
   projectsApi,
   sidebarBadgesApi,
   workTimelineApi,
@@ -84,6 +85,15 @@ describe("host/api", () => {
 
       await attentionApi.list("c1");
       expect(lastCall()[0]).toBe("/api/companies/c1/attention");
+    });
+
+    it("addresses Plica's own plugin record by its key", async () => {
+      await pluginSelfApi.get();
+      expect(lastCall()[0]).toBe("/api/plugins/nickallevato.plugin-plica");
+
+      await pluginSelfApi.upgrade();
+      expect(lastCall()[0]).toBe("/api/plugins/nickallevato.plugin-plica/upgrade");
+      expect(lastCall()[1].method).toBe("POST");
     });
 
     it("adds includeDismissed only when requested", async () => {
