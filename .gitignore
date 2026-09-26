@@ -2,4 +2,3 @@ node_modules/
 dist/
 *.log
 src/ui/plica.generated.css
-src/ui/host-css.generated.json

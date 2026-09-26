@@ -1,5 +1,5 @@
 import esbuild from "esbuild";
-import { copyFileSync, mkdirSync, readFileSync, existsSync } from "node:fs";
+import { copyFileSync, mkdirSync } from "node:fs";
 import { createPluginBundlerPresets } from "@paperclipai/plugin-sdk/bundlers";
 
 /**
@@ -35,26 +35,6 @@ presets.esbuild.ui.minifyWhitespace = false;
 // The compiled utility stylesheet is bundled as a string and injected at
 // runtime (src/ui/styles.ts) — the host loads no plugin CSS of its own.
 presets.esbuild.ui.loader = { ...(presets.esbuild.ui.loader ?? {}), ".css": "text" };
-/**
- * The record of which host stylesheet `scripts/build-css.mjs` subtracted
- * against, inlined so `src/ui/lib/host-stylesheet.ts` can compare it with the
- * sheet the document actually loaded and warn when a Paperclip upgrade has left
- * Plica's build stale. See the README's "The stylesheet coupling".
- *
- * Inlined rather than imported because the generated file is not committed —
- * it names one developer's host build — and `tsc --noEmit` runs before
- * `pnpm build` in CI, where an import of a file that does not exist yet would
- * fail the typecheck. Absent, it defines to `null` and the check stays silent.
- */
-function hostCssDefine() {
-  const stamp = "src/ui/host-css.generated.json";
-  if (!existsSync(stamp)) {
-    console.warn(`${stamp} missing — the stale-stylesheet check will stay silent in this bundle`);
-    return "null";
-  }
-  return JSON.stringify(JSON.parse(readFileSync(stamp, "utf8")));
-}
-presets.esbuild.ui.define = { ...(presets.esbuild.ui.define ?? {}), __PLICA_HOST_CSS_BUILD__: hostCssDefine() };
 /**
  * The demo fixture ships as a real file rather than being bundled into the UI
  * JS, so it can be edited (renamed companies, different ticket titles) and

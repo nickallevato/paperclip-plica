@@ -75,33 +75,19 @@ jobs:
       - name: Enable corepack
         run: corepack enable
 
-      # Only the two workspace projects Plica links against, plus the host UI —
-      # `pnpm build` filters Plica's stylesheet against the host's compiled CSS
-      # (scripts/build-css.mjs), and that file only exists after a UI build.
+      # Only the workspace projects Plica links against. The host UI is not
+      # built: Plica subtracts the host's stylesheet at runtime now
+      # (src/ui/lib/host-subtract.ts), so its build reads nothing of core's.
       #
       # `--ignore-scripts` skips core's postinstall, which links the SDK into
       # core's own plugin examples. Plica has no business triggering that.
       - name: Install Paperclip core packages
         working-directory: paperclip
-        run: pnpm install --frozen-lockfile --ignore-scripts --filter "@paperclipai/plugin-sdk..." --filter "ui..."
+        run: pnpm install --frozen-lockfile --ignore-scripts --filter "@paperclipai/plugin-sdk..." --filter "@paperclipai/shared..."
 
       - name: Build the plugin SDK
         working-directory: paperclip
         run: pnpm --filter @paperclipai/plugin-sdk build
-
-      - name: Build the host UI
-        working-directory: paperclip
-        run: pnpm --filter ui build
-
-      - name: Locate the host stylesheet
-        run: |
-          css=$(ls "$GITHUB_WORKSPACE"/paperclip/ui/dist/assets/*.css | head -n 1)
-          if [ -z "$css" ]; then
-            echo "::error::no compiled host stylesheet under paperclip/ui/dist/assets"
-            exit 1
-          fi
-          echo "PLICA_HOST_CSS=$css" >> "$GITHUB_ENV"
-          echo "host stylesheet: $css"
 
       - name: Install Plica
         working-directory: repo/plica
