@@ -5,6 +5,29 @@ Short-form. The reader-facing write-up for each version is in
 
 ## Unreleased
 
+- **Published to npm as `paperclip-plugin-plica`.** Install it from Paperclip's
+  Plugin Manager (**Install Plugin**, then the package name) or with
+  `paperclipai plugin install paperclip-plugin-plica`, and upgrade it with
+  `paperclipai plugin upgrade nickallevato.plugin-plica`. The package is
+  prebuilt, so there is nothing to clone or build. Installing from a git clone
+  with `--local` remains the development route.
+- **Host-duplicate selectors are subtracted in the browser, not at build time.**
+  Plica's sheet is now Tailwind's whole output; at injection, Plica reads every
+  selector the page's other stylesheets define through the CSSOM and deletes its
+  own class rules the host already has, so a stray `.hidden` still cannot pin
+  Paperclip in its mobile layout. The build-time version subtracted against
+  whichever Paperclip UI build was on the builder's disk, which went stale on
+  every Paperclip upgrade and would have made a published package wrong for
+  everyone else's Paperclip.
+- **Removed: the "Stylesheet stale" badge and `PLICA_HOST_CSS`.** With nothing
+  recorded at build time there is nothing to go stale, so the badge that warned
+  about it, the override that pointed the build at a host sheet, and
+  `scripts/host-css.mjs` are gone. The build no longer needs a Paperclip UI
+  build on disk.
+- **Paperclip upgrades no longer need a Plica rebuild.** The one operational rule
+  in the README — rebuild Plica after every Paperclip upgrade, host first — no
+  longer applies, and one package no longer carries a particular Paperclip
+  version's stylesheet baked into it.
 - **Plica reloads itself after an upgrade.** After a `git pull && pnpm build`
   that bumps the version, a **Reload 0.x.y** chip appears in the header; one
   click has Paperclip re-read the plugin from disk in place, where it used to
@@ -25,20 +48,6 @@ Short-form. The reader-facing write-up for each version is in
   Orgs lost its runs/day and Need-you figures, and its header lost `need you`.
   Every panel now has a floor of zero width, so the column is the window again
   and the titles truncate.
-- **Fixed: a "Stylesheet stale" badge that would not clear after a good `pnpm build`.**
-  The build located the host stylesheet by taking the largest `index-*.css` in
-  the host's assets dir, so an abandoned sheet from an earlier build — bigger
-  than the live one, left behind in an unclean `dist/` — was recorded instead,
-  and no number of rebuilds cleared the badge. It now reads the sheet the host's
-  own `index.html` links, which is the same tag the runtime check compares
-  against; falling back to the most recently modified only when there is no
-  `index.html`.
-- **Fixed: the build says which stylesheet it read, and what it passed over.** Warnings
-  for every ambiguity it had to resolve, including a `PLICA_HOST_CSS` override
-  that disagrees with the dist it overrides — a stale export in a shell profile
-  used to win silently. `docs/troubleshooting.md` gains a section for the badge
-  surviving a rebuild, and `docs/install.md` documents that Paperclip's UI must
-  be rebuilt before Plica's.
 
 ## 0.4.0
 

@@ -5,106 +5,50 @@
 Sidebars collapsed, desktop-only elements missing, everything in one column —
 across the whole of Paperclip, not just the Plica page.
 
-**Cause:** you upgraded Paperclip and did not rebuild Plica.
-
-Plica usually tells you so itself. A **Stylesheet stale** badge sits in the
-Plica header beside the Demo data badge whenever the stylesheet it was built
-against is not the one the page is serving, and its hover text names the fix and
-shows both stylesheets:
-
-![The Stylesheet stale badge in the Plica header, its hover text naming `pnpm build` as the fix
-and showing the stylesheet Plica was built against next to the one now being
-served](screenshots/stale-stylesheet-warning.png)
-
-The badge is deliberately silent when it cannot be certain — if the host's
-stylesheet cannot be identified from the page, or Plica's bundle carries no
-record of what it was built against, you get nothing rather than a warning that
-might be wrong. So a missing badge is not proof the stylesheet is current, and
-the symptom above can appear without it.
-
 Plica injects its own Tailwind sheet after the host's. Tailwind emits every
 class it scans, including ones Paperclip already defines, and a duplicate that
 lands later wins on document order. A stray `.hidden{display:none}` beats
 Paperclip's `@media(min-width:40rem){.sm\:flex{…}}`, which is exactly the
 `hidden sm:flex` idiom the host's responsive layout is built on.
 
-The build strips those duplicates by subtracting the host's own selectors — but
-it computes the subtraction once, against whichever `index-*.css` existed at
-build time. A host upgrade rebuilds that file under a new hash and the
-subtraction goes stale.
+Plica prevents this by subtracting, in the browser, every class selector the
+host's stylesheets already define before its own sheet takes effect. That is
+done against whatever the page has actually loaded, so a Paperclip upgrade does
+not cause this, and rebuilding Plica will not fix it. If you see it anyway, the
+subtraction could not see the rule it needed to remove. The ways that happens:
 
-**Fix:**
+- **The host's stylesheet is unreadable to scripts.** Browsers hide the rules
+  of a cross-origin stylesheet from the page, and Plica skips any sheet it
+  cannot read. A stock Paperclip serves its CSS from its own origin; a CDN, a
+  reverse proxy that rewrites asset URLs to another host, or a stylesheet
+  served without the CORS headers a `crossorigin` link needs will hide it. In
+  DevTools, `document.styleSheets[i].cssRules` throwing a `SecurityError` on
+  the host's `index-*.css` is the tell. Serve it from the app's own origin.
+- **Plica's styles went in before the host's.** The subtraction runs once, when
+  Plica's bundle loads and injects its `<style id="plica-plugin-styles">`,
+  against the stylesheets present at that moment. A host stylesheet that arrives later — a
+  lazily loaded route chunk's CSS, or a proxy or extension that injects one — is
+  not subtracted against. Reloading the page usually settles the order; if it
+  reproduces on a clean reload, open an issue with the Paperclip version.
+- **An old Plica.** Versions before runtime subtraction did it at build time
+  and went stale on every Paperclip upgrade. Upgrade Plica
+  ([Install](install.md#upgrading-an-npm-install)).
 
-```bash
-cd paperclip-plica
-pnpm build
+To check whether the subtraction ran, ask Plica's sheet whether it still holds
+the `.hidden` rule the host also defines — in a DevTools console on any
+Paperclip page (Plica's bundle loads with its toolbar launcher, so every page has
+the sheet):
+
+```js
+const has = (rules) => [...rules].some((r) => r.selectorText === ".hidden" || (r.cssRules && has(r.cssRules)));
+has(document.getElementById("plica-plugin-styles").sheet.cssRules);
 ```
 
-Then reload. Do this after every Paperclip upgrade — the badge reports the
-problem, but nothing rebuilds Plica for you.
+`false` is correct: the duplicate was removed. `true` means one of the causes
+above.
 
-## "Stylesheet stale" will not clear, even after `pnpm build`
-
-First, the thing that trips most people up: **`git pull` is not what clears this
-badge.** It does not report Plica's version. It reports that the host stylesheet
-Plica *subtracted at build time* is not the one the page is *serving now*, so on
-a Paperclip-only upgrade a bare `pnpm build` — no pull, no install — is the whole
-fix. The upgrade steps in [Install](install.md#upgrading-plica) are right; they
-are just not what this badge is about.
-
-When a build that succeeds still leaves the badge up, the two halves disagree
-about which host sheet is current. Find out which half:
-
-1. Hover the badge. Its text ends with the sheet the page is serving. Call
-   that **B**.
-2. Re-run the build and read its first and last lines:
-
-   ```bash
-   pnpm build
-   ```
-   ```
-   build-css: host stylesheet /home/you/paperclip/ui/dist/assets/index-XXXX.css (chosen by: index.html)
-   host-css.generated.json: built against index-XXXX.css (sha256-…) — the badge clears only if the page serves that exact filename
-   ```
-
-   Call that **C**. The build also prints a `build-css:` warning for every
-   ambiguity it had to resolve — read those first; they usually name the cause
-   outright.
-
-If **C** is not **B**, the build read the wrong stylesheet:
-
-- **`PLICA_HOST_CSS` is set in your shell.** It overrides the directory scan, so
-  a stale export in a shell profile wins over a perfectly good checkout. The
-  build now warns when the override disagrees with the dist it is overriding, but
-  check it yourself with `echo $PLICA_HOST_CSS`. Unset it, or point it at the
-  live sheet.
-- **The server is not serving `~/paperclip/ui/dist`.** A second checkout, an
-  installed build, or a container means the sheet the build reads is not the
-  sheet the page gets. Point `PLICA_HOST_CSS` at the assets dir the *running*
-  instance serves.
-- **Wrong order of operations.** Paperclip's UI must be rebuilt *before* Plica.
-  Pull Paperclip → build Paperclip's UI → *then* `pnpm build` in Plica. Reverse
-  it and Plica stamps the sheet that is about to be replaced.
-
-If **C** is **B**, the build was correct and the page is still running the old
-Plica bundle. The check is evaluated once at mount against a constant baked into
-`dist/ui/index.js`, so a bundle that never reloaded keeps warning no matter how
-many times you rebuild:
-
-```bash
-paperclipai plugin disable nickallevato.plugin-plica
-paperclipai plugin enable  nickallevato.plugin-plica
-```
-
-Then hard-reload the browser (Ctrl/Cmd-Shift-R). To confirm which filename the
-running Plica will actually claim:
-
-```bash
-grep -o 'index-[A-Za-z0-9_-]*\.css' dist/ui/index.js | sort -u
-```
-
-If that prints the new name and the badge still shows the old one, it is purely
-caching — not a build problem.
+Disabling Plica (`paperclipai plugin disable nickallevato.plugin-plica`) and
+reloading confirms whether Plica is the cause at all.
 
 ## The Plica page is blank
 
@@ -116,8 +60,9 @@ Work through, in order:
    ```
    Anything other than `status=ready` prints the last error.
 
-2. **Has it been built?** `dist/ui/index.js` must exist. A fresh clone has no
-   `dist` until `pnpm build` runs.
+2. **Has it been built?** (From-source installs only — the npm package ships
+   built.) `dist/ui/index.js` must exist. A fresh clone has no `dist` until
+   `pnpm build` runs.
 
 3. **Is the URL right?** The route is `/<COMPANY-PREFIX>/plica`, where the
    prefix is a company's issue prefix (`ACME`, not the company's name or id).
@@ -146,7 +91,8 @@ last.
 
 Demo mode fails closed on purpose — it will not fall back to your real instance.
 The fixture is fetched from the plugin's own asset directory, so an error there
-means `dist/ui/demo-data.json` is missing. Run `pnpm build`.
+means `dist/ui/demo-data.json` is missing. From source, run `pnpm build`; an npm
+install ships it, so reinstall the package.
 
 ## "polling degraded" in the header
 

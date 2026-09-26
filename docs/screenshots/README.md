@@ -4,13 +4,6 @@ Every image in this directory is produced by `scripts/capture-screenshots.mjs`
 against a real running Paperclip with Plica installed, in **demo mode**. None of
 them is hand-cropped, and none contains anything from a real instance.
 
-One exception: `stale-stylesheet-warning.png`. The badge it shows only renders
-when Plica's build and the host's stylesheet genuinely disagree, which no run of
-the capture script can arrange — the instance it drives has a correctly built
-Plica installed in it. To refresh that one, follow the README's recipe (point
-`PLICA_HOST_CSS` at a different sheet, `pnpm build`, load the page), capture the
-header, then rebuild normally.
-
 They are shot in **dark mode**. `PLICA_SHOT_THEME=light` shoots the light theme
 instead, for a one-off comparison; commit the dark ones.
 
@@ -84,8 +77,7 @@ Playwright is deliberately **not** a dependency of this repo. Adding it plus a
 browser download would cost every contributor a couple of hundred megabytes for
 a script most of them never run, and a `link:` dependency on the Paperclip
 checkout is not allowed. It is resolved at runtime from the checkout that
-already has it — the same read-only-reference relationship `build-css.mjs` has
-with the host stylesheet.
+already has it, read-only.
 
 ## Why the shots are the size they are
 
