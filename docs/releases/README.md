@@ -3,6 +3,8 @@
 One page per version, written for someone deciding whether to upgrade: what
 changed, what it means for them, and anything they have to do by hand.
 
+- [0.6.0](0.6.0.md) — no plugin change: the first release published by pushing a
+  tag, not by hand.
 - [0.5.0](0.5.0.md) — on npm: install from the Plugin Manager by name, and no more
   rebuilding after a Paperclip upgrade. Recent replaces the live strip.
 - [0.4.0](0.4.0.md) — the queue owns the page: decide-by lanes backed by

@@ -5,6 +5,8 @@ Short-form. The reader-facing write-up for each version is in
 
 ## Unreleased
 
+## 0.6.0
+
 - **Releases publish themselves.** Pushing a `v*` tag runs the new
   [`release` workflow](.github/workflows/release.yml), which publishes
   `paperclip-plugin-plica` to npm. It shares one script with a publish by hand
