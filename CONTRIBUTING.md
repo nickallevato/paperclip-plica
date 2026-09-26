@@ -273,16 +273,32 @@ check:branch` and the `branch name` CI job check it; renaming is
   reaches the README and `CHANGELOG.md`.
 - Auto-merge is enabled on the repository. `gh pr merge --auto` queues a merge
   for the moment the checks go green instead of polling them by hand; it
-  respects branch protection, and anyone can cancel it before it fires. Merged
+  respects whatever protection is in force, and anyone can cancel it before it
+  fires. Merged
   branches are deleted automatically — remove the matching worktree too.
 
 ### The review gate
 
-**Nothing reaches `main` unattended.** `main` is protected: no direct pushes,
-no force pushes, no deletion, and no merge without the required checks green.
-Protection applies to admins too. A branch must also be **up to date with
-`main`** before it merges, so the checks that pass are the checks for the merge
-result — expect to rebase when `main` moves.
+**Nothing reaches `main` unattended — and as of 2026-09-19 that is a rule we
+keep, not a rule GitHub keeps for us.** `main` has **no branch protection rule
+and no ruleset**. Direct pushes, force pushes and deletion are all permitted,
+and a red check does not stop a merge. The three checks below still run on
+every pull request; they just no longer block one.
+
+So rebase onto `main` before merging even though nothing makes you — the checks
+that passed should be the checks for the merge result — and never push to
+`main` directly.
+
+Do not take this paragraph's word for the current state; read it:
+
+```
+gh api repos/nickallevato/paperclip-plica/branches/main --jq .protected   # false
+gh api repos/nickallevato/paperclip-plica/rulesets                        # []
+```
+
+Those two endpoints answer without the `Administration` permission, unlike
+`/branches/main/protection`, which returns `403 Resource not accessible by
+integration` to the agents' GitHub connection.
 
 An agent opens the pull request. A second party — the user, or a reviewing
 agent — approves it and merges it. **Nobody merges their own pull request**,
@@ -311,8 +327,10 @@ When two pull requests touch the same file, decide the merge order rather than
 discovering it — whichever merges second rebases, and the agent that owns it
 should be told, not left to find a conflict.
 
-> **The approval half of this gate is convention, not yet enforcement.**
-> `required_approving_review_count` is `0`. GitHub will not let a pull request's
+> **Why the approval half cannot simply be switched on.** There is no rule on
+> `main` to switch it on in, and even once there is, the count has to stay `0`
+> until the agents stop authenticating as the repository owner.
+> GitHub will not let a pull request's
 > author approve it, and agents currently authenticate as `nickallevato` — the
 > same account that would review — so every agent-opened pull request has the
 > reviewer as its author. Setting the count to `1` today would block every merge
@@ -332,7 +350,11 @@ should be told, not left to find a conflict.
 > why the rule above requires one. It carries no weight with GitHub and all the
 > weight here. The machine identity is tracked in **PLI-12**; when it lands,
 > these reviews become real approvals and `required_approving_review_count`
-> goes to `1`, at which point the convention stops needing to be a convention.
+> can go to `1`, at which point the convention stops needing to be a
+> convention. Two things are needed for that, not one: the machine identity,
+> and a rule on `main` to set the count in — plus the `Administration`
+> repository permission on the agents' GitHub connection, which it does not
+> currently have.
 
 ### What CI runs
 
