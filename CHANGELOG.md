@@ -5,6 +5,8 @@ Short-form. The reader-facing write-up for each version is in
 
 ## Unreleased
 
+## 0.5.0
+
 - **Published to npm as `paperclip-plugin-plica`.** Install it from Paperclip's
   Plugin Manager (**Install Plugin**, then the package name) or with
   `paperclipai plugin install paperclip-plugin-plica`, and upgrade it with
