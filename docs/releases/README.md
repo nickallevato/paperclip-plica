@@ -112,6 +112,25 @@ failed publish, but they are worth recognising:
   the job fell to trusted publishing, and npm only honours that once the package
   lists this workflow under **Trusted publishers**. Configure it there, or set
   the repository secret.
+
+  The same error also means "the entry exists but does not match this run", and
+  the two cases are indistinguishable from the log. So before re-reading the npm
+  page, rule the workflow side out — every one of these was checked on the run
+  that first hit it, and all of them held, which is how we knew the entry itself
+  was missing:
+
+  | requirement | how to check it |
+  | --- | --- |
+  | npm CLI ≥ 11.5.1, Node ≥ 22.14 | the `setup-node` step prints both |
+  | `id-token: write` on the job | `permissions:` in `release.yml` |
+  | a GitHub-hosted runner | self-hosted runners cannot use OIDC at all |
+  | `repository.url` matching the repo | `package.json` |
+
+  On the npm side the entry is matched exactly and case-sensitively: the
+  **workflow filename** is the bare name with its extension (`release.yml`, not
+  a path), **environment** must be blank unless the job declares one, and
+  **allowed actions** has to include `npm publish` — an entry limited to
+  `npm stage publish` refuses an ordinary publish.
 - **`E403` — "You may not perform that action with these credentials"**, with a
   token that works. The token authenticates (`npm whoami` answers, `npm access
   get status` answers) and is refused only on the write, which means it is
