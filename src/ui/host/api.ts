@@ -31,6 +31,8 @@ import type {
   WorkTimelineResult,
 } from "@paperclipai/shared";
 import { demoRespond, isDemoActive } from "../demo/demo-runtime";
+import { PLUGIN_ID } from "../../plugin-id";
+import type { InstalledPluginRecord } from "../lib/plugin-reload";
 
 const BASE = "/api";
 
@@ -367,6 +369,16 @@ export const companiesApi = {
  */
 export const sidebarPreferencesApi = {
   getCompanyOrder: () => api.get<SidebarOrderPreference>("/sidebar-preferences/me"),
+};
+
+/**
+ * Plica's own registration, and the host's in-place upgrade for it — see
+ * `lib/plugin-reload` for why. Reading needs board access; upgrading needs an
+ * instance admin, and the host answers anyone else with a 403.
+ */
+export const pluginSelfApi = {
+  get: () => api.get<InstalledPluginRecord>(`/plugins/${PLUGIN_ID}`),
+  upgrade: () => api.post<InstalledPluginRecord>(`/plugins/${PLUGIN_ID}/upgrade`),
 };
 
 // `companiesListQueryOptions` lives in ./companies-query so that its call
