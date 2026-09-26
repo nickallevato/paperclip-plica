@@ -3,6 +3,8 @@
 One page per version, written for someone deciding whether to upgrade: what
 changed, what it means for them, and anything they have to do by hand.
 
+- [0.5.0](0.5.0.md) — on npm: install from the Plugin Manager by name, and no more
+  rebuilding after a Paperclip upgrade. Recent replaces the live strip.
 - [0.4.0](0.4.0.md) — the queue owns the page: decide-by lanes backed by
   Paperclip's decision triage, the Orgs list, a calmer board.
 - [0.3.0](0.3.0.md) — demo mode, the live strip, the portfolio chart, routine
@@ -25,6 +27,7 @@ The [changelog](../../CHANGELOG.md) is the short form and covers every version.
    [screenshots/README.md](../screenshots/README.md)).
 5. Write the release page here.
 6. Tag `v<version>` on `main`.
-
-There is no published package to release to — Plica installs from a path, so a
-tag and these notes are the whole of it.
+7. Publish from a clean checkout of that tag: `npm publish`. `prepublishOnly`
+   typechecks, builds and tests first, so a red build never reaches the
+   registry. A published version can never be reused — a bad release is fixed
+   by the next one, not by republishing.
