@@ -57,6 +57,48 @@ node scripts/capture-screenshots.mjs
 
 Delete `$SHOT_HOME` afterwards.
 
+### If `pnpm paperclipai` will not run
+
+The CLI needs the checkout's workspace dependencies installed. If they are not —
+a pruned `node_modules`, a checkout you are only borrowing — you do not have to
+install 1.3 GB to take a screenshot. The server's own `dist` plus the `tsx`
+loader under `server/node_modules` is enough, and the two CLI steps above each
+have a plain API equivalent:
+
+```bash
+export SHOT_HOME=$(mktemp -d)
+
+# 1. Boot the server directly, the way the systemd unit does. The tsx loader is
+#    not optional: workspace packages export TypeScript from `src/`, so without
+#    it `@paperclipai/db` fails to resolve at import time.
+cd ~/dev/paperclip/server
+PAPERCLIP_HOME=$SHOT_HOME \
+PAPERCLIP_INSTANCE_ID=plica-shots \
+PAPERCLIP_CONFIG=$SHOT_HOME/instances/plica-shots/config.json \
+PAPERCLIP_BIND=loopback \
+PAPERCLIP_DEPLOYMENT_MODE=local_trusted \
+PAPERCLIP_DEPLOYMENT_EXPOSURE=private \
+PORT=3199 HOST=127.0.0.1 SERVE_UI=true \
+NODE_OPTIONS=--import=$PWD/node_modules/tsx/dist/loader.mjs \
+  node dist/index.js
+
+# 2. Same as above.
+curl -s -X POST -H 'content-type: application/json' \
+  -d '{"name":"Demo Co"}' http://127.0.0.1:3199/api/companies
+
+# 3. Install Plica over the API instead of through the CLI.
+curl -s -X POST -H 'content-type: application/json' \
+  -d '{"packageName":"/abs/path/to/paperclip-plica","isLocalPath":true}' \
+  http://127.0.0.1:3199/api/plugins/install
+```
+
+Unset `PAPERCLIP_RUN_ID`, `PAPERCLIP_API_KEY` and `PAPERCLIP_API_URL` in that
+shell first if you are running under an agent harness — they point at a
+different instance and the install step will follow them there.
+
+The instance it boots writes only under `$SHOT_HOME`; the checkout is untouched.
+Then capture as in step 4 above.
+
 If the CLI's post-install step fails on an `activity_log` insert, check that
 `PAPERCLIP_RUN_ID` is not set in your shell — it is written to the log row and
 will not resolve against a fresh database. The plugin itself installs fine;
