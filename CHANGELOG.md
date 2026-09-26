@@ -5,6 +5,14 @@ Short-form. The reader-facing write-up for each version is in
 
 ## Unreleased
 
+- **A failed publish says which credential to go and fix.** npm's two rejections
+  here are both misleading: `ENEEDAUTH` in a workflow run means the package has
+  no trusted publisher, not that the runner needs `npm adduser`, and a `403`
+  from a working token means the token is read-only, not that the account is
+  wrong. `scripts/publish-npm.mjs` already knows which credential it used, so it
+  now prints the matching explanation. Both are written up in
+  [docs/releases/README.md](docs/releases/README.md#what-npms-two-credential-errors-actually-mean).
+
 ## 0.6.0
 
 - **Releases publish themselves.** Pushing a `v*` tag runs the new

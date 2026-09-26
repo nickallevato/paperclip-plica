@@ -46,6 +46,12 @@ To rehearse without releasing, run the workflow by hand from the Actions tab
 with **dry run** left on: it packs the tarball and runs every check, and
 publishes nothing.
 
+If the run fails before the registry accepted the tarball, the version is still
+free and the tag is still correct — there is nothing to re-tag. Fix the cause,
+then run the workflow by hand with the **tag** input set to `v<version>` and
+**dry run** unchecked. Deleting and re-pushing the tag would work too, but it
+rewrites a tag other checkouts may already have fetched.
+
 ## Publishing by hand
 
 The workflow and a person run the same script, so this is the fallback when
@@ -94,6 +100,27 @@ order, and prints the name of the one it used:
 Either of the first two also gets the release [provenance][trusted]: npm
 records which commit and which workflow run built the tarball, and shows it on
 the package page.
+
+### What npm's two credential errors actually mean
+
+Both of these were hit trying to publish 0.6.0, and neither error says what is
+wrong. `scripts/publish-npm.mjs` now prints the matching explanation after a
+failed publish, but they are worth recognising:
+
+- **`ENEEDAUTH` — "You need to authorize this machine using `npm adduser`"**, in
+  a workflow run. Nothing is wrong with the machine. No `NPM_TOKEN` was set, so
+  the job fell to trusted publishing, and npm only honours that once the package
+  lists this workflow under **Trusted publishers**. Configure it there, or set
+  the repository secret.
+- **`E403` — "You may not perform that action with these credentials"**, with a
+  token that works. The token authenticates (`npm whoami` answers, `npm access
+  get status` answers) and is refused only on the write, which means it is
+  read-only or read-scoped. Reissue it as an automation token, or a granular
+  token with **read and write** on `paperclip-plugin-plica`.
+
+A version is only spent when the registry accepts the tarball, so neither of
+these costs the version number: both failed after packing and the version stayed
+free to publish once the credential was fixed.
 
 [tokens]: https://docs.npmjs.com/about-access-tokens
 [trusted]: https://docs.npmjs.com/trusted-publishers

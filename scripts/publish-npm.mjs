@@ -112,6 +112,44 @@ export function resolveAuth({ token = "", tokenSource = "", oidcAvailable = fals
 }
 
 /**
+ * What to check after npm refused the publish, given how this run authenticated.
+ *
+ * npm's own two failures here are both misleading. `ENEEDAUTH` ("you need to
+ * authorize this machine") is what a job with an OIDC token gets when the
+ * package has no trusted publisher configured — nothing is wrong with the
+ * machine. `E403` ("you may not perform that action with these credentials") is
+ * what a read-only token gets, and it reads like an account problem even though
+ * the same token authenticates fine and can read the package.
+ *
+ * Both were hit on the way to 0.6.0. Since `resolveAuth` already knows which
+ * credential was used, it can name the one thing to go and look at instead of
+ * leaving the reader to guess which of the two they are in.
+ *
+ * @param {"token" | "oidc" | "local" | "none"} authKind
+ * @returns {string} A line to print, or "" when there is nothing specific to say.
+ */
+export function failureHint(authKind) {
+  if (authKind === "token") {
+    return (
+      "If npm said 403 with these credentials: the token authenticates but is " +
+      "not allowed to publish. A read-only or read-scoped token reads the " +
+      "package fine and fails only on the write. Reissue it as an Automation " +
+      "token, or a granular token with read-and-write on " +
+      "paperclip-plugin-plica, and check it has not expired."
+    );
+  }
+  if (authKind === "oidc") {
+    return (
+      "If npm said it needs auth: no token was set, so this used trusted " +
+      "publishing — which npm only honours once the package lists this " +
+      "workflow as a trusted publisher (npmjs.com → the package → Settings → " +
+      "Trusted publishers). Configure it there, or set the NPM_TOKEN secret."
+    );
+  }
+  return "";
+}
+
+/**
  * Builds the `npm publish` argument list.
  *
  * `--provenance` is only meaningful where npm can get a signed statement about
@@ -247,7 +285,10 @@ function main(argv) {
     console.log(`npm ${args.join(" ")}${dryRun ? " (nothing will be published)" : ""}`);
     execFileSync("npm", args, { cwd: ROOT, stdio: "inherit", env });
   } catch {
-    console.error("\nnpm publish failed. Nothing was released; the version is still free.\n");
+    console.error("\nnpm publish failed. Nothing was released; the version is still free.");
+    const hint = failureHint(auth.kind);
+    if (hint) console.error(`\n${hint}`);
+    console.error("");
     return 1;
   } finally {
     if (config) rmSync(config.dir, { recursive: true, force: true });
