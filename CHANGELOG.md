@@ -5,6 +5,19 @@ Short-form. The reader-facing write-up for each version is in
 
 ## Unreleased
 
+- **Releases publish themselves.** Pushing a `v*` tag runs the new
+  [`release` workflow](.github/workflows/release.yml), which publishes
+  `paperclip-plugin-plica` to npm. It shares one script with a publish by hand
+  (`pnpm release:publish`), so both refuse the same things: a tag that disagrees
+  with `package.json`, a manifest left on the previous version, a version with
+  no changelog entry or release page, and an unclean checkout. `pnpm
+  check:release` runs those version checks alone, before there is a tag to
+  push. Credentials come from an npm token on the environment — the `NPM_TOKEN`
+  Actions secret in CI, the token Paperclip binds to an agent otherwise — or,
+  preferably, npm trusted publishing with no token at all; the script prints
+  which one it used. See
+  [docs/releases/README.md](docs/releases/README.md#publishing-credentials).
+
 ## 0.5.0
 
 - **Published to npm as `paperclip-plugin-plica`.** Install it from Paperclip's

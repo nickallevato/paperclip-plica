@@ -28,6 +28,8 @@
     "test": "vitest run --config ./vitest.config.ts",
     "typecheck": "tsc --noEmit",
     "check:branch": "node ./scripts/check-branch-name.mjs",
+    "check:release": "node ./scripts/check-release.mjs",
+    "release:publish": "node ./scripts/publish-npm.mjs",
     "check:surface": "node ./scripts/check-plugin-surface.mjs --all",
     "check:vendored": "node ./scripts/check-vendored.mjs",
     "check:worktree": "node ./scripts/check-worktree.mjs",
