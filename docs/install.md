@@ -1,73 +1,50 @@
 # Install
 
-Plica is not published to a registry. You clone it, build it, and register the
-built folder with a Paperclip instance that can read that path off disk.
+Plica is published to npm as `paperclip-plugin-plica`. That is the route for
+running it: Paperclip fetches the package itself, and nothing needs to be built
+on your side. Installing from a git clone is still supported, and is the route
+for working on Plica — see [From source](#from-source).
 
-## Before you start
+## From npm
 
-- **Node.js 24.11 or newer**, and **pnpm**.
-- **A Paperclip checkout you can run from source.** Two separate reasons: local
-  plugin installs read the plugin's source from disk, so the server has to be
-  able to see the path you give it; and Plica type-checks and builds against
-  that checkout (see [Where the checkout has to live](#where-the-checkout-has-to-live)).
-- **The instance running.** `pnpm paperclipai run` in the Paperclip checkout, or
-  however you normally start yours.
+### Before you start
 
-## 1. Build it
+- **An instance admin account.** Paperclip only lets instance admins install,
+  upgrade or remove plugins.
+- **A server that can reach the npm registry.** Paperclip installs a package by
+  running `npm install` on the host it runs on, into its own plugin directory,
+  so the server — not your browser — needs `npm` on its path and a way out to
+  the registry.
+- **A self-hosted instance.** Cloud-managed Paperclip instances refuse npm
+  installs outright and only take plugins from their bundled catalog.
+
+That is all. The package ships prebuilt and carries nothing tied to a particular
+Paperclip build — in particular no copy of Paperclip's stylesheet — so upgrading
+Paperclip later needs nothing from Plica.
+
+### 1. Install it
+
+**From the UI.** Open **Settings → Plugins** (the **Plugin Manager**, at
+`/company/settings/instance/plugins`) and click **Install Plugin**. In the
+dialog, enter
+
+```
+paperclip-plugin-plica
+```
+
+as the **npm Package Name** and click **Install**.
+
+**From the CLI.**
 
 ```bash
-git clone https://github.com/nickallevato/paperclip-plica.git
-cd paperclip-plica
-pnpm install
-pnpm build
+paperclipai plugin install paperclip-plugin-plica
 ```
 
-`pnpm build` does two things: compiles Plica's stylesheet (subtracting every
-selector the host already ships — see [the stylesheet coupling](#after-a-paperclip-upgrade-rebuild-plica))
-and bundles `dist/manifest.js`, `dist/worker.js` and `dist/ui/`. That `dist`
-folder is what Paperclip loads.
-
-> **`pnpm test` needs a build first.** The test suite imports the generated
-> stylesheet, which `pnpm build` produces and git ignores. On a fresh clone,
-> run `pnpm build` before `pnpm test`.
-
-### Where the checkout has to live
-
-`package.json` declares `@paperclipai/shared` and `@paperclipai/plugin-sdk` as
-`link:` dependencies pointing at `../../paperclip/packages/...`, relative to
-this repository. Plica type-checks against the real upstream types that way,
-which is how it finds out about a breaking Paperclip change at build time
-rather than in the browser.
-
-The consequence is a required directory layout: **the Paperclip checkout must
-be two levels above this repo.**
-
-```
-~/dev/
-├── paperclip/           ← the Paperclip checkout
-└── plugins/
-    └── paperclip-plica/ ← this repo
-```
-
-Clone it somewhere else and `pnpm install` fails to resolve those two
-dependencies. Repoint the paths in `package.json` locally if you need to — but
-do not commit the repoint; it would break everyone else's layout.
-
-`pnpm build` additionally reads Paperclip's *compiled* stylesheet, which it
-looks for at `~/paperclip/ui/dist/assets/index-*.css`. If your checkout is not
-at `~/paperclip`, point `PLICA_HOST_CSS` at that file:
+A bare package name is treated as an npm package. To pin a version, pass it
+with `--version`:
 
 ```bash
-PLICA_HOST_CSS=~/dev/paperclip/ui/dist/assets/index-abc123.css pnpm build
-```
-
-The build refuses to emit an unfiltered stylesheet, so a wrong or missing path
-is a loud failure rather than a subtly broken app.
-
-## 2. Register it with your instance
-
-```bash
-paperclipai plugin install /absolute/path/to/paperclip-plica --local
+paperclipai plugin install paperclip-plugin-plica --version 0.5.0
 ```
 
 Before it installs, the CLI prints which instance it is about to install into:
@@ -75,8 +52,8 @@ Before it installs, the CLI prints which instance it is about to install into:
 ```
 Target Paperclip: http://127.0.0.1:3100
   health: status=ok  version=0.1.0  mode=local_trusted  exposure=private
-Installing plugin from local path: /home/you/dev/plugins/paperclip-plica
-✓ Installed nickallevato.plugin-plica v0.3.0 (ready)
+Installing plugin: paperclip-plugin-plica
+✓ Installed nickallevato.plugin-plica v0.5.0 (ready)
 ```
 
 **Read that first line.** If the URL is not the instance you meant, stop and
@@ -84,7 +61,50 @@ re-point the CLI rather than trusting the result. The CLI targets whatever
 `PAPERCLIP_API_URL` says, which is easy to inherit from a shell you forgot
 about.
 
-## 3. Confirm it loaded
+Then [confirm it loaded](#confirm-it-loaded) and
+[find it in the UI](#find-it-in-the-ui).
+
+### Upgrading an npm install
+
+Paperclip's Plugin Manager has no upgrade button, but the server has an upgrade
+endpoint and the CLI exposes it:
+
+```bash
+paperclipai plugin upgrade nickallevato.plugin-plica
+```
+
+With no version, the server runs `npm install paperclip-plugin-plica` again,
+which npm resolves to the package's `latest` tag. To go to a particular version
+instead:
+
+```bash
+paperclipai plugin upgrade nickallevato.plugin-plica --payload-json '{"version":"0.5.0"}'
+```
+
+That is the same `POST /api/plugins/nickallevato.plugin-plica/upgrade` the API
+documents, with an optional `version` in the body. The upgrade is done in place:
+settings are kept and the plugin's registration moves to the new version. Two
+limits, both the host's:
+
+- **The plugin must be `ready`** (or already `upgrade_pending`). Enable a
+  disabled one first.
+- **A version that adds a capability is refused.** Paperclip only grants
+  capabilities at install, so an upgrade that declares a new one fails with an
+  error naming it. Uninstall and reinstall Plica to take that version; the
+  release notes say when a version needs this.
+
+The **Reload 0.x.y** chip described under [upgrading from source](#upgrading-plica)
+does not appear for an npm install: the code Paperclip serves and the version it
+has registered always move together, so there is never a newer build on disk
+for the chip to offer.
+
+### Upgrading Paperclip
+
+Nothing to do on the Plica side. Plica subtracts the host's duplicate selectors
+in the browser, against whichever Paperclip stylesheet the page has loaded, so a
+Paperclip upgrade needs no rebuild, reinstall or restart of Plica.
+
+## Confirm it loaded
 
 ```bash
 paperclipai plugin list
@@ -94,7 +114,7 @@ paperclipai plugin inspect nickallevato.plugin-plica
 You want `status=ready`. `inspect` prints the full last error if it is anything
 else.
 
-## 4. Find it in the UI
+## Find it in the UI
 
 Plica adds two things:
 
@@ -113,7 +133,78 @@ plugin pages under a company route.
 If the page is blank or the app looks broken, go to
 [Troubleshooting](troubleshooting.md).
 
-## Developing against it
+## From source
+
+You clone Plica, build it, and register the built folder with a Paperclip
+instance that can read that path off disk. This is the development route: edit,
+rebuild, refresh.
+
+### Before you start
+
+- **Node.js 24.11 or newer**, and **pnpm**.
+- **A Paperclip checkout you can run from source.** Two separate reasons: local
+  plugin installs read the plugin's source from disk, so the server has to be
+  able to see the path you give it; and Plica type-checks against that
+  checkout's packages (see [Where the checkout has to live](#where-the-checkout-has-to-live)).
+- **The instance running.** `pnpm paperclipai run` in the Paperclip checkout, or
+  however you normally start yours.
+
+### 1. Build it
+
+```bash
+git clone https://github.com/nickallevato/paperclip-plica.git
+cd paperclip-plica
+pnpm install
+pnpm build
+```
+
+`pnpm build` does two things: compiles Plica's Tailwind stylesheet and bundles
+`dist/manifest.js`, `dist/worker.js` and `dist/ui/`. That `dist` folder is what
+Paperclip loads. It does not read anything of Paperclip's — the host's duplicate
+selectors are subtracted in the browser at runtime (README, "Why Plica subtracts
+the host's selectors"), so there is no Paperclip UI build that has to exist
+first.
+
+> **`pnpm test` needs a build first.** The test suite imports the generated
+> stylesheet, which `pnpm build` produces and git ignores. On a fresh clone,
+> run `pnpm build` before `pnpm test`.
+
+### Where the checkout has to live
+
+`package.json` declares `@paperclipai/shared` and `@paperclipai/plugin-sdk` as
+`link:` dependencies pointing at `../../paperclip/packages/...`, relative to
+this repository. Plica type-checks against the real upstream types that way,
+which is how it finds out about a breaking Paperclip change at build time
+rather than in the browser. They are development dependencies only; the
+published package does not carry them.
+
+The consequence is a required directory layout: **the Paperclip checkout must
+be two levels above this repo.**
+
+```
+~/dev/
+├── paperclip/           ← the Paperclip checkout
+└── plugins/
+    └── paperclip-plica/ ← this repo
+```
+
+Clone it somewhere else and `pnpm install` fails to resolve those two
+dependencies. Repoint the paths in `package.json` locally if you need to — but
+do not commit the repoint; it would break everyone else's layout.
+
+### 2. Register it with your instance
+
+```bash
+paperclipai plugin install /absolute/path/to/paperclip-plica --local
+```
+
+`--local` makes the argument a filesystem path rather than a package name; an
+absolute path, or one starting `./`, `../` or `~`, is taken as one anyway. The CLI prints
+its target first, as it does for [an npm install](#1-install-it) — read that
+line — and then
+[confirm it loaded](#confirm-it-loaded) the same way.
+
+### Developing against it
 
 ```bash
 pnpm dev   # esbuild watch + CSS rebuild
@@ -122,36 +213,7 @@ pnpm dev   # esbuild watch + CSS rebuild
 Paperclip watches the installed folder's `dist` output and reloads the plugin in
 place, so leaving `pnpm dev` running gives you edit-and-refresh.
 
-## After a Paperclip upgrade, rebuild Plica
-
-**This is the one operational rule worth knowing, and nothing enforces it.**
-
-Plica compiles its own Tailwind sheet and injects it after the host's. Tailwind
-emits every class it scans, including ones Paperclip already defines, and a
-duplicate that lands later wins on document order — a stray
-`.hidden{display:none}` is enough to beat Paperclip's
-`@media(min-width:40rem){.sm\:flex{…}}` and pin the whole app in its mobile
-layout.
-
-The build prevents this by subtracting every selector the host stylesheet
-already ships. But the subtraction is computed **once, at build time**, against
-whichever `index-*.css` existed then. Upgrade Paperclip, and that file is
-rebuilt under a new hash: the subtraction is now stale, and classes the new host
-defines are no longer filtered out.
-
-So, after upgrading Paperclip:
-
-```bash
-cd paperclip-plica
-pnpm build
-```
-
-If you forget, Plica says so: a **Stylesheet stale** badge appears in its header
-naming `pnpm build` as the fix. The symptom when it cannot — the check stays
-silent unless it is certain — is described under
-[the app looks broken](troubleshooting.md#the-whole-app-is-stuck-in-its-mobile-layout).
-
-## Upgrading Plica
+### Upgrading Plica
 
 ```bash
 git pull
@@ -172,22 +234,16 @@ If the new version adds a capability, Paperclip will not grant it in place, so
 the chip reads **Reinstall needed** instead: uninstall and reinstall Plica from
 the plugin manager.
 
+<a id="after-a-paperclip-upgrade-rebuild-plica"></a>
+
 ### After upgrading Paperclip itself
 
-`pnpm build` subtracts the host's compiled stylesheet, so Paperclip's UI has to
-be rebuilt **before** Plica is. In that order:
-
-```bash
-cd ~/paperclip && git pull && pnpm install && pnpm build   # host first
-cd ~/paperclip-plica && pnpm build                         # then Plica
-```
-
-Reverse it and Plica records the stylesheet that is about to be replaced, which
-leaves the **Stylesheet stale** badge up. Note that a Paperclip-only upgrade
-needs no `git pull` in Plica at all — `pnpm build` alone clears the badge, since
-the badge tracks the host's stylesheet rather than Plica's version. If it does
-not clear, see
-[Troubleshooting](troubleshooting.md#stylesheet-stale-will-not-clear-even-after-pnpm-build).
+Nothing to do on the Plica side — no rebuild, and no ordering to get right.
+Plica used to subtract the host's stylesheet at build time and had to be rebuilt
+after every Paperclip upgrade; that now happens in the browser against whatever
+stylesheet the upgraded Paperclip serves. A Paperclip upgrade can still change
+the `@paperclipai/*` types a clone builds against, so run `pnpm typecheck` if
+you are about to work on Plica.
 
 ## Uninstalling
 
@@ -195,6 +251,7 @@ not clear, see
 paperclipai plugin uninstall nickallevato.plugin-plica
 ```
 
-Add `--force` to purge its stored config as well. Plica's per-browser
+Or the **Uninstall** button on Plica's row in the Plugin Manager. Add `--force`
+to the CLI form to purge its stored config as well. Plica's per-browser
 preferences live in `localStorage` and are not touched by either; see
 [Configuration](configuration.md#what-plica-remembers).

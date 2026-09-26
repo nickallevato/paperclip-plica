@@ -11,7 +11,6 @@ import { PlicaBoardPage } from "./components/PlicaBoardPage";
 import { PlicaBriefing } from "./components/PlicaBriefing";
 import { PlicaMark } from "./components/PlicaMark";
 import { PlicaReloadBadge } from "./components/PlicaReloadBadge";
-import { PlicaStaleStylesheetWarning } from "./components/PlicaStaleStylesheetWarning";
 import { PlicaTokenSettingsPanel } from "./components/PlicaTokenSettings";
 import type { PlicaCompanyData } from "./components/usePlicaCompanyData";
 import {
@@ -342,7 +341,6 @@ export function PlicaHud({ demo = false }: PlicaHudProps = {}) {
               build, not the data, but it shares that badge's job of qualifying
               what you are looking at. Silent unless Plica's stylesheet is
               provably stale. */}
-          <PlicaStaleStylesheetWarning />
           {/* Same family: the build on disk is newer than Paperclip's
               registration of it. Silent otherwise. */}
           <PlicaReloadBadge />

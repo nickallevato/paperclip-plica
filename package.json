@@ -3,8 +3,12 @@
   "version": "0.4.0",
   "packageManager": "pnpm@10.33.0",
   "type": "module",
-  "private": true,
   "description": "Plica cross-company HUD for Paperclip.",
+  "keywords": [
+    "paperclip",
+    "paperclip-plugin",
+    "paperclipai"
+  ],
   "author": "nickallevato (https://allevato.io)",
   "homepage": "https://allevato.io",
   "repository": {
@@ -12,6 +16,11 @@
     "url": "git+https://github.com/nickallevato/paperclip-plica.git"
   },
   "license": "MIT",
+  "files": [
+    "dist",
+    "!dist/**/*.map",
+    "CHANGELOG.md"
+  ],
   "scripts": {
     "build": "node ./scripts/build-css.mjs && node ./esbuild.config.mjs",
     "demo:data": "node ./scripts/gen-demo-data.mjs",
@@ -22,44 +31,47 @@
     "check:surface": "node ./scripts/check-plugin-surface.mjs --all",
     "check:vendored": "node ./scripts/check-vendored.mjs",
     "check:worktree": "node ./scripts/check-worktree.mjs",
-    "hooks:install": "git config core.hooksPath .githooks"
+    "hooks:install": "git config core.hooksPath .githooks",
+    "prepublishOnly": "pnpm typecheck && pnpm build && pnpm test"
   },
   "paperclipPlugin": {
     "manifest": "./dist/manifest.js",
     "worker": "./dist/worker.js",
     "ui": "./dist/ui/"
   },
-  "dependencies": {
-    "@tanstack/react-query": "^5.101.4",
-    "class-variance-authority": "^0.7.1",
-    "clsx": "^2.1.1",
-    "lucide-react": "^0.577.0",
-    "radix-ui": "^1.6.4",
-    "tailwind-merge": "^3.6.0"
-  },
   "devDependencies": {
     "@paperclipai/plugin-sdk": "link:../../paperclip/packages/plugins/sdk",
     "@paperclipai/shared": "link:../../paperclip/packages/shared",
     "@tailwindcss/node": "4.3.3",
     "@tailwindcss/oxide": "4.3.3",
+    "@tanstack/react-query": "^5.101.4",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.1.0",
     "@testing-library/user-event": "^14.5.2",
     "@types/node": "^22.20.1",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
     "esbuild": "^0.28.1",
     "jsdom": "^25.0.1",
-    "postcss": "^8.5.26",
+    "lucide-react": "^0.577.0",
+    "radix-ui": "^1.6.4",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "react-router-dom": "^7.18.1",
+    "tailwind-merge": "^3.6.0",
     "tailwindcss": "4.3.3",
     "typescript": "^5.7.3",
     "vitest": "^4.1.10"
   },
   "peerDependencies": {
     "react": ">=18"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    }
   },
   "pnpm": {
     "onlyBuiltDependencies": [

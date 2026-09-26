@@ -14,9 +14,8 @@ const CHIP =
  * Paperclip has registered — the step that otherwise takes a DevTools snippet
  * after `git pull && pnpm build`. See `lib/plugin-reload`.
  *
- * A chip beside "Stylesheet stale", same shape and same rule: silent unless
- * the answer is definite. Demo mode never reaches the network, so the read
- * fails there and the chip stays hidden.
+ * A chip in the header, silent unless the answer is definite. Demo mode never
+ * reaches the network, so the read fails there and the chip stays hidden.
  */
 export function PlicaReloadBadge({ check: injected, onReloaded }: {
   /** Injectable for tests and for a reviewer wanting to see the chip. */

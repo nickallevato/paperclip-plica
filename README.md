@@ -63,7 +63,20 @@ Full tours: [the board](docs/board.md), [the queue](docs/queue.md).
 
 ## Install
 
-Plica installs from a local path — it is not published to a registry.
+Plica is published to npm as `paperclip-plugin-plica`. In Paperclip, open the **Plugin
+Manager** (Settings → Plugins, at `/company/settings/instance/plugins`), click **Install
+Plugin**, and enter `paperclip-plugin-plica` as the **npm Package Name**. Or from the CLI:
+
+```bash
+npx paperclipai plugin install paperclip-plugin-plica
+```
+
+Either way needs an instance admin. The package is prebuilt and carries nothing tied to a
+particular Paperclip build, so upgrading Paperclip later needs nothing from Plica.
+
+### From source
+
+For working on Plica, install it from a clone instead:
 
 ```bash
 git clone https://github.com/nickallevato/paperclip-plica.git
@@ -73,9 +86,8 @@ pnpm build
 npx paperclipai plugin install /absolute/path/to/paperclip-plica --local
 ```
 
-That is the short version. [docs/install.md](docs/install.md) covers the required directory
-layout for the `link:` dependencies, what to do after a Paperclip upgrade, and how to check it
-actually loaded.
+[docs/install.md](docs/install.md) covers both routes: upgrading, the directory layout a clone
+needs for its `link:` dependencies, and how to check the plugin actually loaded.
 
 ## Demo mode
 
@@ -91,71 +103,31 @@ Details, including how to edit the fixture:
 The screenshots in `docs/screenshots/` are demo mode with nothing else done to them, captured by
 `scripts/capture-screenshots.mjs`. See [docs/screenshots/README.md](docs/screenshots/README.md).
 
-## The stylesheet coupling
-
-**Rebuilding Paperclip's UI requires rebuilding Plica.** This is the one operational rule worth
-knowing. Plica now notices when it has been broken and says so — see "The staleness warning"
-below — but noticing is all it does; the rebuild is still yours to run.
+## Why Plica subtracts the host's selectors
 
 Plica compiles its own Tailwind sheet and injects it via `<style>` appended to `<head>` — after
 the host's. Tailwind emits every class it scans, including ones Paperclip already defines, and a
 duplicate that lands later wins on document order. A stray `.hidden{display:none}` is enough to
-beat Paperclip's `@media(min-width:40rem){.sm\:flex{...}}` and pin the whole app in its mobile
-layout.
-
-`scripts/build-css.mjs` fixes this by subtracting every selector the host stylesheet already
-ships (it refuses to emit an unfiltered sheet at all). But the subtraction is computed **once, at
-build time**, against whichever `~/paperclip/ui/dist/assets/index-*.css` exists then. Upgrade
-Paperclip and that file is rebuilt under a new hash — the subtraction is now stale, and classes
-the new host defines are no longer filtered out.
-
-So: after any Paperclip upgrade, run `pnpm build` here. Override the host sheet location with
-`PLICA_HOST_CSS` if needed.
-
-Which sheet gets subtracted is decided by `scripts/host-css.mjs`, and it asks the host's own
-`~/paperclip/ui/dist/index.html` — the `<link rel="stylesheet">` Vite wrote there names the entry
-sheet it emitted, and it is the same tag the runtime check reads at mount, so both halves of the
-comparison agree by construction. Only when there is no `index.html` to ask does it guess from the
-directory listing, and then it takes the most recently modified sheet and says out loud that it
-guessed. Reading the listing alone is not enough: an abandoned `index-*.css` from an earlier build
-is a normal thing to find in an unclean `dist/`, and picking it records a sheet the page will never
-serve, so the badge never clears no matter how many times you rebuild.
+beat Paperclip's `@media(min-width:40rem){.sm\:flex{...}}` and pin the whole app — not just the
+Plica page — in its mobile layout.
 
 Ordering cannot fix this, in either direction. Appended last, Plica's duplicates beat the host's
 responsive variants. Inserted first, Plica's `@layer` declarations come before the host's, which
 pushes the host's `base`/`components` layers after `utilities` and breaks spacing app-wide.
 Subtraction is the only approach that works.
 
-### The staleness warning
+So at injection, `src/ui/styles.ts` walks the document's other stylesheets through the CSSOM,
+collects every selector they define, and deletes each of Plica's class rules the host already
+has — trimming shared selector lists and dropping `@media`/`@layer`/`@supports` groups left
+empty (`src/ui/lib/host-subtract.ts`). Against Paperclip's real sheet that drops about 480
+selectors; Plica-only classes are untouched. Cross-origin sheets, which the browser will not let
+a page read, are skipped — they are web-font CSS, not host utilities.
 
-The reason that rule needed writing down is that breaking it looks like nothing to do with Plica:
-the symptom is Paperclip's own sidebar and chrome stranded in the mobile layout, and the person
-who upgraded has no reason to suspect a plugin they installed weeks ago.
-
-So Plica records what it subtracted against and checks it at runtime. `scripts/build-css.mjs`
-writes the host sheet's filename and a content hash to `src/ui/host-css.generated.json`, esbuild
-inlines that into the UI bundle, and at mount Plica compares it against the stylesheet the
-document actually loaded — read from the `<link>` tags, using nothing but the DOM. On a mismatch
-the Plica header carries a **Stylesheet stale** badge beside `Demo data`, whose hover text names
-the fix (`pnpm build`) and shows both identifiers, recorded and observed. The same text is repeated
-in an `sr-only` span, because assistive technology cannot hover.
-
-![The Plica header with a "Stylesheet stale" badge beside the title, its hover text naming pnpm build
-and showing the stylesheet Plica was built against next to the one now being served](docs/screenshots/stale-stylesheet-warning.png)
-
-**It fails open.** If the host's stylesheet cannot be identified — no same-origin stylesheet link,
-several that are equally plausible, or a bundle built with no record at all — Plica shows nothing
-rather than a warning it cannot stand behind. A false "your plugin is stale" on every load teaches
-people to ignore the badge that matters.
-
-The filename is what gets compared, not the content hash. Paperclip's sheet is Vite-built and
-hash-named, so the name already changes whenever the bytes do, and reading a name off a `<link>`
-costs nothing — where an observed content hash would mean fetching and hashing ~450KB of CSS on
-every page load. The recorded hash is kept for the badge to display and for comparing two installs
-by hand. The gap that leaves: a host serving an *unhashed* stylesheet name could be rebuilt under
-the same name with the check staying quiet. That is the fail-open direction, and deliberate.
-
-To see the badge: point `PLICA_HOST_CSS` at a different sheet, `pnpm build`, and load the page.
+This used to be done once, at build time, against whichever Paperclip UI build was on the
+builder's disk — which went stale on every Paperclip upgrade and meant rebuilding Plica after
+each one. Subtracting against the sheets the page actually loaded leaves nothing to go stale: a
+Paperclip upgrade needs no Plica rebuild, the build needs no Paperclip UI build, and one
+published package fits whichever Paperclip stylesheet it lands next to.
 
 ## Vendored host components
 
@@ -178,8 +150,8 @@ Paperclip draws company avatars with its own copy, so any change here gives one 
 different identities on screen.
 
 `pnpm check:vendored` compares every whole-file copy (and the route-root sets in `util.ts`)
-against the Paperclip checkout, ignoring imports. Run it after each Paperclip upgrade, beside
-`pnpm build`; `--diff` prints what moved.
+against the Paperclip checkout, ignoring imports. Run it after each Paperclip upgrade;
+`--diff` prints what moved.
 
 ## Development
 
@@ -209,9 +181,9 @@ src/
     components/            company lines, queue, recent tasks, portfolio, briefing
     lib/                   capacity, queue grouping, run derivation, drafts
     host/                  vendored Paperclip internals (read-only)
-    styles.ts              injects the compiled sheet, idempotently
+    styles.ts              injects the compiled sheet, minus host duplicates, idempotently
 scripts/
-  build-css.mjs            Tailwind compile + host-duplicate subtraction
+  build-css.mjs            Tailwind compile (host duplicates are subtracted at runtime)
   capture-screenshots.mjs  the images in docs/, from a running instance
   gen-demo-data.mjs        the demo fixture
   check-plugin-surface.mjs the no-core-changes guardrail

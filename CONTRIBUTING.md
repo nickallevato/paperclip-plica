@@ -122,13 +122,16 @@ pnpm hooks:install   # pre-commit: worktree, surface check, typecheck, test
 The `@paperclipai/*` dev dependencies are `link:` references to a Paperclip
 checkout, resolved at `../../paperclip` relative to this repository. If yours
 lives elsewhere, repoint the two paths in `package.json` locally — but do not
-commit that repoint. `pnpm build` additionally reads the host's *compiled*
-stylesheet; point `PLICA_HOST_CSS` at `ui/dist/assets/index-*.css` in that
-checkout if it is not under `~/paperclip`.
+commit that repoint. Those links are the only thing the build takes from the
+checkout: `pnpm build` does not read Paperclip's compiled UI, and a Paperclip
+upgrade does not require rebuilding Plica.
 
-Rebuilding Paperclip's UI requires rebuilding Plica; the README's "The
-stylesheet coupling" explains why, and it is the one operational rule worth
-reading before you touch `scripts/build-css.mjs`.
+Before you touch `scripts/build-css.mjs`, `src/ui/styles.ts` or
+`src/ui/lib/host-subtract.ts`, read the README's "Why Plica subtracts the
+host's selectors". The build emits Tailwind's whole sheet on purpose; the
+subtraction that keeps it from stranding Paperclip in its mobile layout happens
+in the browser, and a change that skips it — or moves Plica's `<style>` ahead of
+the host's — breaks the host app, not the Plica page.
 
 ## Documentation
 

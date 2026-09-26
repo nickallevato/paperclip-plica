@@ -16,8 +16,8 @@
  *
  * ## It fails open, deliberately
  *
- * Same rule as `host-stylesheet`: anything that cannot answer returns
- * `"unknown"` and renders nothing.
+ * Anything that cannot answer returns `"unknown"` and renders nothing: a
+ * false "reload me" on every load teaches people to ignore the chip.
  */
 
 export interface ManifestSummary {
