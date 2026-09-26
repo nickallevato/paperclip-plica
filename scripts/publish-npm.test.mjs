@@ -1,10 +1,65 @@
 import { describe, expect, it } from "vitest";
 
-import { checkCheckout, publishArgs, resolveAuth } from "./publish-npm.mjs";
+import {
+  TOKEN_ENV_NAMES,
+  checkCheckout,
+  publishArgs,
+  resolveAuth,
+  resolveEnvToken,
+} from "./publish-npm.mjs";
+
+describe("resolveEnvToken", () => {
+  it("finds nothing on an environment with no token", () => {
+    expect(resolveEnvToken({})).toEqual({ token: "", source: "" });
+  });
+
+  it("reads the repository secret the release workflow passes", () => {
+    expect(resolveEnvToken({ NPM_TOKEN: "npm_a" })).toEqual({
+      token: "npm_a",
+      source: "NPM_TOKEN",
+    });
+  });
+
+  it("reads what setup-node calls the same thing", () => {
+    expect(resolveEnvToken({ NODE_AUTH_TOKEN: "npm_b" }).source).toBe("NODE_AUTH_TOKEN");
+  });
+
+  it("reads the name Paperclip binds the secret to for an agent", () => {
+    // An agent gets the credential under the name it was stored as; the script
+    // knows the name so no agent has to copy a token between variables.
+    expect(resolveEnvToken({ NPM_TOKEN_90_DAY_EXP: "npm_c" })).toEqual({
+      token: "npm_c",
+      source: "NPM_TOKEN_90_DAY_EXP",
+    });
+  });
+
+  it("prefers the earlier name when a runner has several set", () => {
+    const env = { NPM_TOKEN_90_DAY_EXP: "npm_c", NODE_AUTH_TOKEN: "npm_b", NPM_TOKEN: "npm_a" };
+    expect(resolveEnvToken(env).source).toBe("NPM_TOKEN");
+  });
+
+  it("ignores a variable that is set but blank", () => {
+    // Actions expands an unset secret to the empty string, so `NPM_TOKEN: ""`
+    // is the normal shape of "no secret configured", not a token.
+    expect(resolveEnvToken({ NPM_TOKEN: "  ", NPM_TOKEN_90_DAY_EXP: "npm_c" })).toEqual({
+      token: "npm_c",
+      source: "NPM_TOKEN_90_DAY_EXP",
+    });
+  });
+
+  it("trims a token pasted with trailing whitespace", () => {
+    expect(resolveEnvToken({ NPM_TOKEN: "npm_a\n" }).token).toBe("npm_a");
+  });
+});
 
 describe("resolveAuth", () => {
   it("prefers an explicit token when one is on the environment", () => {
     expect(resolveAuth({ token: "npm_xxx", oidcAvailable: true, ci: true }).kind).toBe("token");
+  });
+
+  it("names the variable the token came from, so a release is traceable", () => {
+    const { detail } = resolveAuth({ token: "npm_xxx", tokenSource: "NPM_TOKEN_90_DAY_EXP" });
+    expect(detail).toContain("NPM_TOKEN_90_DAY_EXP");
   });
 
   it("uses trusted publishing when there is no token but OIDC is available", () => {
@@ -20,7 +75,7 @@ describe("resolveAuth", () => {
     // like a different problem entirely. Say what is actually absent.
     const { kind, detail } = resolveAuth({ ci: true });
     expect(kind).toBe("none");
-    expect(detail).toContain("NPM_TOKEN");
+    for (const name of TOKEN_ENV_NAMES) expect(detail).toContain(name);
     expect(detail).toContain("id-token: write");
   });
 });

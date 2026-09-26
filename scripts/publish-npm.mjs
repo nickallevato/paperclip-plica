@@ -26,7 +26,7 @@
  *   node scripts/publish-npm.mjs --dry-run       # pack and check, publish nothing
  *
  * Authentication, in the order it is looked for:
- *   NPM_TOKEN / NODE_AUTH_TOKEN  an npm automation or granular-access token
+ *   a token on the environment   see TOKEN_ENV_NAMES
  *   GitHub Actions OIDC          npm trusted publishing, no token anywhere
  *   ~/.npmrc                     an interactive `npm login`, local runs only
  */
@@ -40,6 +40,37 @@ import { join } from "node:path";
 export const REGISTRY = "https://registry.npmjs.org";
 
 /**
+ * Environment variables a token is accepted from, in the order they win.
+ *
+ * `NPM_TOKEN` is what the `release` workflow passes and what the docs tell a
+ * person to set. `NODE_AUTH_TOKEN` is what `actions/setup-node` calls the same
+ * thing, so a job written the conventional way also works. The third is how
+ * Paperclip delivers the credential to an agent: its secrets are bound under
+ * the name they were stored as, and renaming a bound secret is the user's job,
+ * not something this script can do — so the script learns the name instead of
+ * an agent hand-copying a token between variables.
+ */
+export const TOKEN_ENV_NAMES = ["NPM_TOKEN", "NODE_AUTH_TOKEN", "NPM_TOKEN_90_DAY_EXP"];
+
+/**
+ * Finds the token on an environment, and remembers which variable it came from.
+ *
+ * The name is carried along because "which credential published this" is the
+ * first question asked after a release nobody expected, and three accepted
+ * names make "a token was set" too vague an answer.
+ *
+ * @param {Record<string, string | undefined>} env
+ * @returns {{ token: string, source: string }}
+ */
+export function resolveEnvToken(env) {
+  for (const name of TOKEN_ENV_NAMES) {
+    const value = (env[name] ?? "").trim();
+    if (value) return { token: value, source: name };
+  }
+  return { token: "", source: "" };
+}
+
+/**
  * Decides how this run authenticates to the registry.
  *
  * Deliberately not a fallback chain that ends in "try it and see". An
@@ -48,14 +79,18 @@ export const REGISTRY = "https://registry.npmjs.org";
  * problem; better to say up front that no credential was found.
  *
  * @param {object} env
- * @param {string} [env.token]          NPM_TOKEN or NODE_AUTH_TOKEN.
+ * @param {string} [env.token]          A token from one of TOKEN_ENV_NAMES.
+ * @param {string} [env.tokenSource]    Which variable it came from.
  * @param {boolean} [env.oidcAvailable] GitHub Actions issued an OIDC token for this job.
  * @param {boolean} [env.ci]            Running unattended.
  * @returns {{ kind: "token" | "oidc" | "local" | "none", detail: string }}
  */
-export function resolveAuth({ token = "", oidcAvailable = false, ci = false }) {
+export function resolveAuth({ token = "", tokenSource = "", oidcAvailable = false, ci = false }) {
   if (token) {
-    return { kind: "token", detail: "npm token from the environment" };
+    return {
+      kind: "token",
+      detail: `npm token from ${tokenSource || "the environment"}`,
+    };
   }
   if (oidcAvailable) {
     return {
@@ -69,9 +104,10 @@ export function resolveAuth({ token = "", oidcAvailable = false, ci = false }) {
   return {
     kind: "none",
     detail:
-      "no credential: set the NPM_TOKEN secret, or configure this workflow as a " +
-      "trusted publisher for the package on npmjs.com and grant the job " +
-      "`id-token: write`",
+      `no credential: set a token on one of ${TOKEN_ENV_NAMES.join(", ")} ` +
+      "(NPM_TOKEN is the repository secret the release workflow passes), or " +
+      "configure this workflow as a trusted publisher for the package on " +
+      "npmjs.com and grant the job `id-token: write`",
   };
 }
 
@@ -192,11 +228,8 @@ function main(argv) {
   // is both how trusted publishing authenticates and the only thing that makes
   // `--provenance` possible, whichever credential ends up being used.
   const oidcAvailable = Boolean(process.env.ACTIONS_ID_TOKEN_REQUEST_URL);
-  const auth = resolveAuth({
-    token: process.env.NPM_TOKEN || process.env.NODE_AUTH_TOKEN || "",
-    oidcAvailable,
-    ci,
-  });
+  const { token, source } = resolveEnvToken(process.env);
+  const auth = resolveAuth({ token, tokenSource: source, oidcAvailable, ci });
   if (auth.kind === "none") {
     console.error(`\nCannot publish: ${auth.detail}\n`);
     return 1;
@@ -207,7 +240,7 @@ function main(argv) {
   try {
     const env = { ...process.env };
     if (auth.kind === "token") {
-      config = writeTokenConfig(process.env.NPM_TOKEN || process.env.NODE_AUTH_TOKEN || "");
+      config = writeTokenConfig(token);
       env.NPM_CONFIG_USERCONFIG = config.path;
     }
     const args = publishArgs({ dryRun, provenance: oidcAvailable });

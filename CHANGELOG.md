@@ -12,8 +12,10 @@ Short-form. The reader-facing write-up for each version is in
   with `package.json`, a manifest left on the previous version, a version with
   no changelog entry or release page, and an unclean checkout. `pnpm
   check:release` runs those version checks alone, before there is a tag to
-  push. Credentials come from an `NPM_TOKEN` secret or, preferably, npm trusted
-  publishing with no token at all — see
+  push. Credentials come from an npm token on the environment — the `NPM_TOKEN`
+  Actions secret in CI, the token Paperclip binds to an agent otherwise — or,
+  preferably, npm trusted publishing with no token at all; the script prints
+  which one it used. See
   [docs/releases/README.md](docs/releases/README.md#publishing-credentials).
 
 ## 0.5.0
