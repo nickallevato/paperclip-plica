@@ -112,6 +112,15 @@ the new host defines are no longer filtered out.
 So: after any Paperclip upgrade, run `pnpm build` here. Override the host sheet location with
 `PLICA_HOST_CSS` if needed.
 
+Which sheet gets subtracted is decided by `scripts/host-css.mjs`, and it asks the host's own
+`~/paperclip/ui/dist/index.html` — the `<link rel="stylesheet">` Vite wrote there names the entry
+sheet it emitted, and it is the same tag the runtime check reads at mount, so both halves of the
+comparison agree by construction. Only when there is no `index.html` to ask does it guess from the
+directory listing, and then it takes the most recently modified sheet and says out loud that it
+guessed. Reading the listing alone is not enough: an abandoned `index-*.css` from an earlier build
+is a normal thing to find in an unclean `dist/`, and picking it records a sheet the page will never
+serve, so the badge never clears no matter how many times you rebuild.
+
 Ordering cannot fix this, in either direction. Appended last, Plica's duplicates beat the host's
 responsive variants. Inserted first, Plica's `@layer` declarations come before the host's, which
 pushes the host's `base`/`components` layers after `utilities` and breaks spacing app-wide.

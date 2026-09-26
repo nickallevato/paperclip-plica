@@ -163,6 +163,23 @@ The installed path has not changed, so Paperclip picks up the new `dist` on its
 own. If it does not, `paperclipai plugin disable nickallevato.plugin-plica`
 followed by `enable` reloads it.
 
+### After upgrading Paperclip itself
+
+`pnpm build` subtracts the host's compiled stylesheet, so Paperclip's UI has to
+be rebuilt **before** Plica is. In that order:
+
+```bash
+cd ~/paperclip && git pull && pnpm install && pnpm build   # host first
+cd ~/paperclip-plica && pnpm build                         # then Plica
+```
+
+Reverse it and Plica records the stylesheet that is about to be replaced, which
+leaves the **Stylesheet stale** badge up. Note that a Paperclip-only upgrade
+needs no `git pull` in Plica at all — `pnpm build` alone clears the badge, since
+the badge tracks the host's stylesheet rather than Plica's version. If it does
+not clear, see
+[Troubleshooting](troubleshooting.md#stylesheet-stale-will-not-clear-even-after-pnpm-build).
+
 ## Uninstalling
 
 ```bash

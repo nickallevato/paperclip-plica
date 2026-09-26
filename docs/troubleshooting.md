@@ -43,6 +43,69 @@ pnpm build
 Then reload. Do this after every Paperclip upgrade — the badge reports the
 problem, but nothing rebuilds Plica for you.
 
+## "Stylesheet stale" will not clear, even after `pnpm build`
+
+First, the thing that trips most people up: **`git pull` is not what clears this
+badge.** It does not report Plica's version. It reports that the host stylesheet
+Plica *subtracted at build time* is not the one the page is *serving now*, so on
+a Paperclip-only upgrade a bare `pnpm build` — no pull, no install — is the whole
+fix. The upgrade steps in [Install](install.md#upgrading-plica) are right; they
+are just not what this badge is about.
+
+When a build that succeeds still leaves the badge up, the two halves disagree
+about which host sheet is current. Find out which half:
+
+1. Hover the badge. Its text ends with the sheet the page is serving. Call
+   that **B**.
+2. Re-run the build and read its first and last lines:
+
+   ```bash
+   pnpm build
+   ```
+   ```
+   build-css: host stylesheet /home/you/paperclip/ui/dist/assets/index-XXXX.css (chosen by: index.html)
+   host-css.generated.json: built against index-XXXX.css (sha256-…) — the badge clears only if the page serves that exact filename
+   ```
+
+   Call that **C**. The build also prints a `build-css:` warning for every
+   ambiguity it had to resolve — read those first; they usually name the cause
+   outright.
+
+If **C** is not **B**, the build read the wrong stylesheet:
+
+- **`PLICA_HOST_CSS` is set in your shell.** It overrides the directory scan, so
+  a stale export in a shell profile wins over a perfectly good checkout. The
+  build now warns when the override disagrees with the dist it is overriding, but
+  check it yourself with `echo $PLICA_HOST_CSS`. Unset it, or point it at the
+  live sheet.
+- **The server is not serving `~/paperclip/ui/dist`.** A second checkout, an
+  installed build, or a container means the sheet the build reads is not the
+  sheet the page gets. Point `PLICA_HOST_CSS` at the assets dir the *running*
+  instance serves.
+- **Wrong order of operations.** Paperclip's UI must be rebuilt *before* Plica.
+  Pull Paperclip → build Paperclip's UI → *then* `pnpm build` in Plica. Reverse
+  it and Plica stamps the sheet that is about to be replaced.
+
+If **C** is **B**, the build was correct and the page is still running the old
+Plica bundle. The check is evaluated once at mount against a constant baked into
+`dist/ui/index.js`, so a bundle that never reloaded keeps warning no matter how
+many times you rebuild:
+
+```bash
+paperclipai plugin disable nickallevato.plugin-plica
+paperclipai plugin enable  nickallevato.plugin-plica
+```
+
+Then hard-reload the browser (Ctrl/Cmd-Shift-R). To confirm which filename the
+running Plica will actually claim:
+
+```bash
+grep -o 'index-[A-Za-z0-9_-]*\.css' dist/ui/index.js | sort -u
+```
+
+If that prints the new name and the badge still shows the old one, it is purely
+caching — not a build problem.
+
 ## The Plica page is blank
 
 Work through, in order:
