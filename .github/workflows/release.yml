@@ -1,0 +1,117 @@
+name: release
+
+# Publishes `paperclip-plugin-plica` to npm when a `v*` tag lands on the repo.
+# Tagging is the release: nothing here decides the version, it only refuses to
+# publish one that is declared inconsistently (scripts/check-release.mjs) and
+# then runs the same `scripts/publish-npm.mjs` a person would run by hand.
+#
+# The workspace layout and the Paperclip core checkout are the same trick
+# `ci.yml` uses and are explained there — Plica's `@paperclipai/*` dev
+# dependencies are `link:../../paperclip/...`, so nothing installs or type-checks
+# without a core tree next to this one. The setup steps below are a deliberate
+# copy of that job rather than a shared composite action: a release must not
+# start failing because a refactor of the CI job drifted. Keep them in step.
+#
+# `workflow_dispatch` exists for the rehearsal — a dry run packs the tarball,
+# runs every check, and publishes nothing.
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Tag to publish (leave blank to only rehearse the default branch)
+        required: false
+      dry-run:
+        description: Pack and check, publish nothing
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+  # npm trusted publishing authenticates with this, and it is also what makes
+  # `--provenance` possible. Without it, publishing needs the NPM_TOKEN secret.
+  id-token: write
+
+concurrency:
+  # One publish at a time, and never cancelled halfway: a tarball that reached
+  # the registry cannot be taken back, so an interrupted job is the one thing
+  # worse than a slow one.
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  COREPACK_ENABLE_DOWNLOAD_PROMPT: "0"
+
+jobs:
+  publish:
+    name: publish to npm
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out Plica
+        uses: actions/checkout@v4
+        with:
+          path: repo/plica
+          # Tags are what the version check compares against, and a dispatch run
+          # is handed a branch, so fetch them regardless of what triggered this.
+          fetch-depth: 0
+          ref: ${{ inputs.tag || github.ref }}
+
+      - name: Read the pinned Paperclip core commit
+        id: core
+        working-directory: repo/plica
+        run: |
+          ref=$(grep -v '^[[:space:]]*#' .github/paperclip-core.ref | tr -d '[:space:]')
+          if [ -z "$ref" ]; then
+            echo "::error::.github/paperclip-core.ref holds no commit SHA"
+            exit 1
+          fi
+          echo "ref=$ref" >> "$GITHUB_OUTPUT"
+          echo "Paperclip core pinned at $ref"
+
+      - name: Check out Paperclip core (read-only reference)
+        uses: actions/checkout@v4
+        with:
+          repository: paperclipai/paperclip
+          ref: ${{ steps.core.outputs.ref }}
+          path: paperclip
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          # Deliberately no `registry-url`: that writes an .npmrc wired to
+          # NODE_AUTH_TOKEN, which fails closed when the secret is unset instead
+          # of letting npm find the OIDC credential. publish-npm.mjs decides.
+
+      - name: Enable corepack
+        run: corepack enable
+
+      - name: Install Paperclip core packages
+        working-directory: paperclip
+        run: pnpm install --frozen-lockfile --ignore-scripts --filter "@paperclipai/plugin-sdk..." --filter "@paperclipai/shared..."
+
+      - name: Build the plugin SDK
+        working-directory: paperclip
+        run: pnpm --filter @paperclipai/plugin-sdk build
+
+      - name: Install Plica
+        working-directory: repo/plica
+        run: pnpm install --frozen-lockfile
+
+      # No typecheck/build/test step: `npm publish` runs `prepublishOnly`, which
+      # is all three, so a red tree cannot reach the registry and a dry run
+      # exercises the same pipeline the real publish will.
+      # The arguments are assembled in the shell rather than in a nested
+      # `${{ }}` ternary, which is unreadable and untestable in equal measure.
+      - name: Publish
+        working-directory: repo/plica
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          RELEASE_TAG: ${{ github.ref_type == 'tag' && github.ref_name || inputs.tag }}
+          DRY_RUN: ${{ inputs.dry-run }}
+        run: |
+          args=()
+          if [ -n "$RELEASE_TAG" ]; then args+=(--tag "$RELEASE_TAG"); fi
+          if [ "$DRY_RUN" = "true" ]; then args+=(--dry-run); fi
+          node scripts/publish-npm.mjs "${args[@]}"
