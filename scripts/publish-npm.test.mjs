@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   TOKEN_ENV_NAMES,
   checkCheckout,
+  failureHint,
   publishArgs,
   resolveAuth,
   resolveEnvToken,
@@ -126,5 +127,21 @@ describe("checkCheckout", () => {
     const { ok, problems } = checkCheckout({ ...clean, tagCommit: "2222222222222222222222222222222222222222" });
     expect(ok).toBe(false);
     expect(problems[0]).toContain("publish from a checkout of the tag");
+  });
+});
+
+describe("failureHint", () => {
+  it("tells a token run that the token may not be allowed to publish", () => {
+    const hint = failureHint("token");
+    expect(hint).toContain("403");
+    expect(hint).toContain("Automation");
+  });
+
+  it("tells an OIDC run to check the trusted publisher, not the machine", () => {
+    expect(failureHint("oidc")).toContain("Trusted publishers");
+  });
+
+  it("says nothing extra for a local ~/.npmrc, where npm's own error is the truth", () => {
+    expect(failureHint("local")).toBe("");
   });
 });
