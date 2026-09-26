@@ -13,6 +13,12 @@ Short-form. The reader-facing write-up for each version is in
   finished stays in place instead of vanishing with its run. The list scrolls
   inside a capped height, so a run starting cannot shove Portfolio or Routines
   down the page.
+- **Fixed: the board no longer overflows the viewport at phone width.** Recent's
+  rows were as wide as their untruncated ticket titles, which widened the
+  single-column grid past the window and clipped every pane in it on the right —
+  Orgs lost its runs/day and Need-you figures, and its header lost `need you`.
+  Every panel now has a floor of zero width, so the column is the window again
+  and the titles truncate.
 
 ## 0.4.0
 
