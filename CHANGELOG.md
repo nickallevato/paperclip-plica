@@ -5,9 +5,21 @@ Short-form. The reader-facing write-up for each version is in
 
 ## Unreleased
 
-### Fixed
-
-- **A "Stylesheet stale" badge that would not clear after a good `pnpm build`.**
+- **"Recent" replaces the live strip.** The full-width row of pills across the
+  top of the page is gone; the left column now carries **Recent** — one line per
+  task, live ones first and newest first, with the same pulsing dot on the rows
+  an agent is on right now and the task's own status glyph on the rest. A row is
+  as wide as the column, so the ticket title fits, and a task that has just
+  finished stays in place instead of vanishing with its run. The list scrolls
+  inside a capped height, so a run starting cannot shove Portfolio or Routines
+  down the page.
+- **Fixed: the board no longer overflows the viewport at phone width.** Recent's
+  rows were as wide as their untruncated ticket titles, which widened the
+  single-column grid past the window and clipped every pane in it on the right —
+  Orgs lost its runs/day and Need-you figures, and its header lost `need you`.
+  Every panel now has a floor of zero width, so the column is the window again
+  and the titles truncate.
+- **Fixed: a "Stylesheet stale" badge that would not clear after a good `pnpm build`.**
   The build located the host stylesheet by taking the largest `index-*.css` in
   the host's assets dir, so an abandoned sheet from an earlier build — bigger
   than the live one, left behind in an unclean `dist/` — was recorded instead,
@@ -15,8 +27,7 @@ Short-form. The reader-facing write-up for each version is in
   own `index.html` links, which is the same tag the runtime check compares
   against; falling back to the most recently modified only when there is no
   `index.html`.
-
-- **The build says which stylesheet it read, and what it passed over.** Warnings
+- **Fixed: the build says which stylesheet it read, and what it passed over.** Warnings
   for every ambiguity it had to resolve, including a `PLICA_HOST_CSS` override
   that disagrees with the dist it overrides — a stale export in a shell profile
   used to win silently. `docs/troubleshooting.md` gains a section for the badge

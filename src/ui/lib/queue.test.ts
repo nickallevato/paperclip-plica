@@ -14,6 +14,7 @@ import {
   filterQueueByAge,
   normalizeQueueAgeFilter,
   queueItemAge,
+  recentTasks,
   upcomingProjects,
   type PlicaProjectEntry,
   normalizeQueueGrouping,
@@ -269,6 +270,100 @@ describe("flattenLiveRuns", () => {
     expect(entries.map((entry) => entry.run.id)).toEqual(["r-new", "r-waiting-long", "r-waiting-short"]);
     expect(entries.map((entry) => entry.phase)).toEqual(["working", "queued", "queued"]);
     expect(entries[0].issue).toMatchObject({ title: "Ship it" });
+  });
+});
+
+describe("recentTasks", () => {
+  it("puts live rows first, newest first, then the tasks touched most recently", () => {
+    const { items, working, queued } = recentTasks(
+      [
+        {
+          company: company("c1"),
+          runs: [
+            { id: "r-old", status: "running", startedAt: at(30), createdAt: at(31), issueId: "i-old" },
+            { id: "r-new", status: "running", startedAt: at(2), createdAt: at(3), issueId: "i-new" },
+            { id: "r-queued", status: "queued", startedAt: null, createdAt: at(1), issueId: "i-queued" },
+          ] as never,
+          issues: [
+            { id: "i-old", title: "Started half an hour ago", updatedAt: at(30) },
+            { id: "i-new", title: "Just started", updatedAt: at(2) },
+            { id: "i-queued", title: "Waiting for a runner", updatedAt: at(1) },
+            { id: "i-touched", title: "Finished a moment ago", updatedAt: at(4) },
+            { id: "i-stale", title: "Nothing since last week", updatedAt: at(9 * 1440) },
+          ] as never,
+        },
+      ],
+      { nowMs: NOW },
+    );
+    expect(items.map((item) => item.issue?.id)).toEqual(["i-new", "i-old", "i-queued", "i-touched"]);
+    expect(items.map((item) => item.phase)).toEqual(["working", "working", "queued", null]);
+    expect(working).toBe(2);
+    expect(queued).toBe(1);
+  });
+
+  it("takes one row per task, preferring the attempt being worked", () => {
+    const { items, working, queued } = recentTasks(
+      [
+        {
+          company: company("c1"),
+          runs: [
+            { id: "r-retry", status: "queued", startedAt: null, createdAt: at(1), issueId: "i1" },
+            { id: "r-working", status: "running", startedAt: at(10), createdAt: at(11), issueId: "i1" },
+          ] as never,
+          issues: [{ id: "i1", title: "One ticket, two runs", updatedAt: at(1) }] as never,
+        },
+      ],
+      { nowMs: NOW },
+    );
+    expect(items).toHaveLength(1);
+    expect(items[0].run?.id).toBe("r-working");
+    // The counts describe rows, so the collapsed retry is not counted twice.
+    expect([working, queued]).toEqual([1, 0]);
+  });
+
+  it("caps the idle rows but never a live one, and says how many it held back", () => {
+    const idle = Array.from({ length: 8 }, (_, index) => ({
+      id: `i-idle-${index}`,
+      title: `Touched ${index} minutes ago`,
+      updatedAt: at(index + 1),
+    }));
+    const { items, hidden } = recentTasks(
+      [
+        {
+          company: company("c1"),
+          runs: [
+            { id: "r1", status: "running", startedAt: at(5), createdAt: at(6), issueId: "i-live-1" },
+            { id: "r2", status: "running", startedAt: at(6), createdAt: at(7), issueId: "i-live-2" },
+          ] as never,
+          issues: [
+            { id: "i-live-1", title: "Live one", updatedAt: at(5) },
+            { id: "i-live-2", title: "Live two", updatedAt: at(6) },
+            ...idle,
+          ] as never,
+        },
+      ],
+      { nowMs: NOW, limit: 4 },
+    );
+    expect(items.map((item) => item.issue?.id)).toEqual(["i-live-1", "i-live-2", "i-idle-0", "i-idle-1"]);
+    expect(hidden).toBe(6);
+  });
+
+  it("keeps a run with no ticket, and skips hidden and archived tasks", () => {
+    const { items } = recentTasks(
+      [
+        {
+          company: company("c1"),
+          runs: [{ id: "r-adhoc", status: "running", startedAt: at(3), createdAt: at(3), issueId: null }] as never,
+          issues: [
+            { id: "i-hidden", title: "Hidden", updatedAt: at(1), hiddenAt: at(1) },
+            { id: "i-archived", title: "Archived", updatedAt: at(1), archivedAt: at(1) },
+          ] as never,
+        },
+      ],
+      { nowMs: NOW },
+    );
+    expect(items).toHaveLength(1);
+    expect(items[0]).toMatchObject({ key: "r-adhoc", phase: "working", issue: undefined });
   });
 });
 

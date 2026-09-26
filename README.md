@@ -206,7 +206,7 @@ src/
     PlicaHud.tsx           root: owns the roster, sort mode, pins, token settings
     PlicaPage.tsx          host-mounted page slot
     PlicaToolbarButton.tsx toolbar launcher
-    components/            company lines, queue, portfolio, briefing, strips
+    components/            company lines, queue, recent tasks, portfolio, briefing
     lib/                   capacity, queue grouping, run derivation, drafts
     host/                  vendored Paperclip internals (read-only)
     styles.ts              injects the compiled sheet, idempotently
