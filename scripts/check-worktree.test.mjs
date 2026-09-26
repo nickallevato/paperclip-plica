@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 
 import {
+  EXEMPT_BRANCHES,
   classifyCheckout,
   isMainWorktree,
   remedyFor,
@@ -116,15 +117,54 @@ describe("the CLI", () => {
     expect(run({}).code).toBe(0);
   });
 
-  it("exits 0 in a linked worktree even during a run", () => {
-    // The suite runs from whichever worktree the agent is in; when that is a
-    // linked one the guard must stay quiet, which is the case that matters.
+  it("agrees with the classifier about the checkout it is run from", () => {
+    // The guard reads its own checkout, and the suite runs from wherever the
+    // agent (or CI) put it — so the expectation has to come from the same facts
+    // the CLI gathers, not from the worktree alone. Keying on `isMainWorktree()`
+    // by itself is what made this case green on every agent branch and red only
+    // on `main`: CI *is* the main worktree, but it has `main` checked out, and
+    // `main` is exempt.
+    //
+    // What is actually under test here is the CLI's wiring — that it reads
+    // PAPERCLIP_WORKSPACE_CWD and PAPERCLIP_WORKSPACE_STRATEGY, asks git which
+    // worktree this is, and exits on the verdict. The verdict itself is pinned
+    // arm by arm in `classifyCheckout` above.
+    const branch = execFileSync("git", ["rev-parse", "--abbrev-ref", "HEAD"], {
+      encoding: "utf8",
+    }).trim();
+    // Detached HEAD reports the literal "HEAD", which is no branch of anyone's
+    // — but it is not exempt either, so the guard fires, and so does this.
+    const { ok } = classifyCheckout({
+      isPaperclipRun: true,
+      isSharedCheckout: isMainWorktree(),
+      branch,
+      strategy: "project_primary",
+    });
     const { code } = run({ PAPERCLIP_WORKSPACE_CWD: "/tmp/anywhere" });
-    if (isMainWorktree()) {
-      expect(code).toBe(1);
-    } else {
-      expect(code).toBe(0);
-    }
+    expect(code).toBe(ok ? 0 : 1);
+  });
+
+  it("stays quiet in a linked worktree, whatever branch it is on", () => {
+    // The case that matters and the one every agent branch hits. Asserted on
+    // facts rather than on this process's checkout, so it holds in CI too.
+    expect(classifyCheckout({
+      isPaperclipRun: true,
+      isSharedCheckout: false,
+      branch: "pli-234/check-worktree-test-branch-arm",
+      strategy: "project_primary",
+    }).ok).toBe(true);
+  });
+
+  it("exempts main in the main worktree, which is what CI checks out", () => {
+    // The arm the CLI case above resolves to in CI, pinned unconditionally so a
+    // regression in EXEMPT_BRANCHES cannot hide behind wherever the suite ran.
+    expect(EXEMPT_BRANCHES.has("main")).toBe(true);
+    expect(classifyCheckout({
+      isPaperclipRun: true,
+      isSharedCheckout: true,
+      branch: "main",
+      strategy: "project_primary",
+    }).ok).toBe(true);
   });
 
 });
