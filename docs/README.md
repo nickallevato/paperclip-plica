@@ -19,11 +19,13 @@ that Plica never modifies Paperclip core.
 
 ## A note on the screenshots
 
-Every screenshot in these pages is Plica's own **demo mode**: four invented
-companies, invented tickets, invented agents. Nothing in an image came from a
-real instance, which is why they can be published at all. The orange **DEMO
-DATA** badge in the header is there in every shot for the same reason.
+Nearly every screenshot in these pages is Plica's own **demo mode**: four
+invented companies, invented tickets, invented agents, with the orange **DEMO
+DATA** badge in the header. The exceptions are hand-captured and listed in
+[screenshots/README.md](screenshots/README.md#hand-captured) — the two
+inline-answer shots come from Plica's own development org, which has nothing
+private in it.
 
-They are captured by `scripts/capture-screenshots.mjs` rather than by hand, so
-refreshing them after a UI change is one command. See
+The demo shots are captured by `scripts/capture-screenshots.mjs` rather than by
+hand, so refreshing them after a UI change is one command. See
 [screenshots/README.md](screenshots/README.md).

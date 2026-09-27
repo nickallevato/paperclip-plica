@@ -83,6 +83,8 @@ Hovering a row opens what the agent last said — the same narration the run
 detail shows — with the ticket's status and, when nothing has been reported yet,
 the start of its description.
 
+<img src="screenshots/recent-hover.png" alt="A Recent row's hover card: the ticket, its status, and what the agent last said" width="408">
+
 The list scrolls inside a capped height rather than growing with the fleet, so a
 run starting or finishing never shoves Portfolio and Routines down the page. When
 more tasks were touched today than fit, the footer says how many.
@@ -139,6 +141,8 @@ Down the left of the board:
 chart. Each bar splits into moving / waiting / blocked, and the header carries
 the totals. Sort by **Trouble** (worst first) or **Org**. What people
 actually read off the old list was the shape of the work, so it became a chart.
+
+<img src="screenshots/portfolio-by-org.png" alt="The portfolio sorted by Org: each company's projects under its name, with the routine exceptions beneath" width="407">
 
 **Routines** — schedules that are *not* firing: failed, blocked, or overdue.
 Healthy routines are a count in the footer and nothing else ("4 healthy routines

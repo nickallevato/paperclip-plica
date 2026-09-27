@@ -9,8 +9,9 @@ launcher that navigates there. Its worker is a deliberate no-op.
 
 ![The Plica page: Orgs, portfolio and routines at left; the Needs-you queue, grouped by when you'll decide, owning the main column](docs/screenshots/plica-page.png)
 
-> Every screenshot in this repository is Plica's own [demo mode](docs/configuration.md#demo-mode) —
-> invented orgs, tickets and agents, not a real instance. Try it on your own install: add
+> The screenshots are Plica's own [demo mode](docs/configuration.md#demo-mode) —
+> invented orgs, tickets and agents, not a real instance — apart from the two inline-answer shots,
+> which come from Plica's own development org. Try it on your own install: add
 > `?demo=1` to the Plica page's URL (e.g. `/ACME/plica?demo=1`). Nothing you click in demo mode
 > reaches the server.
 
@@ -22,8 +23,12 @@ launcher that navigates there. Its worker is a deliberate no-op.
 
 **Queue** — the main column. Every item across every org that wants a human, in one list:
 approvals, questions and confirmations awaiting a response, blockers, failed runs, overdue
-heartbeats and routine exceptions. Actions are inline — Approve, Reject, Reply — so you rarely
-need to open the org.
+heartbeats and routine exceptions. Actions are inline — Approve, Reject, Reply, answer a
+question, choose on a confirmation — so you rarely need to leave the page, let alone open the org.
+
+![A confirmation answered from the queue row: Yes, run it now / No, wait for the morning tick](docs/screenshots/queue-confirmation.png)
+
+<img src="docs/screenshots/queue-question.png" alt="An agent's multiple-choice question answered in place, with an optional note" width="400">
 
 By default it groups by **when you said you'd decide**: Today (and anything overdue), Unsorted,
 This week, Alerts, Whenever and Snoozed. New items land in Unsorted with **Today · This week ·

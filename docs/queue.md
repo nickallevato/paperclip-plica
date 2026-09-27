@@ -110,9 +110,14 @@ generating half the noise.
 
 ## Acting on an item
 
-Actions are inline, so you rarely need to open the company:
+Actions are inline, so you rarely need to leave the page, let alone open the
+company:
 
 ![Inline Approve and Reject on an approval](screenshots/queue-actions.png)
+
+![A confirmation with its two choices on the row](screenshots/queue-confirmation.png)
+
+<img src="screenshots/queue-question.png" alt="An agent's multiple-choice question, answered in place with an optional note" width="400">
 
 - **Approve / Reject** on an approval.
 - **Answer** on a question, **Choose** on a confirmation — including structured
