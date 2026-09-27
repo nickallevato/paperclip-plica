@@ -5,6 +5,8 @@ Short-form. The reader-facing write-up for each version is in
 
 ## Unreleased
 
+## 0.7.0
+
 - **Plica is now Tickler.** A tickler file is the office folder of dated
   reminders you work through by due date, which is what the decide-by queue is.
   Everything is renamed: the npm package (`paperclip-plugin-tickler`), the
