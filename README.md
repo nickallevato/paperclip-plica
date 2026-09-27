@@ -17,12 +17,15 @@
   <a href="https://github.com/nickallevato/paperclip-plica/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT license"></a>
 </p>
 
+> ### 📦 Install from inside Paperclip — no terminal needed
+>
+> **Settings → Plugins → Install Plugin**, enter **`paperclip-plugin-plica`** as the npm Package
+> Name, and click **Install**. That's it — Plica's button appears in the bar at the top of the page.
+>
+> Prefer the command line, or building from source? See [Install](#install) below.
+
 One page that answers "what needs me, across every org, right now" — and lets you say *when*
 you will deal with each thing — instead of visiting each org's dashboard in turn.
-
-```bash
-npx paperclipai plugin install paperclip-plugin-plica
-```
 
 - ⚡ **Answer in place.** Approve, reject, reply, pick an option on an agent's question — right on
   the row. Never leave the dashboard if you don't have to.
@@ -102,16 +105,32 @@ Full tours: [the board](https://github.com/nickallevato/paperclip-plica/blob/mai
 
 ## Install
 
-Plica is published to npm as `paperclip-plugin-plica`. In Paperclip, open the **Plugin
-Manager** (Settings → Plugins, at `/company/settings/instance/plugins`), click **Install
-Plugin**, and enter `paperclip-plugin-plica` as the **npm Package Name**. Or from the CLI:
+### In Paperclip (recommended)
+
+1. Open **Settings → Plugins** — the Plugin Manager, at `/company/settings/instance/plugins`.
+2. Click **Install Plugin**.
+3. Enter `paperclip-plugin-plica` as the **npm Package Name**. Just the name — no `@`, no
+   version.
+4. Click **Install**.
+
+Plica's button appears in the breadcrumb bar at the top of the page. Click it and you're in.
+
+You need to be an instance admin, on a self-hosted Paperclip whose server can reach npm. The
+package is prebuilt and carries nothing tied to a particular Paperclip build, so upgrading
+Paperclip later needs nothing from Plica.
+
+### Manually, from the command line
 
 ```bash
 npx paperclipai plugin install paperclip-plugin-plica
 ```
 
-Either way needs an instance admin. The package is prebuilt and carries nothing tied to a
-particular Paperclip build, so upgrading Paperclip later needs nothing from Plica.
+The CLI prints the instance it is about to install into before it does anything — check that
+first line. To upgrade an npm install later (the Plugin Manager has no upgrade button):
+
+```bash
+npx paperclipai plugin upgrade nickallevato.plugin-plica
+```
 
 ### From source
 
@@ -125,7 +144,7 @@ pnpm build
 npx paperclipai plugin install /absolute/path/to/paperclip-plica --local
 ```
 
-[docs/install.md](https://github.com/nickallevato/paperclip-plica/blob/main/docs/install.md) covers both routes: upgrading, the directory layout a clone
+[docs/install.md](https://github.com/nickallevato/paperclip-plica/blob/main/docs/install.md) covers every route in detail: upgrading, the directory layout a clone
 needs for its `link:` dependencies, and how to check the plugin actually loaded.
 
 ## Demo mode
