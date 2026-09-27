@@ -5,6 +5,13 @@ Short-form. The reader-facing write-up for each version is in
 
 ## Unreleased
 
+- **Plica is now Tickler.** A tickler file is the office folder of dated
+  reminders you work through by due date, which is what the decide-by queue is.
+  Everything is renamed: the npm package (`paperclip-plugin-tickler`), the
+  plugin id (`nickallevato.plugin-tickler`), the route (`/:companyPrefix/tickler`),
+  CSS classes, browser-storage keys and the repository. There is no migration:
+  uninstall Plica and install Tickler, re-enter the token thresholds, and saved
+  view settings (pins, layout, filters) start fresh.
 - **The README has a header, badges and a highlights list**, and its images and
   links are absolute, so the npm package page renders the same as GitHub.
   `package.json` gets a fuller description, more keywords, and `homepage`/`bugs`

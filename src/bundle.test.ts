@@ -16,7 +16,7 @@ const BUNDLE = resolve(process.cwd(), "dist/ui/index.js");
  * browser cannot resolve the bare specifier, and the dynamic import fails.
  *
  * The failure mode is nasty: the host silently falls back to its slot
- * placeholder ("Plica: Plica") and logs nothing useful, so the page just looks
+ * placeholder ("Tickler: Tickler") and logs nothing useful, so the page just looks
  * empty. That is exactly what happened when minify was first switched on.
  *
  * These tests run against the built artifact, so they only mean something after

@@ -110,7 +110,7 @@ describe("resolveDemoMode", () => {
   });
 
   it("ignores a corrupt stored override rather than guessing", async () => {
-    sessionStorage.setItem("plica.demo", "not json");
+    sessionStorage.setItem("tickler.demo", "not json");
     stubConfig(() => true);
     await expect(resolveDemoMode("")).resolves.toEqual({ enabled: true, source: "config" });
   });

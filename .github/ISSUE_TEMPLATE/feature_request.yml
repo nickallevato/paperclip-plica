@@ -41,7 +41,7 @@ body:
       label: How often does this come up?
       description: This is most of how the priority gets proposed.
       options:
-        - Every time I use Plica
+        - Every time I use Tickler
         - Weekly
         - Occasionally
         - Once, but it mattered
@@ -53,7 +53,7 @@ body:
     id: surface
     attributes:
       label: Which surface?
-      description: The Plica page, the toolbar button, demo mode, the docs, the build.
+      description: The Tickler page, the toolbar button, demo mode, the docs, the build.
       placeholder: The Board, cross-company queue
     validations:
       required: false

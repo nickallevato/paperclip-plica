@@ -1,9 +1,9 @@
 import { definePlugin } from "@paperclipai/plugin-sdk";
 
 /**
- * Plica's worker lifecycle.
+ * Tickler's worker lifecycle.
  *
- * Plica is a UI-only plugin: the HUD calls core Paperclip HTTP APIs directly
+ * Tickler is a UI-only plugin: the HUD calls core Paperclip HTTP APIs directly
  * from the browser (PLUGIN_SPEC.md §24), so there is no worker-side data path
  * and no tools, jobs, or API routes to register. The host still starts a worker
  * process per installed plugin and probes its health, so this exists to satisfy
@@ -14,13 +14,13 @@ import { definePlugin } from "@paperclipai/plugin-sdk";
  */
 export const plugin = definePlugin({
   async setup(ctx) {
-    ctx.logger.info("Plica plugin worker ready (UI-only; no worker-side data path)");
+    ctx.logger.info("Tickler plugin worker ready (UI-only; no worker-side data path)");
   },
 
   async onHealth() {
     return {
       status: "ok" as const,
-      message: "Plica plugin worker is running",
+      message: "Tickler plugin worker is running",
       details: { surfaces: ["page", "sidebar"] },
     };
   },

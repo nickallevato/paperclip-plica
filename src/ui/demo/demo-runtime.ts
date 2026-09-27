@@ -8,7 +8,7 @@ import type { DemoCompanyData, DemoFixture } from "./demo-types";
  * the same paths `host/api.ts` would otherwise fetch.
  *
  * The interception point is deliberately `host/api.ts` and nothing else.
- * Every read Plica performs already funnels through that module's `request()`
+ * Every read Tickler performs already funnels through that module's `request()`
  * helper (plus the one raw fetch in `authApi.getSession`), so a single seam
  * covers the whole HUD — no component knows demo mode exists, and no future
  * component can accidentally bypass it by rendering real data. The one rule
@@ -120,7 +120,7 @@ export function installDemoFixture(next: DemoFixture, nowMs = Date.now()): void 
 /**
  * The host's entity types declare `createdAt` and friends as `Date`, but the
  * API serves JSON — a real `fetch` hands those back as ISO strings, and every
- * consumer in Plica already treats them that way (`new Date(issue.updatedAt)`).
+ * consumer in Tickler already treats them that way (`new Date(issue.updatedAt)`).
  * The fixture matches the wire, not the declared type, so rows it mints are
  * cast here rather than carrying fake `Date` objects the real API never sends.
  */

@@ -25,11 +25,11 @@ describe("host/util", () => {
     });
   });
 
-  describe("queryKeys.plica", () => {
+  describe("queryKeys.tickler", () => {
     it("scopes each key by company id", () => {
-      expect(queryKeys.plica.summary("c1")).toEqual(["plica", "summary", "c1"]);
-      expect(queryKeys.plica.liveRuns("c2")).toEqual(["plica", "live-runs", "c2"]);
-      expect(queryKeys.plica.briefingIssues("c3")).toEqual(["plica", "briefing-issues", "c3"]);
+      expect(queryKeys.tickler.summary("c1")).toEqual(["tickler", "summary", "c1"]);
+      expect(queryKeys.tickler.liveRuns("c2")).toEqual(["tickler", "live-runs", "c2"]);
+      expect(queryKeys.tickler.briefingIssues("c3")).toEqual(["tickler", "briefing-issues", "c3"]);
     });
 
     it("exposes the auth session key", () => {
@@ -54,11 +54,11 @@ describe("host/util", () => {
       expect(toCompanyRelativePath("/instance/settings")).toBe("/instance/settings");
     });
 
-    it("treats /plica as company-scoped, not global", () => {
-      // The v4 customization added "plica" to GLOBAL_ROUTE_ROOTS because /plica
-      // was a root-level route. As a plugin page it lives at /:prefix/plica, so
+    it("treats /tickler as company-scoped, not global", () => {
+      // The v4 customization added "tickler" to GLOBAL_ROUTE_ROOTS because /tickler
+      // was a root-level route. As a plugin page it lives at /:prefix/tickler, so
       // the vendored copy tracks upstream and omits that entry.
-      expect(toCompanyRelativePath("/ACME/plica")).toBe("/ACME/plica");
+      expect(toCompanyRelativePath("/ACME/tickler")).toBe("/ACME/tickler");
     });
   });
 });

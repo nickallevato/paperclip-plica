@@ -44,17 +44,17 @@ describe("subtractSelectors", () => {
   it("drops host-defined classes, trims lists, and sweeps emptied groups", () => {
     const sheet = rules(
       group(),
-      group(style(".hidden"), style(".plica-only")),
+      group(style(".hidden"), style(".tickler-only")),
       group(group(style(".flex"))),
-      style(".a, .plica-b"),
+      style(".a, .tickler-b"),
       style(":root"),
       style(".keeps-children", group(style(".hidden"))),
     );
     const dropped = subtractSelectors(sheet, new Set([".hidden", ".flex", ".a", ":root"]));
     expect(dropped).toBe(4);
     expect(selectors(sheet.cssRules)).toEqual([
-      { sel: "@group", children: [".plica-only"] },
-      ".plica-b",
+      { sel: "@group", children: [".tickler-only"] },
+      ".tickler-b",
       ":root",
       { sel: ".keeps-children", children: [] },
     ]);

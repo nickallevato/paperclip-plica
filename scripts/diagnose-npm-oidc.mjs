@@ -46,7 +46,7 @@ function repoRoot() {
 /** The audience npm asks GitHub to mint the OIDC token for. Must match what npm uses. */
 export const AUDIENCE = "npm:registry.npmjs.org";
 
-/** The registry Plica publishes to, kept in step with publish-npm.mjs. */
+/** The registry Tickler publishes to, kept in step with publish-npm.mjs. */
 export const REGISTRY = "https://registry.npmjs.org";
 
 /**
@@ -183,7 +183,7 @@ export function explain(result, packageName) {
       `npm refused the OIDC token (HTTP ${result.status}): ${result.message}`,
       "npm's message above is the authoritative reason; this is what `ENEEDAUTH` was hiding.",
       `Compare the entry at npmjs.com → ${packageName} → Settings → Trusted publishers against`,
-      "this run: organization or user `nickallevato`, repository `paperclip-plica`, workflow",
+      "this run: organization or user `nickallevato`, repository `paperclip-tickler`, workflow",
       "filename `release.yml` (the bare name, not a path), environment blank, and the allowed",
       "actions including `npm publish`. All of those are matched exactly and case-sensitively.",
     ],

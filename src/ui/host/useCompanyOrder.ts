@@ -6,7 +6,7 @@ import { sidebarPreferencesApi } from "./api";
 /**
  * Read-only vendored copy of the host's `useCompanyOrder`.
  *
- * Plica sorts its panes by the user's sidebar company-switcher drag order so
+ * Tickler sorts its panes by the user's sidebar company-switcher drag order so
  * the wall matches the curation they already did. It never reorders that list,
  * so the host hook's mutation and `persistOrder` are deliberately not carried —
  * copying write paths nothing exercises would be drift surface for no gain.

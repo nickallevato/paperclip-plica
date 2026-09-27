@@ -7,4 +7,4 @@
  * object literal into the UI bundle for one string, so the constant lives
  * here and the manifest imports it.
  */
-export const PLUGIN_ID = "nickallevato.plugin-plica";
+export const PLUGIN_ID = "nickallevato.plugin-tickler";

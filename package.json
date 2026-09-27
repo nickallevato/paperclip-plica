@@ -1,5 +1,5 @@
 {
-  "name": "paperclip-plugin-plica",
+  "name": "paperclip-plugin-tickler",
   "version": "0.6.0",
   "packageManager": "pnpm@10.33.0",
   "type": "module",
@@ -16,13 +16,13 @@
     "triage"
   ],
   "author": "nickallevato (https://allevato.io)",
-  "homepage": "https://github.com/nickallevato/paperclip-plica#readme",
+  "homepage": "https://github.com/nickallevato/paperclip-tickler#readme",
   "bugs": {
-    "url": "https://github.com/nickallevato/paperclip-plica/issues"
+    "url": "https://github.com/nickallevato/paperclip-tickler/issues"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/nickallevato/paperclip-plica.git"
+    "url": "git+https://github.com/nickallevato/paperclip-tickler.git"
   },
   "license": "MIT",
   "files": [

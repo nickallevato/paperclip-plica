@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import fixtureJson from "./demo-data.json";
 import { deactivateDemoMode, installDemoFixture } from "./demo-runtime";
 import type { DemoFixture } from "./demo-types";
-import { PlicaHud } from "../PlicaHud";
+import { TicklerHud } from "../TicklerHud";
 
 vi.mock("../host/shims", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../host/shims")>()),
@@ -22,7 +22,7 @@ const FIXTURE = fixtureJson as unknown as DemoFixture;
  * goes missing from the fixture, this fails — which is the failure the unit
  * tests on the router alone would miss.
  */
-describe("PlicaHud on demo data", () => {
+describe("TicklerHud on demo data", () => {
   beforeEach(() => {
     vi.stubGlobal("fetch", vi.fn(async () => {
       throw new Error("demo mode must not reach the network");
@@ -40,7 +40,7 @@ describe("PlicaHud on demo data", () => {
     return render(
       <QueryClientProvider client={queryClient}>
         <MemoryRouter>
-          <PlicaHud demo />
+          <TicklerHud demo />
         </MemoryRouter>
       </QueryClientProvider>,
     );

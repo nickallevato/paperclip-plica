@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * The one way Plica reaches the npm registry.
+ * The one way Tickler reaches the npm registry.
  *
  * Publishing is the only thing this repository does that cannot be undone: a
  * version number is spent the moment it lands, and a bad release is fixed by
@@ -36,7 +36,7 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-/** The registry Plica publishes to. Named so the token line below can scope to it. */
+/** The registry Tickler publishes to. Named so the token line below can scope to it. */
 export const REGISTRY = "https://registry.npmjs.org";
 
 /**
@@ -135,7 +135,7 @@ export function failureHint(authKind) {
       "not allowed to publish. A read-only or read-scoped token reads the " +
       "package fine and fails only on the write. Reissue it as an Automation " +
       "token, or a granular token with read-and-write on " +
-      "paperclip-plugin-plica, and check it has not expired."
+      "paperclip-plugin-tickler, and check it has not expired."
     );
   }
   if (authKind === "oidc") {
@@ -227,7 +227,7 @@ function tagCommitFor(tag) {
  * deletes the file whether the publish succeeded or not.
  */
 function writeTokenConfig(token) {
-  const dir = mkdtempSync(join(process.env.PAPERCLIP_RUN_SCRATCH_DIR || tmpdir(), "plica-npm-"));
+  const dir = mkdtempSync(join(process.env.PAPERCLIP_RUN_SCRATCH_DIR || tmpdir(), "tickler-npm-"));
   const path = join(dir, "npmrc");
   const host = REGISTRY.replace(/^https?:/, "");
   writeFileSync(path, `${host}/:_authToken=${token}\n`, { mode: 0o600 });

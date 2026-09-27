@@ -1,6 +1,6 @@
-# Contributing to Plica
+# Contributing to Tickler
 
-Plica is a Paperclip plugin. Everything below follows from that one fact.
+Tickler is a Paperclip plugin. Everything below follows from that one fact.
 
 > **Reporting something, rather than building something?** Open an issue from
 > one of the templates and stop there — [`docs/intake.md`](docs/intake.md)
@@ -10,7 +10,7 @@ Plica is a Paperclip plugin. Everything below follows from that one fact.
 
 ## Never modify Paperclip core
 
-**Plica never changes the Paperclip AI core application. Every change lands in
+**Tickler never changes the Paperclip AI core application. Every change lands in
 this repository, through a documented plugin extension point.**
 
 Not by patching a core package. Not by committing a Paperclip checkout here.
@@ -20,17 +20,17 @@ unblock the demo".
 
 ### Why
 
-Plica is installed alongside a Paperclip instance that its author upgrades on
+Tickler is installed alongside a Paperclip instance that its author upgrades on
 their own schedule. A change that only works because core was edited to meet it
 is a change that breaks on the next `git pull` upstream — silently, in someone
 else's install, with no trace pointing back here. The plugin surface is the
-contract; if Plica holds to it, a Paperclip upgrade can break Plica loudly (a
+contract; if Tickler holds to it, a Paperclip upgrade can break Tickler loudly (a
 missing export, a failed typecheck) instead of quietly.
 
 It also keeps the boundary honest in the other direction. The `@paperclipai/*`
-`link:` dev dependencies mean Plica type-checks against a real Paperclip
+`link:` dev dependencies mean Tickler type-checks against a real Paperclip
 checkout — that checkout is a *reference*, read-only. The moment we start
-editing it to make Plica compile, it stops telling us anything true.
+editing it to make Tickler compile, it stops telling us anything true.
 
 ### What this permits
 
@@ -40,7 +40,7 @@ editing it to make Plica compile, it stops telling us anything true.
   reads the host stylesheet to subtract its selectors. Reads are fine. Writes
   are not.
 - `src/ui/host/` — read-only *copies* of core internals Paperclip does not
-  export to plugins. Copying core source into Plica is not modifying core. Keep
+  export to plugins. Copying core source into Tickler is not modifying core. Keep
   the copies byte-identical to upstream apart from import paths, and keep them
   under `src/ui/host/`; see the README's "Vendored host components" for the
   three documented exceptions.
@@ -55,11 +55,11 @@ editing it to make Plica compile, it stops telling us anything true.
   into a path naming a Paperclip checkout.
 - New `link:`/`file:` dependencies beyond `@paperclipai/plugin-sdk` and
   `@paperclipai/shared`.
-- Forking core, or maintaining a private branch of it that Plica depends on.
+- Forking core, or maintaining a private branch of it that Tickler depends on.
 
 ### When the plugin surface is not enough
 
-This will happen. Some things Plica wants genuinely cannot be expressed through
+This will happen. Some things Tickler wants genuinely cannot be expressed through
 the extension points core exposes today — an unexported component, a route the
 host owns, a hook that does not exist.
 
@@ -71,11 +71,11 @@ Instead:
 
 1. **Open a core-limitation issue** — the `Core limitation` issue template
    (`.github/ISSUE_TEMPLATE/core_limitation.yml`) asks for exactly this —
-   describing what Plica needs, which extension point comes closest, and exactly
+   describing what Tickler needs, which extension point comes closest, and exactly
    why it falls short. Include the smallest change to core that would fix it —
    as a *request*, not a patch.
 2. **Say what the fallback is** if core does not change: the degraded version
-   Plica can ship inside the surface today, or nothing.
+   Tickler can ship inside the surface today, or nothing.
 3. **Let the user decide.** Whether core changes is their call, not the
    contributor's. Park the work — do not merge a workaround while waiting.
 
@@ -105,7 +105,7 @@ the repo, or it is a core limitation to file. If the allowlist itself is wrong �
 a legitimate new top-level directory, say — widen it in its own pull request
 that explains why, and let that be reviewed on its own merits.
 
-## Working on Plica
+## Working on Tickler
 
 ```bash
 pnpm install
@@ -124,14 +124,14 @@ checkout, resolved at `../../paperclip` relative to this repository. If yours
 lives elsewhere, repoint the two paths in `package.json` locally — but do not
 commit that repoint. Those links are the only thing the build takes from the
 checkout: `pnpm build` does not read Paperclip's compiled UI, and a Paperclip
-upgrade does not require rebuilding Plica.
+upgrade does not require rebuilding Tickler.
 
 Before you touch `scripts/build-css.mjs`, `src/ui/styles.ts` or
-`src/ui/lib/host-subtract.ts`, read the README's "Why Plica subtracts the
+`src/ui/lib/host-subtract.ts`, read the README's "Why Tickler subtracts the
 host's selectors". The build emits Tailwind's whole sheet on purpose; the
 subtraction that keeps it from stranding Paperclip in its mobile layout happens
-in the browser, and a change that skips it — or moves Plica's `<style>` ahead of
-the host's — breaks the host app, not the Plica page.
+in the browser, and a change that skips it — or moves Tickler's `<style>` ahead of
+the host's — breaks the host app, not the Tickler page.
 
 ## Documentation
 
@@ -147,9 +147,9 @@ hand-cropped:
 node scripts/capture-screenshots.mjs
 ```
 
-That needs a running instance with Plica installed; the recipe for standing up a
+That needs a running instance with Tickler installed; the recipe for standing up a
 throwaway one is in [`docs/screenshots/README.md`](docs/screenshots/README.md).
-Every image in `docs/` is Plica's own demo fixture, so nothing from a real
+Every image in `docs/` is Tickler's own demo fixture, so nothing from a real
 instance can end up in a published picture — keep it that way.
 
 ## The shared checkout
@@ -158,13 +158,13 @@ instance can end up in a published picture — keep it that way.
 worktree and work there.**
 
 ```bash
-git worktree add -b pli-15/shared-checkout-isolation ../plica-pli-15 origin/main
-cd ../plica-pli-15
+git worktree add -b pli-15/shared-checkout-isolation ../tickler-pli-15 origin/main
+cd ../tickler-pli-15
 ```
 
 Every agent in this company resolves to the same working copy. Paperclip runs
 this project with `PAPERCLIP_WORKSPACE_STRATEGY=project_primary`, so each
-agent's `PAPERCLIP_WORKSPACE_CWD` lands on the same `_default/plica` — one
+agent's `PAPERCLIP_WORKSPACE_CWD` lands on the same `_default/tickler` — one
 `HEAD`, one index, one stash, shared by everyone running at once.
 
 That makes branch switching destructive in a way git will not warn you about.
@@ -179,10 +179,10 @@ agents stashing race each other.
 A worktree is the whole fix. It is a full checkout with its own `HEAD`, index
 and stash, sharing the original's object store, so it costs a working copy on
 disk and nothing else. Creating one does not move the shared tree's `HEAD`, so
-adding yours cannot disturb work already in flight. Put it beside `plica/`
+adding yours cannot disturb work already in flight. Put it beside `tickler/`
 rather than inside it — anywhere unique outside the shared tree works, and
-`../plica-<issue-key>` is what the tooling suggests. When the branch has
-merged, `git worktree remove ../plica-<issue-key>` cleans it up.
+`../tickler-<issue-key>` is what the tooling suggests. When the branch has
+merged, `git worktree remove ../tickler-<issue-key>` cleans it up.
 
 What you may do in the shared checkout: read it, and run read-only git
 commands. What you may not do: `checkout`, `switch`, `reset`, `stash`, or leave
@@ -201,8 +201,8 @@ run instead:
 ```bash
 WIP=$(git stash create) && git reset --hard
 git checkout main
-git worktree add ../plica-<issue-key> <branch>
-cd ../plica-<issue-key>
+git worktree add ../tickler-<issue-key> <branch>
+cd ../tickler-<issue-key>
 git stash apply --index "$WIP"
 ```
 
@@ -219,7 +219,7 @@ whatever is left to move by hand.
 `pnpm check:worktree` enforces the part that can be enforced. It runs in
 `pre-commit` and fails a commit made on a topic branch in the shared checkout
 during an agent run — human clones share their checkout with nobody, so it is a
-no-op there. `PLICA_ALLOW_SHARED_CHECKOUT=1` overrides it for a deliberate
+no-op there. `TICKLER_ALLOW_SHARED_CHECKOUT=1` overrides it for a deliberate
 exception.
 
 > **The guard is a backstop, not the guarantee.** Git has no pre-checkout hook,
@@ -295,8 +295,8 @@ that passed should be the checks for the merge result — and never push to
 Do not take this paragraph's word for the current state; read it:
 
 ```
-gh api repos/nickallevato/paperclip-plica/branches/main --jq .protected   # false
-gh api repos/nickallevato/paperclip-plica/rulesets                        # []
+gh api repos/nickallevato/paperclip-tickler/branches/main --jq .protected   # false
+gh api repos/nickallevato/paperclip-tickler/rulesets                        # []
 ```
 
 Those two endpoints answer without the `Administration` permission, unlike
@@ -367,14 +367,14 @@ should be told, not left to find a conflict.
 | `plugin surface` | The no-core-changes rule. Dependency-free, always runs. |
 | `build and test` | `pnpm typecheck`, `pnpm build`, `pnpm test`. |
 
-`build and test` needs a Paperclip checkout, because Plica's `@paperclipai/*`
-dependencies are `link:` references to one and `pnpm build` filters Plica's
+`build and test` needs a Paperclip checkout, because Tickler's `@paperclipai/*`
+dependencies are `link:` references to one and `pnpm build` filters Tickler's
 stylesheet against the host's compiled CSS. CI clones core read-only from the
 public upstream at the commit pinned in `.github/paperclip-core.ref`.
 
 That pin is a real dependency, so treat it like one: bumping it is its own pull
 request, and CI going red on the bump is the point — it means a Paperclip
-upgrade broke Plica loudly, here, instead of quietly in someone's install.
+upgrade broke Tickler loudly, here, instead of quietly in someone's install.
 
 Build runs before test on purpose. `src/bundle.test.ts` asserts against
 `dist/ui/index.js` and skips itself when that file is missing, so testing first

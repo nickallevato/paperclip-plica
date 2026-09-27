@@ -1,5 +1,5 @@
 /**
- * Generates `src/ui/demo/demo-data.json` — the fixture Plica serves when demo
+ * Generates `src/ui/demo/demo-data.json` — the fixture Tickler serves when demo
  * mode is on.
  *
  * Written as a generator rather than hand-typed JSON because the fixture has
@@ -280,7 +280,7 @@ function buildAgents(key) {
     capabilities: null,
     adapterType: "claude_local",
     adapterConfig: {},
-    // Only the CEO carries a heartbeat: it is the one Plica watches, and the
+    // Only the CEO carries a heartbeat: it is the one Tickler watches, and the
     // fixture keeps Initech's stale so the "CEO overdue" row has something to
     // render in a walkthrough.
     runtimeConfig:

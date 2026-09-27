@@ -1,26 +1,28 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/nickallevato/paperclip-plica/main/docs/brand/plica-icon.png" width="96" height="96" alt="Plica">
+  <img src="https://raw.githubusercontent.com/nickallevato/paperclip-tickler/main/docs/brand/tickler-icon.png" width="96" height="96" alt="Tickler">
 </p>
 
-<h1 align="center">Plica</h1>
+<h1 align="center">Tickler</h1>
 
 <p align="center">
   <strong>Every org. One page. What needs you, right now.</strong><br>
   A cross-org HUD for <a href="https://github.com/paperclipai/paperclip">Paperclip</a>.
 </p>
 
+<p align="center"><sub>Formerly <b>Plica</b> (<code>paperclip-plugin-plica</code>, through 0.6.0).</sub></p>
+
 <p align="center">
-  <a href="https://www.npmjs.com/package/paperclip-plugin-plica"><img src="https://img.shields.io/npm/v/paperclip-plugin-plica?logo=npm&color=cb3837" alt="npm version"></a>
-  <a href="https://www.npmjs.com/package/paperclip-plugin-plica"><img src="https://img.shields.io/npm/dm/paperclip-plugin-plica?color=cb3837" alt="npm downloads"></a>
-  <a href="https://github.com/nickallevato/paperclip-plica/actions/workflows/ci.yml"><img src="https://github.com/nickallevato/paperclip-plica/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://www.npmjs.com/package/paperclip-plugin-tickler"><img src="https://img.shields.io/npm/v/paperclip-plugin-tickler?logo=npm&color=cb3837" alt="npm version"></a>
+  <a href="https://www.npmjs.com/package/paperclip-plugin-tickler"><img src="https://img.shields.io/npm/dm/paperclip-plugin-tickler?color=cb3837" alt="npm downloads"></a>
+  <a href="https://github.com/nickallevato/paperclip-tickler/actions/workflows/ci.yml"><img src="https://github.com/nickallevato/paperclip-tickler/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="https://github.com/paperclipai/paperclip"><img src="https://img.shields.io/badge/Paperclip-plugin-18181b" alt="Paperclip plugin"></a>
-  <a href="https://github.com/nickallevato/paperclip-plica/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT license"></a>
+  <a href="https://github.com/nickallevato/paperclip-tickler/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT license"></a>
 </p>
 
 > ### 📦 Install from inside Paperclip — no terminal needed
 >
-> **Settings → Plugins → Install Plugin**, enter **`paperclip-plugin-plica`** as the npm Package
-> Name, and click **Install**. That's it — Plica's button appears in the bar at the top of the page.
+> **Settings → Plugins → Install Plugin**, enter **`paperclip-plugin-tickler`** as the npm Package
+> Name, and click **Install**. That's it — Tickler's button appears in the bar at the top of the page.
 >
 > Prefer the command line, or building from source? See [Install](#install) below.
 
@@ -41,20 +43,20 @@ you will deal with each thing — instead of visiting each org's dashboard in tu
 - 🎭 **Demo mode.** `?demo=1` swaps in invented orgs, so you can screenshot or demo safely.
 - 🧩 **Zero core changes.** UI-only, prebuilt, and fits whichever Paperclip build it lands on.
 
-![The Plica page: Orgs, portfolio and routines at left; the Needs-you queue, grouped by when you'll decide, owning the main column](https://raw.githubusercontent.com/nickallevato/paperclip-plica/main/docs/screenshots/plica-page.png)
+![The Tickler page: Orgs, portfolio and routines at left; the Needs-you queue, grouped by when you'll decide, owning the main column](https://raw.githubusercontent.com/nickallevato/paperclip-tickler/main/docs/screenshots/tickler-page.png)
 
-> The screenshots are Plica's own [demo mode](https://github.com/nickallevato/paperclip-plica/blob/main/docs/configuration.md#demo-mode) —
+> The screenshots are Tickler's own [demo mode](https://github.com/nickallevato/paperclip-tickler/blob/main/docs/configuration.md#demo-mode) —
 > invented orgs, tickets and agents, not a real instance — apart from the two inline-answer shots,
-> which come from Plica's own development org. Try it on your own install: add
-> `?demo=1` to the Plica page's URL (e.g. `/ACME/plica?demo=1`). Nothing you click in demo mode
+> which come from Tickler's own development org. Try it on your own install: add
+> `?demo=1` to the Tickler page's URL (e.g. `/ACME/tickler?demo=1`). Nothing you click in demo mode
 > reaches the server.
 
-Plica is UI-only. It contributes one page (mounted at `/:companyPrefix/plica`) and a toolbar
+Tickler is UI-only. It contributes one page (mounted at `/:companyPrefix/tickler`) and a toolbar
 launcher that navigates there. Its worker is a deliberate no-op.
 
-**Documentation:** [install](https://github.com/nickallevato/paperclip-plica/blob/main/docs/install.md) · [configuration](https://github.com/nickallevato/paperclip-plica/blob/main/docs/configuration.md) ·
-[the board](https://github.com/nickallevato/paperclip-plica/blob/main/docs/board.md) · [the queue](https://github.com/nickallevato/paperclip-plica/blob/main/docs/queue.md) ·
-[troubleshooting](https://github.com/nickallevato/paperclip-plica/blob/main/docs/troubleshooting.md) · [release notes](https://github.com/nickallevato/paperclip-plica/tree/main/docs/releases/)
+**Documentation:** [install](https://github.com/nickallevato/paperclip-tickler/blob/main/docs/install.md) · [configuration](https://github.com/nickallevato/paperclip-tickler/blob/main/docs/configuration.md) ·
+[the board](https://github.com/nickallevato/paperclip-tickler/blob/main/docs/board.md) · [the queue](https://github.com/nickallevato/paperclip-tickler/blob/main/docs/queue.md) ·
+[troubleshooting](https://github.com/nickallevato/paperclip-tickler/blob/main/docs/troubleshooting.md) · [release notes](https://github.com/nickallevato/paperclip-tickler/tree/main/docs/releases/)
 
 ## What it shows
 
@@ -63,17 +65,17 @@ approvals, questions and confirmations awaiting a response, blockers, failed run
 heartbeats and routine exceptions. Actions are inline — Approve, Reject, Reply, answer a
 question, choose on a confirmation — so you rarely need to leave the page, let alone open the org.
 
-![A confirmation answered from the queue row: Yes, run it now / No, wait for the morning tick](https://raw.githubusercontent.com/nickallevato/paperclip-plica/main/docs/screenshots/queue-confirmation.png)
+![A confirmation answered from the queue row: Yes, run it now / No, wait for the morning tick](https://raw.githubusercontent.com/nickallevato/paperclip-tickler/main/docs/screenshots/queue-confirmation.png)
 
-<img src="https://raw.githubusercontent.com/nickallevato/paperclip-plica/main/docs/screenshots/queue-question.png" alt="An agent's multiple-choice question answered in place, with an optional note" width="400">
+<img src="https://raw.githubusercontent.com/nickallevato/paperclip-tickler/main/docs/screenshots/queue-question.png" alt="An agent's multiple-choice question answered in place, with an optional note" width="400">
 
 By default it groups by **when you said you'd decide**: Today (and anything overdue), Unsorted,
 This week, Alerts, Whenever and Snoozed. New items land in Unsorted with **Today · This week ·
 Whenever** right on the row, and every row has a menu to set a day, snooze or archive it. These
-are Paperclip's own decision-triage records, so a day set in Plica is the day Paperclip's
+are Paperclip's own decision-triage records, so a day set in Tickler is the day Paperclip's
 Decisions page shows — and it works on stock Paperclip, through its existing web API.
 
-![The queue grouped by when you'll decide: Today, Unsorted, This week](https://raw.githubusercontent.com/nickallevato/paperclip-plica/main/docs/screenshots/queue-by-decide.png)
+![The queue grouped by when you'll decide: Today, Unsorted, This week](https://raw.githubusercontent.com/nickallevato/paperclip-tickler/main/docs/screenshots/queue-by-decide.png)
 
 It can also group by severity, org, kind, project or age — by project is how you find the one
 project quietly generating half the noise.
@@ -83,13 +85,13 @@ waiting on you. Hover a name for everything else (questions, blockers, review, o
 burn, a sparkline of recent runs, the lead agent). Orgs can be watched, sorted by heat, and
 clicked to filter the queue.
 
-![An org's detail card: every figure the line leaves out](https://raw.githubusercontent.com/nickallevato/paperclip-plica/main/docs/screenshots/company-detail.png)
+![An org's detail card: every figure the line leaves out](https://raw.githubusercontent.com/nickallevato/paperclip-tickler/main/docs/screenshots/company-detail.png)
 
 Each org's capacity is a row of squares, one per agent — working, stalled, queued, errored or
 idle. Hovering one says who it is and what they are actually doing, which is the thing a bare
 "3 running" count cannot tell you.
 
-![A capacity square's hover card: the agent, their ticket, and what they are doing right now](https://raw.githubusercontent.com/nickallevato/paperclip-plica/main/docs/screenshots/capacity-hover.png)
+![A capacity square's hover card: the agent, their ticket, and what they are doing right now](https://raw.githubusercontent.com/nickallevato/paperclip-tickler/main/docs/screenshots/capacity-hover.png)
 
 **Portfolio and Routines** — projects by how much is moving, waiting or blocked, and the
 routines that failed or stopped firing.
@@ -99,9 +101,9 @@ routines that failed or stopped firing.
 **On a phone** — the page stacks Orgs, the queue, then Portfolio and Routines, and each queue
 row puts its actions on a line of their own.
 
-<img src="https://raw.githubusercontent.com/nickallevato/paperclip-plica/main/docs/screenshots/phone.png" alt="Plica at phone width: the Orgs list above the queue" width="320">
+<img src="https://raw.githubusercontent.com/nickallevato/paperclip-tickler/main/docs/screenshots/phone.png" alt="Tickler at phone width: the Orgs list above the queue" width="320">
 
-Full tours: [the board](https://github.com/nickallevato/paperclip-plica/blob/main/docs/board.md), [the queue](https://github.com/nickallevato/paperclip-plica/blob/main/docs/queue.md).
+Full tours: [the board](https://github.com/nickallevato/paperclip-tickler/blob/main/docs/board.md), [the queue](https://github.com/nickallevato/paperclip-tickler/blob/main/docs/queue.md).
 
 ## Install
 
@@ -109,87 +111,87 @@ Full tours: [the board](https://github.com/nickallevato/paperclip-plica/blob/mai
 
 1. Open **Settings → Plugins** — the Plugin Manager, at `/company/settings/instance/plugins`.
 2. Click **Install Plugin**.
-3. Enter `paperclip-plugin-plica` as the **npm Package Name**. Just the name — no `@`, no
+3. Enter `paperclip-plugin-tickler` as the **npm Package Name**. Just the name — no `@`, no
    version.
 4. Click **Install**.
 
-Plica's button appears in the breadcrumb bar at the top of the page. Click it and you're in.
+Tickler's button appears in the breadcrumb bar at the top of the page. Click it and you're in.
 
 You need to be an instance admin, on a self-hosted Paperclip whose server can reach npm. The
 package is prebuilt and carries nothing tied to a particular Paperclip build, so upgrading
-Paperclip later needs nothing from Plica.
+Paperclip later needs nothing from Tickler.
 
 ### Manually, from the command line
 
 ```bash
-npx paperclipai plugin install paperclip-plugin-plica
+npx paperclipai plugin install paperclip-plugin-tickler
 ```
 
 The CLI prints the instance it is about to install into before it does anything — check that
 first line. To upgrade an npm install later (the Plugin Manager has no upgrade button):
 
 ```bash
-npx paperclipai plugin upgrade nickallevato.plugin-plica
+npx paperclipai plugin upgrade nickallevato.plugin-tickler
 ```
 
 ### From source
 
-For working on Plica, install it from a clone instead:
+For working on Tickler, install it from a clone instead:
 
 ```bash
-git clone https://github.com/nickallevato/paperclip-plica.git
-cd paperclip-plica
+git clone https://github.com/nickallevato/paperclip-tickler.git
+cd paperclip-tickler
 pnpm install
 pnpm build
-npx paperclipai plugin install /absolute/path/to/paperclip-plica --local
+npx paperclipai plugin install /absolute/path/to/paperclip-tickler --local
 ```
 
-[docs/install.md](https://github.com/nickallevato/paperclip-plica/blob/main/docs/install.md) covers every route in detail: upgrading, the directory layout a clone
+[docs/install.md](https://github.com/nickallevato/paperclip-tickler/blob/main/docs/install.md) covers every route in detail: upgrading, the directory layout a clone
 needs for its `link:` dependencies, and how to check the plugin actually loaded.
 
 ## Demo mode
 
-Plica can serve the whole HUD from a bundled fixture instead of your instance, so the page can
+Tickler can serve the whole HUD from a bundled fixture instead of your instance, so the page can
 be screenshotted or demoed without putting real company names, ticket titles or agent chatter
 on screen. Turn it on with `?demo=1` or the **Demo mode** checkbox on the plugin's settings
 page; the header carries a **DEMO DATA** badge the whole time it is on. It fails closed — a
 fixture that will not load is an error, never a silent fall back to real data.
 
 Details, including how to edit the fixture:
-[docs/configuration.md](https://github.com/nickallevato/paperclip-plica/blob/main/docs/configuration.md#demo-mode).
+[docs/configuration.md](https://github.com/nickallevato/paperclip-tickler/blob/main/docs/configuration.md#demo-mode).
 
 The screenshots in `docs/screenshots/` are demo mode with nothing else done to them, captured by
-`scripts/capture-screenshots.mjs` — apart from a few hand-captured ones, which that page lists. See [docs/screenshots/README.md](https://github.com/nickallevato/paperclip-plica/blob/main/docs/screenshots/README.md).
+`scripts/capture-screenshots.mjs` — apart from a few hand-captured ones, which that page lists. See [docs/screenshots/README.md](https://github.com/nickallevato/paperclip-tickler/blob/main/docs/screenshots/README.md).
 
-## Why Plica subtracts the host's selectors
+## Why Tickler subtracts the host's selectors
 
-Plica compiles its own Tailwind sheet and injects it via `<style>` appended to `<head>` — after
+Tickler compiles its own Tailwind sheet and injects it via `<style>` appended to `<head>` — after
 the host's. Tailwind emits every class it scans, including ones Paperclip already defines, and a
 duplicate that lands later wins on document order. A stray `.hidden{display:none}` is enough to
 beat Paperclip's `@media(min-width:40rem){.sm\:flex{...}}` and pin the whole app — not just the
-Plica page — in its mobile layout.
+Tickler page — in its mobile layout.
 
-Ordering cannot fix this, in either direction. Appended last, Plica's duplicates beat the host's
-responsive variants. Inserted first, Plica's `@layer` declarations come before the host's, which
+Ordering cannot fix this, in either direction. Appended last, Tickler's duplicates beat the host's
+responsive variants. Inserted first, Tickler's `@layer` declarations come before the host's, which
 pushes the host's `base`/`components` layers after `utilities` and breaks spacing app-wide.
 Subtraction is the only approach that works.
 
 So at injection, `src/ui/styles.ts` walks the document's other stylesheets through the CSSOM,
-collects every selector they define, and deletes each of Plica's class rules the host already
+collects every selector they define, and deletes each of Tickler's class rules the host already
 has — trimming shared selector lists and dropping `@media`/`@layer`/`@supports` groups left
 empty (`src/ui/lib/host-subtract.ts`). Against Paperclip's real sheet that drops about 480
-selectors; Plica-only classes are untouched. Cross-origin sheets, which the browser will not let
+selectors; Tickler-only classes are untouched. Cross-origin sheets, which the browser will not let
 a page read, are skipped — they are web-font CSS, not host utilities.
 
 This used to be done once, at build time, against whichever Paperclip UI build was on the
-builder's disk — which went stale on every Paperclip upgrade and meant rebuilding Plica after
+builder's disk — which went stale on every Paperclip upgrade and meant rebuilding Tickler after
 each one. Subtracting against the sheets the page actually loaded leaves nothing to go stale: a
-Paperclip upgrade needs no Plica rebuild, the build needs no Paperclip UI build, and one
+Paperclip upgrade needs no Tickler rebuild, the build needs no Paperclip UI build, and one
 published package fits whichever Paperclip stylesheet it lands next to.
 
 ## Vendored host components
 
-`src/ui/host/` holds read-only copies of Paperclip internals Plica depends on — the ui-kit
+`src/ui/host/` holds read-only copies of Paperclip internals Tickler depends on — the ui-kit
 primitives, `useCompanyOrder`, API client shapes. They are copies rather than imports because
 Paperclip does not export them to plugins.
 
@@ -199,8 +201,8 @@ exceptions:
 - `ui-kit/dialog.tsx` — plain Tailwind positioning, since the host's version leans on theme-only
   CSS variables the plugin sheet does not carry.
 - `useCompanyOrder.ts` — read path only; the host's mutation and `persistOrder` are omitted
-  because Plica never reorders.
-- `ui-kit/hover-card.tsx` — a Plica original, not a copy. The host ships no HoverCard component,
+  because Tickler never reorders.
+- `ui-kit/hover-card.tsx` — a Tickler original, not a copy. The host ships no HoverCard component,
   so there is nothing upstream to keep it identical to.
 
 Anything else that drifts is a bug. `CompanyPatternIcon.tsx` in particular must match exactly:
@@ -233,9 +235,9 @@ src/
   manifest.ts              plugin id, capabilities, entrypoints
   worker.ts                no-op
   ui/
-    PlicaHud.tsx           root: owns the roster, sort mode, pins, token settings
-    PlicaPage.tsx          host-mounted page slot
-    PlicaToolbarButton.tsx toolbar launcher
+    TicklerHud.tsx           root: owns the roster, sort mode, pins, token settings
+    TicklerPage.tsx          host-mounted page slot
+    TicklerToolbarButton.tsx toolbar launcher
     components/            company lines, queue, recent tasks, portfolio, briefing
     lib/                   capacity, queue grouping, run derivation, drafts
     host/                  vendored Paperclip internals (read-only)
@@ -251,7 +253,7 @@ docs/                      the documentation set
 ## Reporting a bug, or asking for a feature
 
 Open an issue from one of the three templates — feature request, bug report, or
-core limitation. [docs/intake.md](https://github.com/nickallevato/paperclip-plica/blob/main/docs/intake.md) is the whole path a request
+core limitation. [docs/intake.md](https://github.com/nickallevato/paperclip-tickler/blob/main/docs/intake.md) is the whole path a request
 takes from there to a merged change, including the two points where the
 repository owner decides: the priority band, and the merge.
 
@@ -261,8 +263,8 @@ is real but not now is *parked*, not closed, and reopens on a sentence.
 
 ## Contributing
 
-[CONTRIBUTING.md](https://github.com/nickallevato/paperclip-plica/blob/main/CONTRIBUTING.md). The rule to read before anything else:
-**Plica never modifies Paperclip core.** Everything lands here, through a plugin
+[CONTRIBUTING.md](https://github.com/nickallevato/paperclip-tickler/blob/main/CONTRIBUTING.md). The rule to read before anything else:
+**Tickler never modifies Paperclip core.** Everything lands here, through a plugin
 extension point. If the plugin surface cannot express a change, file it as a
 core limitation rather than working around it — CI enforces this, with no bypass.
 

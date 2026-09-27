@@ -87,12 +87,12 @@ describe("host/api", () => {
       expect(lastCall()[0]).toBe("/api/companies/c1/attention");
     });
 
-    it("addresses Plica's own plugin record by its key", async () => {
+    it("addresses Tickler's own plugin record by its key", async () => {
       await pluginSelfApi.get();
-      expect(lastCall()[0]).toBe("/api/plugins/nickallevato.plugin-plica");
+      expect(lastCall()[0]).toBe("/api/plugins/nickallevato.plugin-tickler");
 
       await pluginSelfApi.upgrade();
-      expect(lastCall()[0]).toBe("/api/plugins/nickallevato.plugin-plica/upgrade");
+      expect(lastCall()[0]).toBe("/api/plugins/nickallevato.plugin-tickler/upgrade");
       expect(lastCall()[1].method).toBe("POST");
     });
 
@@ -143,7 +143,7 @@ describe("host/api", () => {
       expect(lastCall()[1].body).toBe(JSON.stringify({ body: "hi", reopen: true }));
     });
 
-    it("serializes the issue list filters Plica uses", async () => {
+    it("serializes the issue list filters Tickler uses", async () => {
       await issuesApi.list("c1", { status: "done,blocked", limit: 200 });
       expect(lastCall()[0]).toBe("/api/companies/c1/issues?status=done%2Cblocked&limit=200");
     });
@@ -163,7 +163,7 @@ describe("host/api", () => {
       expect(lastCall()[0]).toBe("/api/companies/c1/live-runs?limit=5");
     });
 
-    it("serializes the work timeline params Plica uses", async () => {
+    it("serializes the work timeline params Tickler uses", async () => {
       await workTimelineApi.get("c1", { from: "2026-08-01T00:00:00.000Z", limit: 200 });
       expect(lastCall()[0]).toBe(
         "/api/companies/c1/timeline?from=2026-08-01T00%3A00%3A00.000Z&limit=200",

@@ -1,12 +1,12 @@
 import { useCallback, useState } from "react";
 import { decisionTriageApi, type DecisionTriageUpdate } from "../host/api";
 import { useToastActions } from "../host/shims";
-import type { PlicaQueueItem } from "../lib/queue";
+import type { TicklerQueueItem } from "../lib/queue";
 
 /** A local, not-yet-confirmed change to one queue item. */
-export type PlicaTriageOverride = DecisionTriageUpdate & { archived?: boolean };
+export type TicklerTriageOverride = DecisionTriageUpdate & { archived?: boolean };
 
-export type PlicaTriageAction = DecisionTriageUpdate | { archive: true };
+export type TicklerTriageAction = DecisionTriageUpdate | { archive: true };
 
 /**
  * Decide-by, snooze and archive for queue items, applied optimistically.
@@ -21,7 +21,7 @@ export type PlicaTriageAction = DecisionTriageUpdate | { archive: true };
  */
 export function useQueueTriage(refetch: (companyId: string) => Promise<void> | undefined) {
   const { pushToast } = useToastActions();
-  const [overrides, setOverrides] = useState<Record<string, PlicaTriageOverride>>({});
+  const [overrides, setOverrides] = useState<Record<string, TicklerTriageOverride>>({});
   const [busy, setBusy] = useState<Record<string, true>>({});
 
   const drop = (id: string) => {
@@ -30,10 +30,10 @@ export function useQueueTriage(refetch: (companyId: string) => Promise<void> | u
   };
 
   const triage = useCallback(
-    async (item: PlicaQueueItem, action: PlicaTriageAction) => {
+    async (item: TicklerQueueItem, action: TicklerTriageAction) => {
       if (!item.triage) return;
       const { sourceKind, sourceId } = item.triage;
-      const override: PlicaTriageOverride = "archive" in action ? { archived: true } : action;
+      const override: TicklerTriageOverride = "archive" in action ? { archived: true } : action;
       setOverrides((current) => ({ ...current, [item.id]: { ...current[item.id], ...override } }));
       setBusy((current) => ({ ...current, [item.id]: true }));
       try {
@@ -60,11 +60,11 @@ export function useQueueTriage(refetch: (companyId: string) => Promise<void> | u
 
 /** The queue as it will look once pending triage writes land. */
 export function applyTriageOverrides(
-  items: ReadonlyArray<PlicaQueueItem>,
-  overrides: Record<string, PlicaTriageOverride>,
-): PlicaQueueItem[] {
-  if (Object.keys(overrides).length === 0) return items as PlicaQueueItem[];
-  const out: PlicaQueueItem[] = [];
+  items: ReadonlyArray<TicklerQueueItem>,
+  overrides: Record<string, TicklerTriageOverride>,
+): TicklerQueueItem[] {
+  if (Object.keys(overrides).length === 0) return items as TicklerQueueItem[];
+  const out: TicklerQueueItem[] = [];
   for (const item of items) {
     const override = overrides[item.id];
     if (!override) {

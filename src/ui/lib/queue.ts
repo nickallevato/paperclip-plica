@@ -11,12 +11,12 @@ import type {
 import type { LiveRunForIssue } from "../host/api";
 import { isRunActive, runPhase, type RunPhase } from "./runs";
 import {
-  PLICA_ROUTINE_OVERDUE_GRACE_MS,
+  TICKLER_ROUTINE_OVERDUE_GRACE_MS,
   attentionIssueId,
   deriveCeoHeartbeat,
   selectCeo,
-  type PlicaCeoHeartbeat,
-} from "./plica";
+  type TicklerCeoHeartbeat,
+} from "./tickler";
 
 /**
  * The "Needs you" queue: everything across every company that is waiting on a
@@ -27,29 +27,29 @@ import {
  *   soon  — high attention, routines that stopped firing or whose last run failed
  *   later — medium / low attention (shown as a count, expanded on demand)
  *
- * Pure functions over the pieces of PlicaCompanyData, like the other derive*
+ * Pure functions over the pieces of TicklerCompanyData, like the other derive*
  * helpers, so the bucketing is unit-tested without the polling hook.
  */
-export type PlicaQueueBucket = "now" | "soon" | "later";
+export type TicklerQueueBucket = "now" | "soon" | "later";
 
-export const PLICA_QUEUE_BUCKETS: ReadonlyArray<{ bucket: PlicaQueueBucket; label: string }> = [
+export const TICKLER_QUEUE_BUCKETS: ReadonlyArray<{ bucket: TicklerQueueBucket; label: string }> = [
   { bucket: "now", label: "Now" },
   { bucket: "soon", label: "Soon" },
   { bucket: "later", label: "Later" },
 ];
 
-interface PlicaQueueItemBase {
+interface TicklerQueueItemBase {
   /** Stable across polls: `${kind}:${source id}`. */
   id: string;
   companyId: string;
-  bucket: PlicaQueueBucket;
+  bucket: TicklerQueueBucket;
   /** Lower sorts first within a bucket. */
   rank: number;
   /** When the item started needing you (epoch ms), or null when unknown. */
   atMs: number | null;
   /**
    * The identity Paperclip's decision triage is keyed by (the attention
-   * item's `sourceKind` + `subject.id`), or null for the conditions Plica
+   * item's `sourceKind` + `subject.id`), or null for the conditions Tickler
    * derives itself — an overdue heartbeat, a stalled routine — which have no
    * triage row and clear on their own.
    */
@@ -60,18 +60,18 @@ interface PlicaQueueItemBase {
   snoozedUntil: string | null;
 }
 
-export type PlicaQueueItem =
-  | (PlicaQueueItemBase & { kind: "approval"; approval: Approval; requestedBy: string | null })
-  | (PlicaQueueItemBase & {
+export type TicklerQueueItem =
+  | (TicklerQueueItemBase & { kind: "approval"; approval: Approval; requestedBy: string | null })
+  | (TicklerQueueItemBase & {
       kind: "attention";
       item: AttentionItem;
       /** The issue the item is about, when it is about one we hold. */
       issue: Issue | null;
     })
-  | (PlicaQueueItemBase & { kind: "heartbeat"; ceo: Agent; beat: PlicaCeoHeartbeat })
-  | (PlicaQueueItemBase & { kind: "routine"; routine: RoutineListItem; reason: "overdue" | "failed" });
+  | (TicklerQueueItemBase & { kind: "heartbeat"; ceo: Agent; beat: TicklerCeoHeartbeat })
+  | (TicklerQueueItemBase & { kind: "routine"; routine: RoutineListItem; reason: "overdue" | "failed" });
 
-const BUCKET_ORDER: Record<PlicaQueueBucket, number> = { now: 0, soon: 1, later: 2 };
+const BUCKET_ORDER: Record<TicklerQueueBucket, number> = { now: 0, soon: 1, later: 2 };
 
 const PHASE_ORDER: Record<RunPhase, number> = { working: 0, queued: 1 };
 
@@ -81,7 +81,7 @@ function epochMs(iso: string | Date | null | undefined): number | null {
   return Number.isFinite(ms) ? ms : null;
 }
 
-function attentionBucket(severity: AttentionItem["severity"]): { bucket: PlicaQueueBucket; rank: number } {
+function attentionBucket(severity: AttentionItem["severity"]): { bucket: TicklerQueueBucket; rank: number } {
   switch (severity) {
     case "critical":
       return { bucket: "now", rank: 0 };
@@ -103,8 +103,8 @@ export function deriveQueueItems(input: {
   /** Optional; lets attention rows name the issue behind a thread interaction. */
   issues?: ReadonlyArray<Issue>;
   nowMs: number;
-}): PlicaQueueItem[] {
-  const items: PlicaQueueItem[] = [];
+}): TicklerQueueItem[] {
+  const items: TicklerQueueItem[] = [];
   const agentName = new Map(input.agents.map((agent) => [agent.id, agent.name]));
   const issueById = new Map((input.issues ?? []).map((issue) => [issue.id, issue]));
   // An approval's decide-by and snooze live on its attention-feed twin, which
@@ -181,7 +181,7 @@ export function deriveQueueItems(input: {
     const overdueAt = (routine.triggers ?? [])
       .filter((trigger) => trigger.enabled && trigger.nextRunAt)
       .map((trigger) => epochMs(trigger.nextRunAt as unknown as string))
-      .filter((ms): ms is number => ms !== null && ms < input.nowMs - PLICA_ROUTINE_OVERDUE_GRACE_MS)
+      .filter((ms): ms is number => ms !== null && ms < input.nowMs - TICKLER_ROUTINE_OVERDUE_GRACE_MS)
       .sort((a, b) => a - b)[0];
     if (overdueAt !== undefined) {
       items.push({
@@ -222,16 +222,16 @@ export function deriveQueueItems(input: {
  * the bucket, then the rank inside it — always wins; this only decides which
  * of two equally urgent items you see first.
  */
-export type PlicaQueueSort = "oldest" | "newest";
+export type TicklerQueueSort = "oldest" | "newest";
 
-export const PLICA_QUEUE_SORT_STORAGE_KEY = "plica.queueSort";
+export const TICKLER_QUEUE_SORT_STORAGE_KEY = "tickler.queueSort";
 
-export function normalizeQueueSort(value: string | null | undefined): PlicaQueueSort {
+export function normalizeQueueSort(value: string | null | undefined): TicklerQueueSort {
   return value === "newest" ? "newest" : "oldest";
 }
 
 /** Bucket, then rank, then age in `sort` order (unknown ages last either way). */
-export function compareQueueItems(a: PlicaQueueItem, b: PlicaQueueItem, sort: PlicaQueueSort = "oldest"): number {
+export function compareQueueItems(a: TicklerQueueItem, b: TicklerQueueItem, sort: TicklerQueueSort = "oldest"): number {
   const byBucket = BUCKET_ORDER[a.bucket] - BUCKET_ORDER[b.bucket];
   if (byBucket !== 0) return byBucket;
   if (a.rank !== b.rank) return a.rank - b.rank;
@@ -247,7 +247,7 @@ export function queueItemAgeMinutes(item: { atMs: number | null }, nowMs: number
   return Number.isFinite(mins) && mins >= 0 ? mins : null;
 }
 
-export interface PlicaQueueSummary {
+export interface TicklerQueueSummary {
   now: number;
   soon: number;
   later: number;
@@ -256,7 +256,7 @@ export interface PlicaQueueSummary {
   oldestMins: number | null;
 }
 
-export function summarizeQueue(items: ReadonlyArray<PlicaQueueItem>, nowMs: number): PlicaQueueSummary {
+export function summarizeQueue(items: ReadonlyArray<TicklerQueueItem>, nowMs: number): TicklerQueueSummary {
   const ages = items
     .filter((item) => item.bucket !== "later")
     .map((item) => queueItemAgeMinutes(item, nowMs))
@@ -270,9 +270,9 @@ export function summarizeQueue(items: ReadonlyArray<PlicaQueueItem>, nowMs: numb
   };
 }
 
-export type PlicaQueueGrouping = "decide" | "severity" | "company" | "kind" | "project" | "age";
+export type TicklerQueueGrouping = "decide" | "severity" | "company" | "kind" | "project" | "age";
 
-export const PLICA_QUEUE_GROUPINGS: ReadonlyArray<{ grouping: PlicaQueueGrouping; label: string }> = [
+export const TICKLER_QUEUE_GROUPINGS: ReadonlyArray<{ grouping: TicklerQueueGrouping; label: string }> = [
   { grouping: "decide", label: "Decide by" },
   { grouping: "severity", label: "Severity" },
   { grouping: "company", label: "Org" },
@@ -281,14 +281,14 @@ export const PLICA_QUEUE_GROUPINGS: ReadonlyArray<{ grouping: PlicaQueueGrouping
   { grouping: "age", label: "Age" },
 ];
 
-export const PLICA_QUEUE_GROUPING_STORAGE_KEY = "plica.queueGrouping";
+export const TICKLER_QUEUE_GROUPING_STORAGE_KEY = "tickler.queueGrouping";
 
-export function normalizeQueueGrouping(value: string | null | undefined): PlicaQueueGrouping {
-  return PLICA_QUEUE_GROUPINGS.some((entry) => entry.grouping === value) ? (value as PlicaQueueGrouping) : "decide";
+export function normalizeQueueGrouping(value: string | null | undefined): TicklerQueueGrouping {
+  return TICKLER_QUEUE_GROUPINGS.some((entry) => entry.grouping === value) ? (value as TicklerQueueGrouping) : "decide";
 }
 
 /** What sort of ask an item is — the "Kind" grouping and the row glyph. */
-export type PlicaQueueKind =
+export type TicklerQueueKind =
   | "questions"
   | "confirmations"
   | "approvals"
@@ -298,7 +298,7 @@ export type PlicaQueueKind =
   | "routines"
   | "other";
 
-const KIND_ORDER: ReadonlyArray<{ kind: PlicaQueueKind; label: string }> = [
+const KIND_ORDER: ReadonlyArray<{ kind: TicklerQueueKind; label: string }> = [
   { kind: "questions", label: "Questions" },
   { kind: "confirmations", label: "Confirmations" },
   { kind: "approvals", label: "Approvals" },
@@ -309,7 +309,7 @@ const KIND_ORDER: ReadonlyArray<{ kind: PlicaQueueKind; label: string }> = [
   { kind: "other", label: "Other" },
 ];
 
-export function queueItemKind(item: PlicaQueueItem): PlicaQueueKind {
+export function queueItemKind(item: TicklerQueueItem): TicklerQueueKind {
   switch (item.kind) {
     case "approval":
       return "approvals";
@@ -342,7 +342,7 @@ export function queueItemKind(item: PlicaQueueItem): PlicaQueueKind {
  *   today    — "today", or a date that is today or already past (overdue)
  *   unsorted — nothing set yet: new, waiting for you to give it a day
  *   week     — "this_week", or a date before the week is out
- *   alerts   — conditions Plica derives (heartbeat, routine); no triage row,
+ *   alerts   — conditions Tickler derives (heartbeat, routine); no triage row,
  *              they clear themselves when the condition does
  *   whenever — "whenever", or a date beyond this week
  *   snoozed  — snoozed until a time still ahead; hidden from other groupings
@@ -350,9 +350,9 @@ export function queueItemKind(item: PlicaQueueItem): PlicaQueueKind {
  * Dates compare in local calendar days — "today" means the reader's today.
  * Weeks end on Sunday.
  */
-export type PlicaDecideLane = "today" | "unsorted" | "week" | "alerts" | "whenever" | "snoozed";
+export type TicklerDecideLane = "today" | "unsorted" | "week" | "alerts" | "whenever" | "snoozed";
 
-export const PLICA_DECIDE_LANES: ReadonlyArray<{ lane: PlicaDecideLane; label: string; folded: boolean }> = [
+export const TICKLER_DECIDE_LANES: ReadonlyArray<{ lane: TicklerDecideLane; label: string; folded: boolean }> = [
   { lane: "today", label: "Today", folded: false },
   { lane: "unsorted", label: "Unsorted", folded: false },
   { lane: "week", label: "This week", folded: false },
@@ -378,17 +378,17 @@ function endOfWeekKey(ms: number): string {
 
 const DATE_KEY = /^\d{4}-\d{2}-\d{2}$/;
 
-export function isSnoozed(item: Pick<PlicaQueueItem, "snoozedUntil">, nowMs: number): boolean {
+export function isSnoozed(item: Pick<TicklerQueueItem, "snoozedUntil">, nowMs: number): boolean {
   const until = epochMs(item.snoozedUntil);
   return until !== null && until > nowMs;
 }
 
 /** A decide-by date that has already passed (a preset never goes overdue). */
-export function isDecideOverdue(item: Pick<PlicaQueueItem, "decideBy">, nowMs: number): boolean {
+export function isDecideOverdue(item: Pick<TicklerQueueItem, "decideBy">, nowMs: number): boolean {
   return !!item.decideBy && DATE_KEY.test(item.decideBy) && item.decideBy < localDateKey(nowMs);
 }
 
-export function decideLane(item: PlicaQueueItem, nowMs: number): PlicaDecideLane {
+export function decideLane(item: TicklerQueueItem, nowMs: number): TicklerDecideLane {
   if (isSnoozed(item, nowMs)) return "snoozed";
   if (!item.triage) return "alerts";
   const decideBy = item.decideBy;
@@ -421,7 +421,7 @@ export function decideByLabel(decideBy: string | null): string | null {
 }
 
 /** Snooze presets, matching the host's DecisionTriageStrip; resolved at click time. */
-export const PLICA_SNOOZE_PRESETS: ReadonlyArray<{ label: string; resolve: (nowMs: number) => string }> = [
+export const TICKLER_SNOOZE_PRESETS: ReadonlyArray<{ label: string; resolve: (nowMs: number) => string }> = [
   { label: "1 hour", resolve: (nowMs) => new Date(nowMs + 60 * 60_000).toISOString() },
   { label: "4 hours", resolve: (nowMs) => new Date(nowMs + 4 * 60 * 60_000).toISOString() },
   {
@@ -436,15 +436,15 @@ export const PLICA_SNOOZE_PRESETS: ReadonlyArray<{ label: string; resolve: (nowM
   { label: "Next week", resolve: (nowMs) => new Date(nowMs + 7 * 24 * 60 * 60_000).toISOString() },
 ];
 
-export interface PlicaDecideSummary {
+export interface TicklerDecideSummary {
   today: number;
   overdue: number;
   unsorted: number;
   snoozed: number;
 }
 
-export function summarizeDecide(items: ReadonlyArray<PlicaQueueItem>, nowMs: number): PlicaDecideSummary {
-  const summary: PlicaDecideSummary = { today: 0, overdue: 0, unsorted: 0, snoozed: 0 };
+export function summarizeDecide(items: ReadonlyArray<TicklerQueueItem>, nowMs: number): TicklerDecideSummary {
+  const summary: TicklerDecideSummary = { today: 0, overdue: 0, unsorted: 0, snoozed: 0 };
   for (const item of items) {
     const lane = decideLane(item, nowMs);
     if (lane === "today") summary.today += 1;
@@ -467,9 +467,9 @@ export function summarizeDecide(items: ReadonlyArray<PlicaQueueItem>, nowMs: num
  * The same buckets drive the Age grouping and the rail's filter chips, so the
  * two can never disagree about which pile an item is in.
  */
-export type PlicaQueueAge = "today" | "yesterday" | "week" | "old";
+export type TicklerQueueAge = "today" | "yesterday" | "week" | "old";
 
-const AGE_ORDER: ReadonlyArray<{ age: PlicaQueueAge; label: string }> = [
+const AGE_ORDER: ReadonlyArray<{ age: TicklerQueueAge; label: string }> = [
   { age: "old", label: "Older than a week" },
   { age: "week", label: "Last week" },
   { age: "yesterday", label: "Yesterday" },
@@ -483,7 +483,7 @@ function startOfDay(ms: number): number {
   return date.getTime();
 }
 
-export function queueItemAge(item: { atMs: number | null }, nowMs: number): PlicaQueueAge {
+export function queueItemAge(item: { atMs: number | null }, nowMs: number): TicklerQueueAge {
   // An item with no timestamp is not evidence of age; filing it under "old"
   // would bury it behind a filter nobody opens, so it reads as today's.
   if (item.atMs === null) return "today";
@@ -501,9 +501,9 @@ export function queueItemAge(item: { atMs: number | null }, nowMs: number): Plic
  * putting three quarters of it out of sight, which grouping alone cannot do
  * because every group is still on the page.
  */
-export type PlicaQueueAgeFilter = PlicaQueueAge | "all";
+export type TicklerQueueAgeFilter = TicklerQueueAge | "all";
 
-export const PLICA_QUEUE_AGE_FILTERS: ReadonlyArray<{ filter: PlicaQueueAgeFilter; label: string }> = [
+export const TICKLER_QUEUE_AGE_FILTERS: ReadonlyArray<{ filter: TicklerQueueAgeFilter; label: string }> = [
   { filter: "all", label: "All" },
   { filter: "today", label: "Today" },
   { filter: "yesterday", label: "Yesterday" },
@@ -511,28 +511,28 @@ export const PLICA_QUEUE_AGE_FILTERS: ReadonlyArray<{ filter: PlicaQueueAgeFilte
   { filter: "old", label: "Old" },
 ];
 
-export const PLICA_QUEUE_AGE_FILTER_STORAGE_KEY = "plica.queueAgeFilter";
+export const TICKLER_QUEUE_AGE_FILTER_STORAGE_KEY = "tickler.queueAgeFilter";
 
-export function normalizeQueueAgeFilter(value: string | null | undefined): PlicaQueueAgeFilter {
-  return PLICA_QUEUE_AGE_FILTERS.some((entry) => entry.filter === value)
-    ? (value as PlicaQueueAgeFilter)
+export function normalizeQueueAgeFilter(value: string | null | undefined): TicklerQueueAgeFilter {
+  return TICKLER_QUEUE_AGE_FILTERS.some((entry) => entry.filter === value)
+    ? (value as TicklerQueueAgeFilter)
     : "all";
 }
 
 export function filterQueueByAge(
-  items: ReadonlyArray<PlicaQueueItem>,
-  filter: PlicaQueueAgeFilter,
+  items: ReadonlyArray<TicklerQueueItem>,
+  filter: TicklerQueueAgeFilter,
   nowMs: number,
-): PlicaQueueItem[] {
+): TicklerQueueItem[] {
   return filter === "all" ? [...items] : items.filter((item) => queueItemAge(item, nowMs) === filter);
 }
 
 /** How many items sit in each bucket, so a chip can carry its own count. */
 export function countQueueByAge(
-  items: ReadonlyArray<PlicaQueueItem>,
+  items: ReadonlyArray<TicklerQueueItem>,
   nowMs: number,
-): Record<PlicaQueueAgeFilter, number> {
-  const counts: Record<PlicaQueueAgeFilter, number> = { all: items.length, today: 0, yesterday: 0, week: 0, old: 0 };
+): Record<TicklerQueueAgeFilter, number> {
+  const counts: Record<TicklerQueueAgeFilter, number> = { all: items.length, today: 0, yesterday: 0, week: 0, old: 0 };
   for (const item of items) counts[queueItemAge(item, nowMs)] += 1;
   return counts;
 }
@@ -543,16 +543,16 @@ export function ageTone(minutes: number | null): "fresh" | "aging" | "stale" {
   return minutes >= 30 * 24 * 60 ? "stale" : "aging";
 }
 
-export interface PlicaQueueGroup {
+export interface TicklerQueueGroup {
   key: string;
   label: string;
-  bucket: PlicaQueueBucket | null;
+  bucket: TicklerQueueBucket | null;
   company: Company | null;
-  items: PlicaQueueItem[];
+  items: TicklerQueueItem[];
   /** Starts folded (Later, Whenever, Snoozed): a count you can open. */
   folded?: boolean;
   /** Set on decide-by groups. */
-  lane?: PlicaDecideLane;
+  lane?: TicklerDecideLane;
 }
 
 /**
@@ -563,17 +563,17 @@ export interface PlicaQueueGroup {
  * age tiebreaker runs.
  */
 export function groupQueue(
-  items: ReadonlyArray<PlicaQueueItem>,
-  grouping: PlicaQueueGrouping,
+  items: ReadonlyArray<TicklerQueueItem>,
+  grouping: TicklerQueueGrouping,
   companies: ReadonlyArray<Company>,
-  context: { projects?: ReadonlyArray<Project>; nowMs?: number; sort?: PlicaQueueSort } = {},
-): PlicaQueueGroup[] {
+  context: { projects?: ReadonlyArray<Project>; nowMs?: number; sort?: TicklerQueueSort } = {},
+): TicklerQueueGroup[] {
   const sort = context.sort ?? "oldest";
   const sorted = [...items].sort((a, b) => compareQueueItems(a, b, sort));
   const groupsOf = <K extends string>(
     order: ReadonlyArray<{ key: K; label: string }>,
-    keyOf: (item: PlicaQueueItem) => K,
-  ): PlicaQueueGroup[] =>
+    keyOf: (item: TicklerQueueItem) => K,
+  ): TicklerQueueGroup[] =>
     order
       .map(({ key, label }) => ({
         key,
@@ -587,7 +587,7 @@ export function groupQueue(
   switch (grouping) {
     case "decide": {
       const nowMs = context.nowMs ?? Date.now();
-      return PLICA_DECIDE_LANES.map(({ lane, label, folded }) => ({
+      return TICKLER_DECIDE_LANES.map(({ lane, label, folded }) => ({
         key: `decide:${lane}`,
         label,
         bucket: null,
@@ -617,7 +617,7 @@ export function groupQueue(
       // Projects in the order they first appear in the sorted queue, so the
       // project holding the most urgent item leads; no-project items last.
       const projectName = new Map((context.projects ?? []).map((project) => [project.id, project.name]));
-      const projectOf = (item: PlicaQueueItem): string =>
+      const projectOf = (item: TicklerQueueItem): string =>
         item.kind === "attention" && item.issue?.projectId ? item.issue.projectId : "";
       const order: Array<{ key: string; label: string }> = [];
       for (const item of sorted) {
@@ -631,7 +631,7 @@ export function groupQueue(
     }
     case "severity":
     default:
-      return PLICA_QUEUE_BUCKETS.map(({ bucket, label }) => ({
+      return TICKLER_QUEUE_BUCKETS.map(({ bucket, label }) => ({
         key: bucket,
         label,
         bucket,
@@ -646,7 +646,7 @@ export function groupQueue(
 // Cross-company live runs and upcoming routines (the two lists under the board)
 // ---------------------------------------------------------------------------
 
-export interface PlicaLiveEntry {
+export interface TicklerLiveEntry {
   company: Company;
   run: LiveRunForIssue;
   issue: Issue | undefined;
@@ -663,8 +663,8 @@ export interface PlicaLiveEntry {
  */
 export function flattenLiveRuns(
   entries: ReadonlyArray<{ company: Company; runs: ReadonlyArray<LiveRunForIssue>; issues: ReadonlyArray<Issue> }>,
-): PlicaLiveEntry[] {
-  const out: PlicaLiveEntry[] = [];
+): TicklerLiveEntry[] {
+  const out: TicklerLiveEntry[] = [];
   for (const { company, runs, issues } of entries) {
     const issueById = new Map(issues.map((issue) => [issue.id, issue]));
     for (const run of runs) {
@@ -687,7 +687,7 @@ export function flattenLiveRuns(
 // Recent tasks (the rail's list of what the fleet is on)
 // ---------------------------------------------------------------------------
 
-export interface PlicaRecentTask {
+export interface TicklerRecentTask {
   /** Stable per row: the ticket it is about, or the run when there is no ticket. */
   key: string;
   company: Company;
@@ -701,8 +701,8 @@ export interface PlicaRecentTask {
   atMs: number;
 }
 
-export interface PlicaRecentTasks {
-  items: PlicaRecentTask[];
+export interface TicklerRecentTasks {
+  items: TicklerRecentTask[];
   /** Live counts, taken before the cap — every live run is always a row. */
   working: number;
   queued: number;
@@ -716,10 +716,10 @@ export interface PlicaRecentTasks {
  * here to bound the work, and a list that ended exactly where the fold is would
  * have nothing to scroll to.
  */
-export const PLICA_RECENT_LIMIT = 16;
+export const TICKLER_RECENT_LIMIT = 16;
 
 /** How far back "recent" reaches for a task with no run on it. */
-export const PLICA_RECENT_WINDOW_MS = 24 * 60 * 60_000;
+export const TICKLER_RECENT_WINDOW_MS = 24 * 60 * 60_000;
 
 /**
  * What the fleet is on, newest first: every live run, then the tasks touched
@@ -742,14 +742,14 @@ export const PLICA_RECENT_WINDOW_MS = 24 * 60 * 60_000;
 export function recentTasks(
   entries: ReadonlyArray<{ company: Company; runs: ReadonlyArray<LiveRunForIssue>; issues: ReadonlyArray<Issue> }>,
   options: { nowMs: number; limit?: number; windowMs?: number },
-): PlicaRecentTasks {
-  const limit = options.limit ?? PLICA_RECENT_LIMIT;
-  const windowMs = options.windowMs ?? PLICA_RECENT_WINDOW_MS;
+): TicklerRecentTasks {
+  const limit = options.limit ?? TICKLER_RECENT_LIMIT;
+  const windowMs = options.windowMs ?? TICKLER_RECENT_WINDOW_MS;
 
   // Collapse the runs to one per task first, so a ticket with two active runs
   // takes one row and the phase counts describe rows rather than runs.
-  const byTask = new Map<string, PlicaLiveEntry>();
-  const unticketed: PlicaLiveEntry[] = [];
+  const byTask = new Map<string, TicklerLiveEntry>();
+  const unticketed: TicklerLiveEntry[] = [];
   for (const entry of flattenLiveRuns(entries)) {
     if (!entry.run.issueId) {
       unticketed.push(entry);
@@ -767,7 +767,7 @@ export function recentTasks(
   const live = [...byTask.values(), ...unticketed].sort(
     (a, b) => PHASE_ORDER[a.phase] - PHASE_ORDER[b.phase] || b.startedMs - a.startedMs,
   );
-  const items: PlicaRecentTask[] = live.map((entry) => ({
+  const items: TicklerRecentTask[] = live.map((entry) => ({
     key: entry.run.issueId ? `${entry.company.id}:${entry.run.issueId}` : entry.run.id,
     company: entry.company,
     issue: entry.issue,
@@ -781,7 +781,7 @@ export function recentTasks(
 
   // Everything else touched inside the window, newest first. A ticket with a
   // run on it is already a row above, so it is not repeated here.
-  const idle: PlicaRecentTask[] = [];
+  const idle: TicklerRecentTask[] = [];
   for (const { company, issues } of entries) {
     for (const issue of issues) {
       if (issue.hiddenAt || issue.archivedAt) continue;
@@ -802,7 +802,7 @@ export function recentTasks(
   };
 }
 
-export interface PlicaUpcomingRoutine {
+export interface TicklerUpcomingRoutine {
   company: Company;
   routine: RoutineListItem;
   /** The enabled trigger that fires soonest. */
@@ -822,8 +822,8 @@ export interface PlicaUpcomingRoutine {
 export function upcomingRoutines(
   entries: ReadonlyArray<{ company: Company; routines: ReadonlyArray<RoutineListItem> }>,
   nowMs: number,
-): PlicaUpcomingRoutine[] {
-  const out: PlicaUpcomingRoutine[] = [];
+): TicklerUpcomingRoutine[] {
+  const out: TicklerUpcomingRoutine[] = [];
   for (const { company, routines } of entries) {
     for (const routine of routines) {
       if (routine.status !== "active") continue;
@@ -834,8 +834,8 @@ export function upcomingRoutines(
         .sort((a, b) => a.atMs - b.atMs)[0];
       if (!soonest) continue;
       const { trigger, atMs } = soonest;
-      const state: PlicaUpcomingRoutine["state"] =
-        atMs < nowMs - PLICA_ROUTINE_OVERDUE_GRACE_MS
+      const state: TicklerUpcomingRoutine["state"] =
+        atMs < nowMs - TICKLER_ROUTINE_OVERDUE_GRACE_MS
           ? "overdue"
           : routine.lastRun?.status === "failed"
             ? "failed"
@@ -922,7 +922,7 @@ export function describeCron(expression: string | null | undefined): string | nu
 // Cross-company projects (the third list on the left)
 // ---------------------------------------------------------------------------
 
-export interface PlicaProjectEntry {
+export interface TicklerProjectEntry {
   company: Company;
   project: Project;
   open: number;
@@ -950,8 +950,8 @@ function targetDateMs(targetDate: string | null): number | null {
 export function upcomingProjects(
   entries: ReadonlyArray<{ company: Company; projects: ReadonlyArray<Project>; issues: ReadonlyArray<Issue> }>,
   nowMs: number,
-): PlicaProjectEntry[] {
-  const all: PlicaProjectEntry[] = [];
+): TicklerProjectEntry[] {
+  const all: TicklerProjectEntry[] = [];
   for (const { company, projects, issues } of entries) {
     const counts = new Map<string, { open: number; inProgress: number; blocked: number }>();
     for (const issue of issues) {
@@ -992,15 +992,15 @@ export function upcomingProjects(
  * chase. `waiting` is the remainder, the work nobody has picked up, which the
  * old two-segment bar left as bare track and therefore never named.
  */
-export interface PlicaPortfolioEntry extends PlicaProjectEntry {
+export interface TicklerPortfolioEntry extends TicklerProjectEntry {
   /** Open work that is neither moving nor blocked — untouched, not stuck. */
   waiting: number;
   /** How many days late, or null when the project is not overdue. */
   lateDays: number | null;
 }
 
-export interface PlicaPortfolio {
-  entries: PlicaPortfolioEntry[];
+export interface TicklerPortfolio {
+  entries: TicklerPortfolioEntry[];
   open: number;
   blocked: number;
   overdue: number;
@@ -1014,10 +1014,10 @@ export interface PlicaPortfolio {
  * at a glance must put the worst bar under the eye first; a list you scan for
  * a specific project wants chronology. This is now a chart.
  */
-export function comparePortfolioEntries(a: PlicaPortfolioEntry, b: PlicaPortfolioEntry): number {
+export function comparePortfolioEntries(a: TicklerPortfolioEntry, b: TicklerPortfolioEntry): number {
   if (a.overdue !== b.overdue) return a.overdue ? -1 : 1;
   if (a.overdue && b.overdue && a.lateDays !== b.lateDays) return (b.lateDays ?? 0) - (a.lateDays ?? 0);
-  const stuck = (entry: PlicaPortfolioEntry) => (entry.open > 0 ? entry.blocked / entry.open : 0);
+  const stuck = (entry: TicklerPortfolioEntry) => (entry.open > 0 ? entry.blocked / entry.open : 0);
   if (stuck(a) !== stuck(b)) return stuck(b) - stuck(a);
   return b.open - a.open || a.project.name.localeCompare(b.project.name);
 }
@@ -1031,19 +1031,19 @@ export function comparePortfolioEntries(a: PlicaPortfolioEntry, b: PlicaPortfoli
  * with the bars gathered, a company whose every project is stuck is visible as
  * a block of amber, which trouble-order scatters down the column.
  */
-export type PlicaPortfolioSort = "trouble" | "company";
+export type TicklerPortfolioSort = "trouble" | "company";
 
-export const PLICA_PORTFOLIO_SORT_STORAGE_KEY = "plica.portfolioSort";
+export const TICKLER_PORTFOLIO_SORT_STORAGE_KEY = "tickler.portfolioSort";
 
-export function normalizePortfolioSort(value: string | null | undefined): PlicaPortfolioSort {
+export function normalizePortfolioSort(value: string | null | undefined): TicklerPortfolioSort {
   return value === "company" ? "company" : "trouble";
 }
 
 export function derivePortfolio(
-  items: ReadonlyArray<PlicaProjectEntry>,
+  items: ReadonlyArray<TicklerProjectEntry>,
   nowMs: number,
-  context: { sort?: PlicaPortfolioSort; companies?: ReadonlyArray<Company> } = {},
-): PlicaPortfolio {
+  context: { sort?: TicklerPortfolioSort; companies?: ReadonlyArray<Company> } = {},
+): TicklerPortfolio {
   const sort = context.sort ?? "trouble";
   // The board's own order — watched first, then hot-first or the user's
   // sidebar order — so a company sits in the same place here as in the ledger.
@@ -1089,7 +1089,7 @@ export function derivePortfolio(
  * Companies absent from `order` keep their first-appearance position at the
  * end rather than being dropped.
  */
-export interface PlicaCompanyGroup<T> {
+export interface TicklerCompanyGroup<T> {
   company: Company;
   items: T[];
 }
@@ -1097,8 +1097,8 @@ export interface PlicaCompanyGroup<T> {
 export function groupByCompany<T extends { company: Company }>(
   items: ReadonlyArray<T>,
   order: ReadonlyArray<Company> = [],
-): PlicaCompanyGroup<T>[] {
-  const groups = new Map<string, PlicaCompanyGroup<T>>();
+): TicklerCompanyGroup<T>[] {
+  const groups = new Map<string, TicklerCompanyGroup<T>>();
   for (const item of items) {
     const group = groups.get(item.company.id);
     if (group) group.items.push(item);
@@ -1116,16 +1116,16 @@ export function groupByCompany<T extends { company: Company }>(
 // ---------------------------------------------------------------------------
 
 /** A routine is "live" for the hour after it fires. */
-export const PLICA_ROUTINE_LIVE_MS = 60 * 60_000;
+export const TICKLER_ROUTINE_LIVE_MS = 60 * 60_000;
 /** How far out a routine starts warming toward live. */
-export const PLICA_ROUTINE_APPROACH_MS = 24 * 60 * 60_000;
+export const TICKLER_ROUTINE_APPROACH_MS = 24 * 60 * 60_000;
 /** Approaching never quite reaches live, so a running routine still stands out. */
 const APPROACH_CEILING = 0.85;
 
-export type PlicaRoutinePhase = "running" | "overdue" | "approaching" | "resting";
+export type TicklerRoutinePhase = "running" | "overdue" | "approaching" | "resting";
 
-export interface PlicaRoutineHeat {
-  phase: PlicaRoutinePhase;
+export interface TicklerRoutineHeat {
+  phase: TicklerRoutinePhase;
   /** 0 = at rest (muted grey), 1 = live. Drives the row's colour mix. */
   intensity: number;
 }
@@ -1149,11 +1149,11 @@ export function routineHeat(input: {
   nextAtMs: number | null;
   lastFiredAtMs: number | null;
   nowMs: number;
-}): PlicaRoutineHeat {
+}): TicklerRoutineHeat {
   const { nextAtMs, lastFiredAtMs, nowMs } = input;
 
   const sinceFired = lastFiredAtMs === null ? null : nowMs - lastFiredAtMs;
-  if (sinceFired !== null && sinceFired >= 0 && sinceFired < PLICA_ROUTINE_LIVE_MS) {
+  if (sinceFired !== null && sinceFired >= 0 && sinceFired < TICKLER_ROUTINE_LIVE_MS) {
     return { phase: "running", intensity: 1 };
   }
 
@@ -1161,11 +1161,11 @@ export function routineHeat(input: {
   // A schedule that should already have fired is the loudest thing this rail
   // reports. Without this it scores as "resting" — the dimmest row on screen —
   // because its next run is in the past and nothing is approaching.
-  if (untilNext !== null && untilNext < -PLICA_ROUTINE_OVERDUE_GRACE_MS) {
+  if (untilNext !== null && untilNext < -TICKLER_ROUTINE_OVERDUE_GRACE_MS) {
     return { phase: "overdue", intensity: 1 };
   }
-  const approaching = untilNext !== null && untilNext >= 0 && untilNext < PLICA_ROUTINE_APPROACH_MS
-    ? clamp01(1 - untilNext / PLICA_ROUTINE_APPROACH_MS) * APPROACH_CEILING
+  const approaching = untilNext !== null && untilNext >= 0 && untilNext < TICKLER_ROUTINE_APPROACH_MS
+    ? clamp01(1 - untilNext / TICKLER_ROUTINE_APPROACH_MS) * APPROACH_CEILING
     : 0;
 
   return approaching === 0 ? { phase: "resting", intensity: 0 } : { phase: "approaching", intensity: approaching };
@@ -1182,31 +1182,31 @@ export function routineHeat(input: {
  * reasons to look, and each carries the issue to open so the mark is a way in
  * rather than just a verdict.
  */
-export type PlicaRoutineOutcomeState = "ok" | "failed" | "blocked" | "working" | "skipped" | "never";
+export type TicklerRoutineOutcomeState = "ok" | "failed" | "blocked" | "working" | "skipped" | "never";
 
 /**
  * The issue fields the outcome mark needs. Declared structurally because
  * `RoutineIssueSummary` is not re-exported from the shared package index;
  * this is the subset both `lastRun.linkedIssue` and `activeIssue` carry.
  */
-export interface PlicaOutcomeIssue {
+export interface TicklerOutcomeIssue {
   id: string;
   identifier: string | null;
   title: string;
   status: string;
 }
 
-export interface PlicaRoutineOutcome {
-  state: PlicaRoutineOutcomeState;
+export interface TicklerRoutineOutcome {
+  state: TicklerRoutineOutcomeState;
   /** Plain-language reading, used as the mark's tooltip. */
   label: string;
   /** The issue the run produced or stalled on, when there is one to open. */
-  issue: PlicaOutcomeIssue | null;
+  issue: TicklerOutcomeIssue | null;
 }
 
 const CLOSED = new Set(["done", "cancelled"]);
 
-export function routineOutcome(routine: RoutineListItem): PlicaRoutineOutcome {
+export function routineOutcome(routine: RoutineListItem): TicklerRoutineOutcome {
   const run = routine.lastRun;
   // The run's own linked issue first; `activeIssue` is the routine's current
   // one, which is the right fallback when the run only recorded an id.
@@ -1299,25 +1299,25 @@ export function distinctLabel(label: string | null | undefined, title: string): 
 // Routine exceptions: the only routines worth a line
 // ---------------------------------------------------------------------------
 
-export type PlicaRoutineExceptionKind = "failed" | "overdue" | "blocked";
+export type TicklerRoutineExceptionKind = "failed" | "overdue" | "blocked";
 
-export interface PlicaRoutineException {
-  item: PlicaUpcomingRoutine;
-  kind: PlicaRoutineExceptionKind;
+export interface TicklerRoutineException {
+  item: TicklerUpcomingRoutine;
+  kind: TicklerRoutineExceptionKind;
   /** Plain-language reading of what went wrong, from the run itself. */
   label: string;
   /** How late, in ms, for an overdue routine; null otherwise. */
   lateMs: number | null;
-  issue: PlicaOutcomeIssue | null;
+  issue: TicklerOutcomeIssue | null;
 }
 
-export interface PlicaRoutineExceptions {
-  items: PlicaRoutineException[];
+export interface TicklerRoutineExceptions {
+  items: TicklerRoutineException[];
   /** Routines doing exactly what they should — counted, never listed. */
   healthy: number;
 }
 
-const EXCEPTION_ORDER: Record<PlicaRoutineExceptionKind, number> = { failed: 0, blocked: 1, overdue: 2 };
+const EXCEPTION_ORDER: Record<TicklerRoutineExceptionKind, number> = { failed: 0, blocked: 1, overdue: 2 };
 
 /**
  * Only the routines that want something: the last run failed, the run is
@@ -1330,16 +1330,16 @@ const EXCEPTION_ORDER: Record<PlicaRoutineExceptionKind, number> = { failed: 0, 
  * nothing to draw.
  */
 export function routineExceptions(
-  items: ReadonlyArray<PlicaUpcomingRoutine>,
+  items: ReadonlyArray<TicklerUpcomingRoutine>,
   nowMs: number,
-): PlicaRoutineExceptions {
-  const out: PlicaRoutineException[] = [];
+): TicklerRoutineExceptions {
+  const out: TicklerRoutineException[] = [];
   for (const item of items) {
     const outcome = routineOutcome(item.routine);
     // Failure outranks lateness: a routine that failed an hour ago and is now
     // also overdue has one problem, not two, and the failure is the one that
     // says why.
-    const kind: PlicaRoutineExceptionKind | null =
+    const kind: TicklerRoutineExceptionKind | null =
       outcome.state === "failed"
         ? "failed"
         : outcome.state === "blocked"

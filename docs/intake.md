@@ -65,7 +65,7 @@ it. Paraphrase in the scope section, below the quote — never over it.
 ### The GitHub polling lane
 
 GitHub issues and pull requests reach the board on their own. A Paperclip
-routine, **Plica GitHub watch** (PLI-27), reads this repository **once an hour**
+routine, **Tickler GitHub watch** (PLI-27), reads this repository **once an hour**
 and files what it finds as Paperclip tasks in the Onboarding project, at
 `backlog`, unassigned. Nothing else about §1 changes: the GitHub issue is still
 the request's permanent address, and the poller is how the board learns it
@@ -79,7 +79,7 @@ request. Outbound HTTPS only.
 Three properties are worth knowing, because triage depends on them:
 
 - **Dedupe is by a literal line.** Every task the poller files carries
-  `Source: https://github.com/nickallevato/paperclip-plica/issues/{n}` (or
+  `Source: https://github.com/nickallevato/paperclip-tickler/issues/{n}` (or
   `/pull/{n}`) in its description, and the poller searches for that exact line
   before it creates anything. **Do not edit or delete that line** — it is the
   only thing standing between one GitHub issue and a task filed again every
@@ -109,7 +109,7 @@ Before anything else, and in this order — the cheapest check that can close an
 issue runs first:
 
 1. **The punch list.** The `current-state` document on PLI-2 holds the audited
-   feature inventory and a 15-item prioritized punch list. Most "Plica should…"
+   feature inventory and a 15-item prioritized punch list. Most "Tickler should…"
    requests about existing behaviour are already item *n* there. Check it first,
    every time.
 2. **Open GitHub issues**, including `parked` ones. Search the words the
@@ -119,7 +119,7 @@ issue runs first:
    `parked` that comes back from a second requester is not a duplicate to close
    again — it is evidence the decision was wrong. Reopen it and say who else
    asked.
-4. **Paperclip tasks** in the Plica project, including `done` ones.
+4. **Paperclip tasks** in the Tickler project, including `done` ones.
 5. **`CHANGELOG.md` under "Unreleased".** The thing may already be built and
    simply not released yet — the requester is running an older build.
 
@@ -239,7 +239,7 @@ Sync is **one-directional at three moments**, and still nothing here is worth a
 webhook that can fail silently — the first moment is polled hourly, the other
 two are done by hand:
 
-1. **Task created from issue.** The **Plica GitHub watch** routine files it
+1. **Task created from issue.** The **Tickler GitHub watch** routine files it
    within the hour (§1, "The GitHub polling lane"); file it yourself if you need
    it now. The task's title is `GH#{n} <issue title>` and its description
    carries the `Source:` line the poller dedupes on. The GitHub issue gets a
@@ -262,19 +262,19 @@ Paperclip task**, because unassigned ready work is how things get lost.
 
 ## 7. Core limitations
 
-A request that cannot be built inside the plugin surface is **not** a Plica
+A request that cannot be built inside the plugin surface is **not** a Tickler
 issue and never becomes one. `CONTRIBUTING.md`, "When the plugin surface is not
 enough", is binding: stop, do not route around it.
 
 Triage routes it out of the normal flow instead:
 
-1. File it with the **core limitation** template (§9): what Plica needs, the
+1. File it with the **core limitation** template (§9): what Tickler needs, the
    closest extension point, why it falls short, the smallest core change that
-   would fix it, and the degraded fallback Plica can ship today.
+   would fix it, and the degraded fallback Tickler can ship today.
 2. Label `core-limitation`. It never gets a `p0`–`p3` band — it is not our work
    to rank.
 3. It goes to the owner as a decision, not to an engineer as a task.
-4. Any Plica issue blocked by it links to it and ships the fallback or waits.
+4. Any Tickler issue blocked by it links to it and ships the fallback or waits.
    **Do not merge a workaround while waiting.**
 
 Three are already open as Paperclip tasks: PLI-8, PLI-9, PLI-10.

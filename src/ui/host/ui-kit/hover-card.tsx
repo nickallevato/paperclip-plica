@@ -4,7 +4,7 @@ import { HoverCard as HoverCardPrimitive } from "radix-ui";
 import { cn } from "../util";
 
 /**
- * A Plica original, not a vendored copy — the third documented exception to the
+ * A Tickler original, not a vendored copy — the third documented exception to the
  * "keep `src/ui/host/` byte-identical to upstream" rule in the README.
  *
  * Paperclip ships no HoverCard component, so there is nothing upstream for a

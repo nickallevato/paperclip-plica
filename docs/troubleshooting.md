@@ -3,60 +3,60 @@
 ## The whole app is stuck in its mobile layout
 
 Sidebars collapsed, desktop-only elements missing, everything in one column —
-across the whole of Paperclip, not just the Plica page.
+across the whole of Paperclip, not just the Tickler page.
 
-Plica injects its own Tailwind sheet after the host's. Tailwind emits every
+Tickler injects its own Tailwind sheet after the host's. Tailwind emits every
 class it scans, including ones Paperclip already defines, and a duplicate that
 lands later wins on document order. A stray `.hidden{display:none}` beats
 Paperclip's `@media(min-width:40rem){.sm\:flex{…}}`, which is exactly the
 `hidden sm:flex` idiom the host's responsive layout is built on.
 
-Plica prevents this by subtracting, in the browser, every class selector the
+Tickler prevents this by subtracting, in the browser, every class selector the
 host's stylesheets already define before its own sheet takes effect. That is
 done against whatever the page has actually loaded, so a Paperclip upgrade does
-not cause this, and rebuilding Plica will not fix it. If you see it anyway, the
+not cause this, and rebuilding Tickler will not fix it. If you see it anyway, the
 subtraction could not see the rule it needed to remove. The ways that happens:
 
 - **The host's stylesheet is unreadable to scripts.** Browsers hide the rules
-  of a cross-origin stylesheet from the page, and Plica skips any sheet it
+  of a cross-origin stylesheet from the page, and Tickler skips any sheet it
   cannot read. A stock Paperclip serves its CSS from its own origin; a CDN, a
   reverse proxy that rewrites asset URLs to another host, or a stylesheet
   served without the CORS headers a `crossorigin` link needs will hide it. In
   DevTools, `document.styleSheets[i].cssRules` throwing a `SecurityError` on
   the host's `index-*.css` is the tell. Serve it from the app's own origin.
-- **Plica's styles went in before the host's.** The subtraction runs once, when
-  Plica's bundle loads and injects its `<style id="plica-plugin-styles">`,
+- **Tickler's styles went in before the host's.** The subtraction runs once, when
+  Tickler's bundle loads and injects its `<style id="tickler-plugin-styles">`,
   against the stylesheets present at that moment. A host stylesheet that arrives later — a
   lazily loaded route chunk's CSS, or a proxy or extension that injects one — is
   not subtracted against. Reloading the page usually settles the order; if it
   reproduces on a clean reload, open an issue with the Paperclip version.
-- **An old Plica.** Versions before runtime subtraction did it at build time
-  and went stale on every Paperclip upgrade. Upgrade Plica
+- **An old Tickler.** Versions before runtime subtraction did it at build time
+  and went stale on every Paperclip upgrade. Upgrade Tickler
   ([Install](install.md#upgrading-an-npm-install)).
 
-To check whether the subtraction ran, ask Plica's sheet whether it still holds
+To check whether the subtraction ran, ask Tickler's sheet whether it still holds
 the `.hidden` rule the host also defines — in a DevTools console on any
-Paperclip page (Plica's bundle loads with its toolbar launcher, so every page has
+Paperclip page (Tickler's bundle loads with its toolbar launcher, so every page has
 the sheet):
 
 ```js
 const has = (rules) => [...rules].some((r) => r.selectorText === ".hidden" || (r.cssRules && has(r.cssRules)));
-has(document.getElementById("plica-plugin-styles").sheet.cssRules);
+has(document.getElementById("tickler-plugin-styles").sheet.cssRules);
 ```
 
 `false` is correct: the duplicate was removed. `true` means one of the causes
 above.
 
-Disabling Plica (`paperclipai plugin disable nickallevato.plugin-plica`) and
-reloading confirms whether Plica is the cause at all.
+Disabling Tickler (`paperclipai plugin disable nickallevato.plugin-tickler`) and
+reloading confirms whether Tickler is the cause at all.
 
-## The Plica page is blank
+## The Tickler page is blank
 
 Work through, in order:
 
 1. **Is the plugin loaded?**
    ```bash
-   paperclipai plugin inspect nickallevato.plugin-plica
+   paperclipai plugin inspect nickallevato.plugin-tickler
    ```
    Anything other than `status=ready` prints the last error.
 
@@ -64,7 +64,7 @@ Work through, in order:
    built.) `dist/ui/index.js` must exist. A fresh clone has no `dist` until
    `pnpm build` runs.
 
-3. **Is the URL right?** The route is `/<COMPANY-PREFIX>/plica`, where the
+3. **Is the URL right?** The route is `/<COMPANY-PREFIX>/tickler`, where the
    prefix is a company's issue prefix (`ACME`, not the company's name or id).
 
 4. **Anything in the browser console?** A failed chunk load usually means the
@@ -77,7 +77,7 @@ Two ways it turns on, and either is enough:
 - `?demo=1` was used at some point in this browser session. It sticks for the
   session. Load the page with `?demo=0` to leave.
 - The **Demo mode** checkbox is ticked on the plugin settings page — for *any*
-  company. Host plugin config is per company; Plica is not. Check each company's
+  company. Host plugin config is per company; Tickler is not. Check each company's
   settings page, or clear it with:
   ```bash
   paperclipai plugin config:set <plugin id> \
@@ -96,7 +96,7 @@ install ships it, so reinstall the package.
 
 ## "polling degraded" in the header
 
-At least one company's poll is erroring while still holding older data. Plica
+At least one company's poll is erroring while still holding older data. Tickler
 keeps showing the last good figures and says so rather than blanking the row.
 
 Usually a transient server error or a permission gap on one endpoint. Check the
@@ -121,17 +121,17 @@ alerts on it.
 
 ## Clicking through to another company leaves the sidebar on the old one
 
-This is a known Paperclip core defect, not a Plica bug. After any manual company
+This is a known Paperclip core defect, not a Tickler bug. After any manual company
 switch, an in-app navigation to a different company prefix does not re-sync the
 host's selected company.
 
-Plica works around it by doing a full page load for every cross-company hop, so
+Tickler works around it by doing a full page load for every cross-company hop, so
 you should not hit it from the queue's Open links. If you do hit it elsewhere,
 reload the page.
 
 ## `pnpm test` fails on a fresh clone
 
-`src/ui/styles.test.ts` fails to resolve `./plica.generated.css`. That file is a
+`src/ui/styles.test.ts` fails to resolve `./tickler.generated.css`. That file is a
 build artifact and is gitignored. Run `pnpm build` first.
 
 The same applies to the pre-commit hook and to any CI job that tests a clean
@@ -165,6 +165,6 @@ Run that first if you are not certain.
 ## Something else
 
 Open an issue at
-<https://github.com/nickallevato/paperclip-plica/issues>. Include the Paperclip
-version (`paperclipai plugin target` prints it), Plica's version, and whether
+<https://github.com/nickallevato/paperclip-tickler/issues>. Include the Paperclip
+version (`paperclipai plugin target` prints it), Tickler's version, and whether
 the Demo data badge was on.

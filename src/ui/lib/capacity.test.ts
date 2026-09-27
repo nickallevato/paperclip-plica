@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Agent } from "@paperclipai/shared";
 import type { LiveRunForIssue } from "../host/api";
-import { agentProfile, countCapacity, deriveCapacity, PLICA_STALL_MS } from "./capacity";
+import { agentProfile, countCapacity, deriveCapacity, TICKLER_STALL_MS } from "./capacity";
 
 const NOW = Date.UTC(2026, 7, 25, 12);
 const agoIso = (ms: number) => new Date(NOW - ms).toISOString();
@@ -101,7 +101,7 @@ describe("deriveCapacity", () => {
   });
 
   it("calls a working run stalled once it has been silent past the threshold", () => {
-    const quiet = run({ agentId: "a", lastUsefulActionAt: agoIso(PLICA_STALL_MS + 60_000) });
+    const quiet = run({ agentId: "a", lastUsefulActionAt: agoIso(TICKLER_STALL_MS + 60_000) });
     const [square] = deriveCapacity([agent("a", "Al")], [quiet], NOW);
     expect(square.state).toBe("stalled");
     expect(square.silentMins).toBe(21);
@@ -110,14 +110,14 @@ describe("deriveCapacity", () => {
   it("keeps a run working while any signal is recent", () => {
     const chatty = run({
       agentId: "a",
-      lastUsefulActionAt: agoIso(PLICA_STALL_MS + 60_000),
+      lastUsefulActionAt: agoIso(TICKLER_STALL_MS + 60_000),
       lastEventAt: agoIso(60_000),
     });
     expect(deriveCapacity([agent("a", "Al")], [chatty], NOW)[0].state).toBe("working");
   });
 
   it("never calls a queued run stalled, however long it has waited", () => {
-    const waiting = run({ agentId: "a", status: "queued", startedAt: null, createdAt: agoIso(4 * PLICA_STALL_MS) });
+    const waiting = run({ agentId: "a", status: "queued", startedAt: null, createdAt: agoIso(4 * TICKLER_STALL_MS) });
     expect(deriveCapacity([agent("a", "Al")], [waiting], NOW)[0].state).toBe("queued");
   });
 
@@ -145,7 +145,7 @@ describe("deriveCapacity", () => {
   it("shows the most alarming state when one agent holds several runs", () => {
     const squares = deriveCapacity(
       [agent("a", "Al")],
-      [run({ agentId: "a", id: "r1" }), run({ agentId: "a", id: "r2", lastUsefulActionAt: agoIso(2 * PLICA_STALL_MS) })],
+      [run({ agentId: "a", id: "r1" }), run({ agentId: "a", id: "r2", lastUsefulActionAt: agoIso(2 * TICKLER_STALL_MS) })],
       NOW,
     );
     expect(squares[0].state).toBe("stalled");

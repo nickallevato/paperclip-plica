@@ -25,7 +25,7 @@ though the attention feed also emits an item for each of them.
 
 By default the queue groups by **when you said you'd decide** — Paperclip's
 decision triage, the same *decide by* and *snooze* its own Decisions page
-sets. A day chosen in Plica is the day Paperclip shows, and the other way
+sets. A day chosen in Tickler is the day Paperclip shows, and the other way
 round.
 
 - **Today** — due today, or overdue. An item whose date has passed says
@@ -33,7 +33,7 @@ round.
 - **Unsorted** — nothing set yet. This is the new pile: each row carries
   **Today · This week · Whenever** inline, so sorting it is one click a row.
 - **This week** — due by Sunday.
-- **Alerts** — conditions Plica spots itself (an overdue CEO heartbeat, a
+- **Alerts** — conditions Tickler spots itself (an overdue CEO heartbeat, a
   routine that stopped firing). They have no triage; they leave when the
   condition clears.
 - **Whenever** — no deadline, or a date beyond this week. Starts folded.

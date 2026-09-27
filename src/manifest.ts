@@ -4,15 +4,15 @@ import { PLUGIN_ID } from "./plugin-id";
 export { PLUGIN_ID };
 
 /**
- * Plica is a UI-only plugin.
+ * Tickler is a UI-only plugin.
  *
- * It contributes one page slot (mounted by the host at `/:companyPrefix/plica`)
+ * It contributes one page slot (mounted by the host at `/:companyPrefix/tickler`)
  * and one sidebar launcher that navigates there.
  *
  * The declared capabilities describe the company data the HUD surfaces. They
  * do not gate its reads: capabilities gate worker-side host RPC, and plugin UI
  * may call ordinary Paperclip HTTP APIs directly (PLUGIN_SPEC.md, "Current
- * implementation caveats" — not a numbered section; §24 is Operator UX). Plica's
+ * implementation caveats" — not a numbered section; §24 is Operator UX). Tickler's
  * worker is a no-op, so nothing here is exercised at runtime — the list stands
  * as an honest declaration of what the page displays, and the schema requires
  * at least one entry.
@@ -21,7 +21,7 @@ const manifest: PaperclipPluginManifestV1 = {
   id: PLUGIN_ID,
   apiVersion: 1,
   version: "0.6.0",
-  displayName: "Plica",
+  displayName: "Tickler",
   description: "Cross-company HUD: company panes, triage, approvals, attention, and briefing.",
   // The manifest schema has no homepage/repository fields — `author` is a plain
   // string — so the links ride inline here, and also live in package.json.
@@ -46,13 +46,13 @@ const manifest: PaperclipPluginManifestV1 = {
    * Demo mode, rendered by the host as a form on the plugin's settings page
    * (ui/src/pages/PluginSettings.tsx auto-generates it from this schema).
    *
-   * With `demoMode` on, Plica serves every read from a static fixture instead
+   * With `demoMode` on, Tickler serves every read from a static fixture instead
    * of the instance's real API, so the HUD can be screenshotted or demoed
    * without exposing real company names, tickets, or agent chatter. Writes
    * (approve, reject, comment) mutate the in-memory fixture and never reach
    * the server.
    *
-   * Host plugin config is stored per company, and Plica is a cross-company
+   * Host plugin config is stored per company, and Tickler is a cross-company
    * page — so reading this costs one `/api/companies` call to learn which
    * config row to ask for. Nothing real is rendered while that resolves, and
    * the `?demo=1` URL parameter skips the lookup entirely (see
@@ -85,10 +85,10 @@ const manifest: PaperclipPluginManifestV1 = {
     slots: [
       {
         type: "page",
-        id: "plica-page",
-        displayName: "Plica",
-        exportName: "PlicaPage",
-        routePath: "plica",
+        id: "tickler-page",
+        displayName: "Tickler",
+        exportName: "TicklerPage",
+        routePath: "tickler",
       },
       {
         // The BreadcrumbBar zone, which Layout renders above every page — the
@@ -97,12 +97,12 @@ const manifest: PaperclipPluginManifestV1 = {
         //
         // A slot rather than a launcher: launcher declarations carry no icon
         // field, so a launcher here would render a bare label. Slot components
-        // draw their own markup, which is how the Plica mark survives
-        // (src/ui/components/PlicaMark.tsx).
+        // draw their own markup, which is how the Tickler mark survives
+        // (src/ui/components/TicklerMark.tsx).
         type: "globalToolbarButton",
-        id: "plica-toolbar-button",
-        displayName: "Plica",
-        exportName: "PlicaToolbarButton",
+        id: "tickler-toolbar-button",
+        displayName: "Tickler",
+        exportName: "TicklerToolbarButton",
       },
     ],
   },

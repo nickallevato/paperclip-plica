@@ -10,7 +10,7 @@ describe("host/shims", () => {
 
   describe("buildCompanyPath", () => {
     it("joins prefix and path", () => {
-      expect(buildCompanyPath("acme", "plica")).toBe("/acme/plica");
+      expect(buildCompanyPath("acme", "tickler")).toBe("/acme/tickler");
     });
 
     it("tolerates a leading slash on the path", () => {

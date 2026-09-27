@@ -8,7 +8,7 @@ import { runPhase } from "./runs";
  * is the failure mode a glance-level dashboard exists to catch, and it is
  * invisible in a bare "3 running" count.
  */
-export const PLICA_STALL_MS = 20 * 60_000;
+export const TICKLER_STALL_MS = 20 * 60_000;
 
 /**
  * One square in a company's capacity strip.
@@ -19,12 +19,12 @@ export const PLICA_STALL_MS = 20 * 60_000;
  * `idle` and *no agent at all* is the whole point — "0 / 4" renders those two
  * states identically today.
  */
-export type PlicaSquareState = "working" | "stalled" | "queued" | "error" | "idle";
+export type TicklerSquareState = "working" | "stalled" | "queued" | "error" | "idle";
 
-export interface PlicaSquare {
+export interface TicklerSquare {
   agentId: string;
   agentName: string;
-  state: PlicaSquareState;
+  state: TicklerSquareState;
   /** The run behind a working/stalled/queued square, when there is one. */
   run: LiveRunForIssue | null;
   /** Minutes since the run last did anything useful — only set when stalled. */
@@ -41,7 +41,7 @@ export interface PlicaSquare {
 const NOT_CAPACITY = new Set(["paused", "terminated", "pending_approval"]);
 
 /** The most alarming state wins when one agent somehow has several runs. */
-const RANK: Record<PlicaSquareState, number> = { error: 0, stalled: 1, working: 2, queued: 3, idle: 4 };
+const RANK: Record<TicklerSquareState, number> = { error: 0, stalled: 1, working: 2, queued: 3, idle: 4 };
 
 /**
  * The last moment a run demonstrably did something.
@@ -64,12 +64,12 @@ function lastSignAtMs(run: LiveRunForIssue): number | null {
   return Number.isFinite(started) ? started : null;
 }
 
-function stateForRun(run: LiveRunForIssue, nowMs: number): { state: PlicaSquareState; silentMins: number | null } {
+function stateForRun(run: LiveRunForIssue, nowMs: number): { state: TicklerSquareState; silentMins: number | null } {
   if (runPhase(run) === "queued") return { state: "queued", silentMins: null };
   const lastSign = lastSignAtMs(run);
   if (lastSign === null) return { state: "working", silentMins: null };
   const silentMs = nowMs - lastSign;
-  if (silentMs >= PLICA_STALL_MS) return { state: "stalled", silentMins: Math.round(silentMs / 60_000) };
+  if (silentMs >= TICKLER_STALL_MS) return { state: "stalled", silentMins: Math.round(silentMs / 60_000) };
   return { state: "working", silentMins: null };
 }
 
@@ -132,7 +132,7 @@ export function deriveCapacity(
   agents: ReadonlyArray<Agent>,
   liveRuns: ReadonlyArray<LiveRunForIssue>,
   nowMs: number,
-): PlicaSquare[] {
+): TicklerSquare[] {
   const runsByAgent = new Map<string, LiveRunForIssue[]>();
   for (const run of liveRuns) {
     const list = runsByAgent.get(run.agentId);
@@ -157,7 +157,7 @@ export function deriveCapacity(
     });
 }
 
-export interface PlicaCapacityCounts {
+export interface TicklerCapacityCounts {
   working: number;
   stalled: number;
   queued: number;
@@ -166,8 +166,8 @@ export interface PlicaCapacityCounts {
   total: number;
 }
 
-export function countCapacity(squares: ReadonlyArray<PlicaSquare>): PlicaCapacityCounts {
-  const counts: PlicaCapacityCounts = { working: 0, stalled: 0, queued: 0, error: 0, idle: 0, total: squares.length };
+export function countCapacity(squares: ReadonlyArray<TicklerSquare>): TicklerCapacityCounts {
+  const counts: TicklerCapacityCounts = { working: 0, stalled: 0, queued: 0, error: 0, idle: 0, total: squares.length };
   for (const square of squares) counts[square.state] += 1;
   return counts;
 }
@@ -180,7 +180,7 @@ export function countCapacity(squares: ReadonlyArray<PlicaSquare>): PlicaCapacit
  * each field is narrowed defensively and simply goes missing rather than
  * throwing when a company's agents are configured differently.
  */
-export interface PlicaAgentProfile {
+export interface TicklerAgentProfile {
   name: string;
   /** Job title, falling back to the role. */
   title: string | null;
@@ -213,7 +213,7 @@ function skillName(ref: string): string {
   return parts[parts.length - 1] ?? ref;
 }
 
-export function agentProfile(agent: Agent): PlicaAgentProfile {
+export function agentProfile(agent: Agent): TicklerAgentProfile {
   const adapter = record(agent.adapterConfig) ?? {};
   const runtime = record(agent.runtimeConfig) ?? {};
   const heartbeat = record(runtime.heartbeat) ?? {};

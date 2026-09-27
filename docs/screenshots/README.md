@@ -1,11 +1,11 @@
 # Screenshots
 
 Almost every image in this directory is produced by
-`scripts/capture-screenshots.mjs` against a real running Paperclip with Plica
+`scripts/capture-screenshots.mjs` against a real running Paperclip with Tickler
 installed, in **demo mode**. The exceptions are listed under
 [Hand-captured](#hand-captured).
 
-They are shot in **dark mode**. `PLICA_SHOT_THEME=light` shoots the light theme
+They are shot in **dark mode**. `TICKLER_SHOT_THEME=light` shoots the light theme
 instead, for a one-off comparison; commit the dark ones.
 
 ```bash
@@ -33,26 +33,26 @@ export SHOT_HOME=$(mktemp -d)
 # 1. A throwaway instance on its own port, with its own data directory.
 cd ~/dev/paperclip
 PAPERCLIP_HOME=$SHOT_HOME \
-PAPERCLIP_INSTANCE_ID=plica-shots \
-PAPERCLIP_CONFIG=$SHOT_HOME/instances/plica-shots/config.json \
+PAPERCLIP_INSTANCE_ID=tickler-shots \
+PAPERCLIP_CONFIG=$SHOT_HOME/instances/tickler-shots/config.json \
 PAPERCLIP_BIND=loopback \
 PAPERCLIP_DEPLOYMENT_MODE=local_trusted \
 PAPERCLIP_DEPLOYMENT_EXPOSURE=private \
 PORT=3199 \
   pnpm paperclipai onboard --yes --run
 
-# 2. One company, so the /:companyPrefix/plica route has a prefix to mount under.
+# 2. One company, so the /:companyPrefix/tickler route has a prefix to mount under.
 #    Demo mode replaces its data entirely; only the prefix is used.
 curl -s -X POST -H 'content-type: application/json' \
   -d '{"name":"Demo Co"}' http://127.0.0.1:3199/api/companies
 
-# 3. Install Plica into it. Note the explicit target — the CLI otherwise
+# 3. Install Tickler into it. Note the explicit target — the CLI otherwise
 #    installs into whatever PAPERCLIP_API_URL points at.
 PAPERCLIP_API_URL=http://127.0.0.1:3199 \
-  pnpm paperclipai plugin install /abs/path/to/paperclip-plica --local
+  pnpm paperclipai plugin install /abs/path/to/paperclip-tickler --local
 
 # 4. Capture.
-cd /abs/path/to/paperclip-plica
+cd /abs/path/to/paperclip-tickler
 node scripts/capture-screenshots.mjs
 ```
 
@@ -74,8 +74,8 @@ export SHOT_HOME=$(mktemp -d)
 #    it `@paperclipai/db` fails to resolve at import time.
 cd ~/dev/paperclip/server
 PAPERCLIP_HOME=$SHOT_HOME \
-PAPERCLIP_INSTANCE_ID=plica-shots \
-PAPERCLIP_CONFIG=$SHOT_HOME/instances/plica-shots/config.json \
+PAPERCLIP_INSTANCE_ID=tickler-shots \
+PAPERCLIP_CONFIG=$SHOT_HOME/instances/tickler-shots/config.json \
 PAPERCLIP_BIND=loopback \
 PAPERCLIP_DEPLOYMENT_MODE=local_trusted \
 PAPERCLIP_DEPLOYMENT_EXPOSURE=private \
@@ -87,9 +87,9 @@ NODE_OPTIONS=--import=$PWD/node_modules/tsx/dist/loader.mjs \
 curl -s -X POST -H 'content-type: application/json' \
   -d '{"name":"Demo Co"}' http://127.0.0.1:3199/api/companies
 
-# 3. Install Plica over the API instead of through the CLI.
+# 3. Install Tickler over the API instead of through the CLI.
 curl -s -X POST -H 'content-type: application/json' \
-  -d '{"packageName":"/abs/path/to/paperclip-plica","isLocalPath":true}' \
+  -d '{"packageName":"/abs/path/to/paperclip-tickler","isLocalPath":true}' \
   http://127.0.0.1:3199/api/plugins/install
 ```
 
@@ -109,12 +109,12 @@ will not resolve against a fresh database. The plugin itself installs fine;
 
 | Variable | Default | |
 | --- | --- | --- |
-| `PLICA_SHOT_URL` | `http://127.0.0.1:3199` | The instance to drive. |
-| `PLICA_SHOT_PREFIX` | first active company | Company prefix for the route. |
-| `PLICA_SHOT_PLUGIN_ID` | looked up from `/api/plugins` | Plugin row UUID, for the settings-page shot. |
-| `PLICA_PLAYWRIGHT` | `~/paperclip` | Package root to resolve `playwright` from. |
-| `PLICA_CHROME` | `/usr/bin/google-chrome` | Browser executable. |
-| `PLICA_SHOT_OUT` | `docs/screenshots` | Where the PNGs go. |
+| `TICKLER_SHOT_URL` | `http://127.0.0.1:3199` | The instance to drive. |
+| `TICKLER_SHOT_PREFIX` | first active company | Company prefix for the route. |
+| `TICKLER_SHOT_PLUGIN_ID` | looked up from `/api/plugins` | Plugin row UUID, for the settings-page shot. |
+| `TICKLER_PLAYWRIGHT` | `~/paperclip` | Package root to resolve `playwright` from. |
+| `TICKLER_CHROME` | `/usr/bin/google-chrome` | Browser executable. |
+| `TICKLER_SHOT_OUT` | `docs/screenshots` | Where the PNGs go. |
 
 Playwright is deliberately **not** a dependency of this repo. Adding it plus a
 browser download would cost every contributor a couple of hundred megabytes for
@@ -140,7 +140,7 @@ them by hand when the UI they show changes.
 
 | File | Source |
 | --- | --- |
-| `queue-confirmation.png` | Plica's own development org (live) |
-| `queue-question.png` | Plica's own development org (live) |
+| `queue-confirmation.png` | Tickler's own development org (live) |
+| `queue-question.png` | Tickler's own development org (live) |
 | `recent-hover.png` | Demo mode |
 | `portfolio-by-org.png` | Demo mode |

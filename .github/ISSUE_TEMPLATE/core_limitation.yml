@@ -1,5 +1,5 @@
 name: Core limitation
-description: Plica cannot do this inside the plugin surface. A request for a Paperclip core change.
+description: Tickler cannot do this inside the plugin surface. A request for a Paperclip core change.
 labels: ["core-limitation"]
 body:
   - type: markdown
@@ -20,7 +20,7 @@ body:
   - type: textarea
     id: need
     attributes:
-      label: What does Plica need to do?
+      label: What does Tickler need to do?
       description: The capability, in terms of what a user would see.
     validations:
       required: true
@@ -53,7 +53,7 @@ body:
   - type: textarea
     id: fallback
     attributes:
-      label: What can Plica ship today if core does not change?
+      label: What can Tickler ship today if core does not change?
       description: >-
         The degraded version that stays inside the plugin surface, or "nothing".
         Both are acceptable answers. A shim, a monkey-patch, or reaching into
@@ -66,7 +66,7 @@ body:
     id: blocked
     attributes:
       label: What is blocked on this?
-      description: Link the Plica issues that are waiting on this decision.
+      description: Link the Tickler issues that are waiting on this decision.
     validations:
       required: false
 
