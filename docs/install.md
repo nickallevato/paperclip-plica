@@ -24,7 +24,7 @@ Paperclip later needs nothing from Plica.
 
 ### 1. Install it
 
-**From the UI.** Open **Settings → Plugins** (the **Plugin Manager**, at
+**From the UI (recommended).** Open **Settings → Plugins** (the **Plugin Manager**, at
 `/company/settings/instance/plugins`) and click **Install Plugin**. In the
 dialog, enter
 
