@@ -4,7 +4,9 @@
 PLI-24: a sheet folded down its middle seen end-on — a *plica* — which reads
 flat as a caret.
 
-It is here for provenance, not for use. Nothing in the plugin loads it. Every
+It is here for provenance, not for use. Nothing in the plugin loads it.
+`plica-icon.png` is the same mark on a dark tile, for the README header and
+anywhere else the mark has to read on both light and dark backgrounds. Every
 surface that shows the mark renders
 [`src/ui/components/PlicaMark.tsx`](../../src/ui/components/PlicaMark.tsx),
 an SVG traced from this file, because a component inherits `currentColor` and

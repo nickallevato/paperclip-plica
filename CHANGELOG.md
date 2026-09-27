@@ -5,6 +5,10 @@ Short-form. The reader-facing write-up for each version is in
 
 ## Unreleased
 
+- **The README has a header, badges and a highlights list**, and its images and
+  links are absolute, so the npm package page renders the same as GitHub.
+  `package.json` gets a fuller description, more keywords, and `homepage`/`bugs`
+  pointing at the repository.
 - **A failed publish says which credential to go and fix.** npm's two rejections
   here are both misleading: `ENEEDAUTH` in a workflow run means the package has
   no trusted publisher, not that the runner needs `npm adduser`, and a `403`
