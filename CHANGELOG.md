@@ -12,6 +12,14 @@ Short-form. The reader-facing write-up for each version is in
   wrong. `scripts/publish-npm.mjs` already knows which credential it used, so it
   now prints the matching explanation. Both are written up in
   [docs/releases/README.md](docs/releases/README.md#what-npms-two-credential-errors-actually-mean).
+- **A refused trusted publish reports the registry's reason, not `ENEEDAUTH`.**
+  npm asks GitHub for an OIDC token, trades it with the registry for a publish
+  credential, and on refusal discards what the registry said — leaving one error
+  that means both "no trusted publisher" and "an entry that does not match this
+  run", with a tag push as the only way to tell them apart. The new
+  `scripts/diagnose-npm-oidc.mjs` repeats those two requests and prints the
+  status and message behind them; a failed publish runs it automatically. It is
+  read-only, publishes nothing, and logs no credential.
 
 ## 0.6.0
 

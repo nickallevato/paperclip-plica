@@ -289,6 +289,21 @@ function main(argv) {
     const hint = failureHint(auth.kind);
     if (hint) console.error(`\n${hint}`);
     console.error("");
+    // On the OIDC path npm reports `ENEEDAUTH` and throws away the registry's
+    // actual reason, so ask the registry for it instead of leaving the next
+    // attempt to guess which half of the configuration is wrong. This publishes
+    // nothing, and a failing diagnostic must not change the verdict above.
+    if (auth.kind === "oidc") {
+      try {
+        execFileSync("node", [join(ROOT, "scripts/diagnose-npm-oidc.mjs")], {
+          cwd: ROOT,
+          stdio: "inherit",
+        });
+      } catch {
+        // Its findings are already on stderr; a non-zero exit only repeats that
+        // the publish was refused, which is the branch we are already in.
+      }
+    }
     return 1;
   } finally {
     if (config) rmSync(config.dir, { recursive: true, force: true });

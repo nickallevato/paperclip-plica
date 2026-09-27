@@ -114,8 +114,21 @@ failed publish, but they are worth recognising:
   the repository secret.
 
   The same error also means "the entry exists but does not match this run", and
-  the two cases are indistinguishable from the log. So before re-reading the npm
-  page, rule the workflow side out — every one of these was checked on the run
+  the two cases are indistinguishable from `ENEEDAUTH` itself — but not from the
+  registry, which says which one it is and has its answer thrown away by npm. A
+  failed publish on this path now asks for that answer and prints it, and it can
+  be run on its own in any job that has `id-token: write`:
+
+  ```
+  node scripts/diagnose-npm-oidc.mjs
+  ```
+
+  It makes the same two requests `npm publish` does — mint an OIDC token, trade
+  it for a publish credential — reports the registry's own status and message,
+  and publishes nothing. If it says npm *accepted* the token, trusted publishing
+  is configured correctly and the refusal was something else.
+
+  Failing that, or before re-reading the npm page, rule the workflow side out — every one of these was checked on the run
   that first hit it, and all of them held, which is how we knew the entry itself
   was missing:
 
