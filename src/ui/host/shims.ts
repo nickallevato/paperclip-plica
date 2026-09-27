@@ -1,5 +1,5 @@
 /**
- * Adapters from the host React contexts Plica used to consume onto the plugin
+ * Adapters from the host React contexts Tickler used to consume onto the plugin
  * SDK bridge.
  *
  * Plugin bundles cannot import the host's context modules, but the SDK exposes
@@ -35,7 +35,7 @@ export function mapToneToPluginTone(tone: ToastTone | undefined): ToastTone {
   return tone ?? "info";
 }
 
-/** Mirrors the host's `useToastActions()` surface — Plica only uses pushToast. */
+/** Mirrors the host's `useToastActions()` surface — Tickler only uses pushToast. */
 export function useToastActions() {
   const toast = usePluginToast();
 
@@ -65,7 +65,7 @@ export type OptionalCompany = {
  * Mirrors the host's `useOptionalCompany()` — the read half only.
  *
  * The host's version also exposes `setSelectedCompanyId`, which plugin UI
- * cannot reach. Nothing needs it: the only caller was PlicaLink's company-flip
+ * cannot reach. Nothing needs it: the only caller was TicklerLink's company-flip
  * workaround, and cross-company navigation now goes through `hardNavigate`,
  * which lets the host re-derive the company from the URL on remount.
  *
@@ -87,7 +87,7 @@ export function useOptionalCompany(): OptionalCompany {
  * Mirrors the host's `useBreadcrumbs()`.
  *
  * The host owns breadcrumbs for plugin pages and already renders the plugin's
- * display name, so Plica's own `setBreadcrumbs` call becomes a no-op rather
+ * display name, so Tickler's own `setBreadcrumbs` call becomes a no-op rather
  * than fighting host chrome for the same slot.
  */
 export function useBreadcrumbs() {
@@ -104,14 +104,14 @@ export type NewIssueDefaults = {
 };
 
 /**
- * Mirrors the host's `useDialogActions()` — the one action Plica uses.
+ * Mirrors the host's `useDialogActions()` — the one action Tickler uses.
  *
  * The host's `openNewIssue` flips React state on a dialog that lives in
  * DialogContext, which plugin UI cannot reach, and there is no URL that opens
  * it. So instead of a button that silently does nothing, this navigates to the
  * target company's issues page, where the ticket can be created.
  *
- * Panes are cross-company by nature, so this reuses PlicaLink's rule: a
+ * Panes are cross-company by nature, so this reuses TicklerLink's rule: a
  * different company means a full document load, because the host will not
  * re-sync the selected company from the URL after a manual switch.
  */

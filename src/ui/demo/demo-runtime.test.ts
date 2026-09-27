@@ -33,7 +33,7 @@ describe("activation", () => {
 });
 
 describe("reads", () => {
-  it("serves every endpoint usePlicaCompanyData polls", () => {
+  it("serves every endpoint useTicklerCompanyData polls", () => {
     for (const path of [
       "dashboard",
       "live-runs?limit=100",
@@ -151,8 +151,8 @@ describe("resolveDemoDataUrl", () => {
     vi.stubGlobal("fetch", vi.fn(async () => ({
       ok: true,
       json: async () => [
-        { id: "not-plica", pluginKey: "example.other-plugin" },
-        { id: "217cec6e-20a7-4837-a6b0-bef9882b9679", pluginKey: "nickallevato.plugin-plica" },
+        { id: "not-tickler", pluginKey: "example.other-plugin" },
+        { id: "217cec6e-20a7-4837-a6b0-bef9882b9679", pluginKey: "nickallevato.plugin-tickler" },
       ],
     })) as unknown as typeof fetch);
     await expect(resolveDemoDataUrl()).resolves.toBe(

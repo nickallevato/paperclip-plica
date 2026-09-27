@@ -1,15 +1,15 @@
 /**
- * Vendored copies of the small Paperclip UI utilities Plica depends on.
+ * Vendored copies of the small Paperclip UI utilities Tickler depends on.
  *
  * Plugin bundles cannot import from the host's `@/lib/*`, so these are copied
- * rather than referenced. Only what Plica actually uses is vendored — copying
+ * rather than referenced. Only what Tickler actually uses is vendored — copying
  * the host's full `utils.ts` would drag in `@paperclipai/shared` and create a
- * drift liability for code Plica never calls.
+ * drift liability for code Tickler never calls.
  *
  * Sources (paperclip @ canary/v2026.807.0-canary.13):
  *   ui/src/lib/utils.ts          → cn
  *   ui/src/lib/status-colors.ts  → priorityColor, priorityColorDefault
- *   ui/src/lib/queryKeys.ts      → the plica + auth branches
+ *   ui/src/lib/queryKeys.ts      → the tickler + auth branches
  *   ui/src/lib/company-routes.ts → toCompanyRelativePath and its helpers
  */
 import { type ClassValue, clsx } from "clsx";
@@ -34,26 +34,26 @@ export { priorityColor, priorityColorDefault } from "./status-colors";
 // ---------------------------------------------------------------------------
 
 /**
- * Plica owns its own QueryClient, so these keys only need to be internally
+ * Tickler owns its own QueryClient, so these keys only need to be internally
  * consistent — they never have to match the host's cache.
  */
 export const queryKeys = {
-  plica: {
-    summary: (companyId: string) => ["plica", "summary", companyId] as const,
-    badges: (companyId: string) => ["plica", "badges", companyId] as const,
-    attention: (companyId: string) => ["plica", "attention", companyId] as const,
-    routines: (companyId: string) => ["plica", "routines", companyId] as const,
+  tickler: {
+    summary: (companyId: string) => ["tickler", "summary", companyId] as const,
+    badges: (companyId: string) => ["tickler", "badges", companyId] as const,
+    attention: (companyId: string) => ["tickler", "attention", companyId] as const,
+    routines: (companyId: string) => ["tickler", "routines", companyId] as const,
     tokens: (companyId: string, from: string, to: string) =>
-      ["plica", "tokens", companyId, from, to] as const,
-    activity: (companyId: string) => ["plica", "activity", companyId] as const,
-    liveRuns: (companyId: string) => ["plica", "live-runs", companyId] as const,
-    projects: (companyId: string) => ["plica", "projects", companyId] as const,
-    issues: (companyId: string) => ["plica", "issues", companyId] as const,
-    approvals: (companyId: string) => ["plica", "approvals", companyId] as const,
-    agents: (companyId: string) => ["plica", "agents", companyId] as const,
-    company: (companyId: string) => ["plica", "company", companyId] as const,
-    timeline: (companyId: string) => ["plica", "timeline", companyId] as const,
-    briefingIssues: (companyId: string) => ["plica", "briefing-issues", companyId] as const,
+      ["tickler", "tokens", companyId, from, to] as const,
+    activity: (companyId: string) => ["tickler", "activity", companyId] as const,
+    liveRuns: (companyId: string) => ["tickler", "live-runs", companyId] as const,
+    projects: (companyId: string) => ["tickler", "projects", companyId] as const,
+    issues: (companyId: string) => ["tickler", "issues", companyId] as const,
+    approvals: (companyId: string) => ["tickler", "approvals", companyId] as const,
+    agents: (companyId: string) => ["tickler", "agents", companyId] as const,
+    company: (companyId: string) => ["tickler", "company", companyId] as const,
+    timeline: (companyId: string) => ["tickler", "timeline", companyId] as const,
+    briefingIssues: (companyId: string) => ["tickler", "briefing-issues", companyId] as const,
   },
   auth: {
     session: ["auth", "session"] as const,
@@ -102,8 +102,8 @@ const BOARD_ROUTE_ROOTS = new Set([
 /**
  * Tracks upstream deliberately.
  *
- * The v4 customization added "plica" to this set because /plica was a
- * root-level global route. As a plugin page Plica lives at /:prefix/plica and
+ * The v4 customization added "tickler" to this set because /tickler was a
+ * root-level global route. As a plugin page Tickler lives at /:prefix/tickler and
  * is company-scoped like any other board route, so the entry is omitted.
  */
 const GLOBAL_ROUTE_ROOTS = new Set(["auth", "invite", "board-claim", "cli-auth", "docs", "instance"]);

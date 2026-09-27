@@ -16,7 +16,7 @@ import {
   queueItemAge,
   recentTasks,
   upcomingProjects,
-  type PlicaProjectEntry,
+  type TicklerProjectEntry,
   normalizeQueueGrouping,
   summarizeQueue,
   upcomingRoutines,
@@ -798,7 +798,7 @@ describe("derivePortfolio", () => {
     inProgress: number,
     blocked: number,
     dueDays: number | null = null,
-  ): PlicaProjectEntry => ({
+  ): TicklerProjectEntry => ({
     company: company("c1"),
     project: { id, name: id, urlKey: id } as never,
     open,
@@ -917,7 +917,7 @@ describe("routineExceptions", () => {
 });
 
 describe("derivePortfolio company order", () => {
-  const entry = (id: string, companyId: string, open: number, blocked = 0): PlicaProjectEntry => ({
+  const entry = (id: string, companyId: string, open: number, blocked = 0): TicklerProjectEntry => ({
     company: company(companyId),
     project: { id, name: id, urlKey: id } as never,
     open,

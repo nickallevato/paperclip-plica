@@ -1,12 +1,12 @@
 name: release
 
-# Publishes `paperclip-plugin-plica` to npm when a `v*` tag lands on the repo.
+# Publishes `paperclip-plugin-tickler` to npm when a `v*` tag lands on the repo.
 # Tagging is the release: nothing here decides the version, it only refuses to
 # publish one that is declared inconsistently (scripts/check-release.mjs) and
 # then runs the same `scripts/publish-npm.mjs` a person would run by hand.
 #
 # The workspace layout and the Paperclip core checkout are the same trick
-# `ci.yml` uses and are explained there — Plica's `@paperclipai/*` dev
+# `ci.yml` uses and are explained there — Tickler's `@paperclipai/*` dev
 # dependencies are `link:../../paperclip/...`, so nothing installs or type-checks
 # without a core tree next to this one. The setup steps below are a deliberate
 # copy of that job rather than a shared composite action: a release must not
@@ -49,10 +49,10 @@ jobs:
     name: publish to npm
     runs-on: ubuntu-latest
     steps:
-      - name: Check out Plica
+      - name: Check out Tickler
         uses: actions/checkout@v4
         with:
-          path: repo/plica
+          path: repo/tickler
           # Tags are what the version check compares against, and a dispatch run
           # is handed a branch, so fetch them regardless of what triggered this.
           fetch-depth: 0
@@ -60,7 +60,7 @@ jobs:
 
       - name: Read the pinned Paperclip core commit
         id: core
-        working-directory: repo/plica
+        working-directory: repo/tickler
         run: |
           ref=$(grep -v '^[[:space:]]*#' .github/paperclip-core.ref | tr -d '[:space:]')
           if [ -z "$ref" ]; then
@@ -95,8 +95,8 @@ jobs:
         working-directory: paperclip
         run: pnpm --filter @paperclipai/plugin-sdk build
 
-      - name: Install Plica
-        working-directory: repo/plica
+      - name: Install Tickler
+        working-directory: repo/tickler
         run: pnpm install --frozen-lockfile
 
       # No typecheck/build/test step: `npm publish` runs `prepublishOnly`, which
@@ -105,7 +105,7 @@ jobs:
       # The arguments are assembled in the shell rather than in a nested
       # `${{ }}` ternary, which is unreadable and untestable in equal measure.
       - name: Publish
-        working-directory: repo/plica
+        working-directory: repo/tickler
         env:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
           RELEASE_TAG: ${{ github.ref_type == 'tag' && github.ref_name || inputs.tag }}

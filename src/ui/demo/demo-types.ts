@@ -16,7 +16,7 @@ import type { LiveRunForIssue } from "../host/api";
 
 /**
  * Everything one company's panes need, mirroring the eight queries in
- * `usePlicaCompanyData` plus the two the briefing and board rows fetch on
+ * `useTicklerCompanyData` plus the two the briefing and board rows fetch on
  * demand. Field names match the API method that serves them, so the router in
  * `demo-runtime.ts` reads as a lookup table rather than a translation layer.
  */

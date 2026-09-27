@@ -5,8 +5,8 @@ import { useEffect, useRef } from "react";
  * composers do: localStorage, debounced, cleared on send. Keyed per thing
  * being answered, so a half-written reply comes back as you left it.
  */
-export const PLICA_DRAFT_DEBOUNCE_MS = 800;
-export const draftKeyFor = (interactionId: string) => `plica.interactionDraft.${interactionId}`;
+export const TICKLER_DRAFT_DEBOUNCE_MS = 800;
+export const draftKeyFor = (interactionId: string) => `tickler.interactionDraft.${interactionId}`;
 
 export function loadDraft<T>(key: string): T | null {
   try {
@@ -42,7 +42,7 @@ export function useDraftSaver(key: string, value: unknown, empty: boolean) {
       first.current = false;
       return;
     }
-    const timer = setTimeout(() => saveDraft(key, value, empty), PLICA_DRAFT_DEBOUNCE_MS);
+    const timer = setTimeout(() => saveDraft(key, value, empty), TICKLER_DRAFT_DEBOUNCE_MS);
     return () => clearTimeout(timer);
   }, [key, value, empty]);
 }
@@ -56,7 +56,7 @@ export function useDraftSaver(key: string, value: unknown, empty: boolean) {
  * the whole document — the host's sidebar included — silently stops accepting
  * clicks, with nothing visibly wrong.
  *
- * Plica hits this by design rather than by accident: the queue re-derives
+ * Tickler hits this by design rather than by accident: the queue re-derives
  * every poll, so answering a question inside a dialog resolves the underlying
  * attention item, which removes its row on the next 5s refresh and takes the
  * open dialog down with it.

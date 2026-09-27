@@ -23,7 +23,7 @@ const presets = createPluginBundlerPresets({ uiEntry: "src/ui/index.ts" });
  *
  * Whitespace minification emits `from"react"`, which the rewrite misses. The
  * browser then cannot resolve the bare specifier, the dynamic import fails, and
- * the host silently renders its slot placeholder ("Plica: Plica") instead of
+ * the host silently renders its slot placeholder ("Tickler: Tickler") instead of
  * the page — with no console error pointing at the cause.
  *
  * Identifier and syntax minification are safe and still cut the bundle roughly

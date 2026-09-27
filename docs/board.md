@@ -1,6 +1,6 @@
 # The Board
 
-The Plica page is two columns. On the left, context: **Orgs** (one line per
+The Tickler page is two columns. On the left, context: **Orgs** (one line per
 org), **Recent** (what the fleet is on), the **Portfolio**, and **Routines**
 that need attention. On the right, owning the main column, the
 **[queue](queue.md)** — because that is where the work is.

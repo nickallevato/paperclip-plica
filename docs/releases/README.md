@@ -90,7 +90,7 @@ order, and prints the name of the one it used:
    this workflow. No token exists anywhere: npm accepts the publish because
    GitHub attests that it came from `release.yml` on this repository. Set it up
    once under the package's **Settings → Trusted publishers** on npmjs.com
-   (publisher: GitHub Actions, repository `nickallevato/paperclip-plica`,
+   (publisher: GitHub Actions, repository `nickallevato/paperclip-tickler`,
    workflow `release.yml`), and delete `NPM_TOKEN`. This is the preferred
    arrangement — there is no secret for an agent, a log, or a compromised
    runner to leak, and publishes stay attributable to a specific workflow run.
@@ -148,7 +148,7 @@ failed publish, but they are worth recognising:
   token that works. The token authenticates (`npm whoami` answers, `npm access
   get status` answers) and is refused only on the write, which means it is
   read-only or read-scoped. Reissue it as an automation token, or a granular
-  token with **read and write** on `paperclip-plugin-plica`.
+  token with **read and write** on `paperclip-plugin-tickler`.
 
 A version is only spent when the registry accepts the tarball, so neither of
 these costs the version number: both failed after packing and the version stayed

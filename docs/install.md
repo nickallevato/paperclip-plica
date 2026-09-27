@@ -1,9 +1,9 @@
 # Install
 
-Plica is published to npm as `paperclip-plugin-plica`. That is the route for
+Tickler is published to npm as `paperclip-plugin-tickler`. That is the route for
 running it: Paperclip fetches the package itself, and nothing needs to be built
 on your side. Installing from a git clone is still supported, and is the route
-for working on Plica — see [From source](#from-source).
+for working on Tickler — see [From source](#from-source).
 
 ## From npm
 
@@ -20,7 +20,7 @@ for working on Plica — see [From source](#from-source).
 
 That is all. The package ships prebuilt and carries nothing tied to a particular
 Paperclip build — in particular no copy of Paperclip's stylesheet — so upgrading
-Paperclip later needs nothing from Plica.
+Paperclip later needs nothing from Tickler.
 
 ### 1. Install it
 
@@ -29,7 +29,7 @@ Paperclip later needs nothing from Plica.
 dialog, enter
 
 ```
-paperclip-plugin-plica
+paperclip-plugin-tickler
 ```
 
 as the **npm Package Name** and click **Install**.
@@ -37,14 +37,14 @@ as the **npm Package Name** and click **Install**.
 **From the CLI.**
 
 ```bash
-paperclipai plugin install paperclip-plugin-plica
+paperclipai plugin install paperclip-plugin-tickler
 ```
 
 A bare package name is treated as an npm package. To pin a version, pass it
 with `--version`:
 
 ```bash
-paperclipai plugin install paperclip-plugin-plica --version 0.5.0
+paperclipai plugin install paperclip-plugin-tickler --version 0.5.0
 ```
 
 Before it installs, the CLI prints which instance it is about to install into:
@@ -52,8 +52,8 @@ Before it installs, the CLI prints which instance it is about to install into:
 ```
 Target Paperclip: http://127.0.0.1:3100
   health: status=ok  version=0.1.0  mode=local_trusted  exposure=private
-Installing plugin: paperclip-plugin-plica
-✓ Installed nickallevato.plugin-plica v0.5.0 (ready)
+Installing plugin: paperclip-plugin-tickler
+✓ Installed nickallevato.plugin-tickler v0.5.0 (ready)
 ```
 
 **Read that first line.** If the URL is not the instance you meant, stop and
@@ -70,18 +70,18 @@ Paperclip's Plugin Manager has no upgrade button, but the server has an upgrade
 endpoint and the CLI exposes it:
 
 ```bash
-paperclipai plugin upgrade nickallevato.plugin-plica
+paperclipai plugin upgrade nickallevato.plugin-tickler
 ```
 
-With no version, the server runs `npm install paperclip-plugin-plica` again,
+With no version, the server runs `npm install paperclip-plugin-tickler` again,
 which npm resolves to the package's `latest` tag. To go to a particular version
 instead:
 
 ```bash
-paperclipai plugin upgrade nickallevato.plugin-plica --payload-json '{"version":"0.5.0"}'
+paperclipai plugin upgrade nickallevato.plugin-tickler --payload-json '{"version":"0.5.0"}'
 ```
 
-That is the same `POST /api/plugins/nickallevato.plugin-plica/upgrade` the API
+That is the same `POST /api/plugins/nickallevato.plugin-tickler/upgrade` the API
 documents, with an optional `version` in the body. The upgrade is done in place:
 settings are kept and the plugin's registration moves to the new version. Two
 limits, both the host's:
@@ -90,25 +90,25 @@ limits, both the host's:
   disabled one first.
 - **A version that adds a capability is refused.** Paperclip only grants
   capabilities at install, so an upgrade that declares a new one fails with an
-  error naming it. Uninstall and reinstall Plica to take that version; the
+  error naming it. Uninstall and reinstall Tickler to take that version; the
   release notes say when a version needs this.
 
-The **Reload 0.x.y** chip described under [upgrading from source](#upgrading-plica)
+The **Reload 0.x.y** chip described under [upgrading from source](#upgrading-tickler)
 does not appear for an npm install: the code Paperclip serves and the version it
 has registered always move together, so there is never a newer build on disk
 for the chip to offer.
 
 ### Upgrading Paperclip
 
-Nothing to do on the Plica side. Plica subtracts the host's duplicate selectors
+Nothing to do on the Tickler side. Tickler subtracts the host's duplicate selectors
 in the browser, against whichever Paperclip stylesheet the page has loaded, so a
-Paperclip upgrade needs no rebuild, reinstall or restart of Plica.
+Paperclip upgrade needs no rebuild, reinstall or restart of Tickler.
 
 ## Confirm it loaded
 
 ```bash
 paperclipai plugin list
-paperclipai plugin inspect nickallevato.plugin-plica
+paperclipai plugin inspect nickallevato.plugin-tickler
 ```
 
 You want `status=ready`. `inspect` prints the full last error if it is anything
@@ -116,26 +116,26 @@ else.
 
 ## Find it in the UI
 
-Plica adds two things:
+Tickler adds two things:
 
-**A button carrying the Plica mark** — the folded-sheet caret — in the
+**A button carrying the Tickler mark** — the folded-sheet caret — in the
 breadcrumb bar, above every page in every company.
 
-![The Plica launcher in the host's breadcrumb bar](screenshots/toolbar-button.png)
+![The Tickler launcher in the host's breadcrumb bar](screenshots/toolbar-button.png)
 
-**A page** at `/<COMPANY-PREFIX>/plica` — for example `/ACME/plica`. The prefix
-is the company's issue prefix. Plica shows every company regardless of which
+**A page** at `/<COMPANY-PREFIX>/tickler` — for example `/ACME/tickler`. The prefix
+is the company's issue prefix. Tickler shows every company regardless of which
 one's prefix is in the URL; the prefix is only there because the host mounts
 plugin pages under a company route.
 
-![The Plica page](screenshots/plica-page.png)
+![The Tickler page](screenshots/tickler-page.png)
 
 If the page is blank or the app looks broken, go to
 [Troubleshooting](troubleshooting.md).
 
 ## From source
 
-You clone Plica, build it, and register the built folder with a Paperclip
+You clone Tickler, build it, and register the built folder with a Paperclip
 instance that can read that path off disk. This is the development route: edit,
 rebuild, refresh.
 
@@ -144,7 +144,7 @@ rebuild, refresh.
 - **Node.js 24.11 or newer**, and **pnpm**.
 - **A Paperclip checkout you can run from source.** Two separate reasons: local
   plugin installs read the plugin's source from disk, so the server has to be
-  able to see the path you give it; and Plica type-checks against that
+  able to see the path you give it; and Tickler type-checks against that
   checkout's packages (see [Where the checkout has to live](#where-the-checkout-has-to-live)).
 - **The instance running.** `pnpm paperclipai run` in the Paperclip checkout, or
   however you normally start yours.
@@ -152,16 +152,16 @@ rebuild, refresh.
 ### 1. Build it
 
 ```bash
-git clone https://github.com/nickallevato/paperclip-plica.git
-cd paperclip-plica
+git clone https://github.com/nickallevato/paperclip-tickler.git
+cd paperclip-tickler
 pnpm install
 pnpm build
 ```
 
-`pnpm build` does two things: compiles Plica's Tailwind stylesheet and bundles
+`pnpm build` does two things: compiles Tickler's Tailwind stylesheet and bundles
 `dist/manifest.js`, `dist/worker.js` and `dist/ui/`. That `dist` folder is what
 Paperclip loads. It does not read anything of Paperclip's — the host's duplicate
-selectors are subtracted in the browser at runtime (README, "Why Plica subtracts
+selectors are subtracted in the browser at runtime (README, "Why Tickler subtracts
 the host's selectors"), so there is no Paperclip UI build that has to exist
 first.
 
@@ -173,7 +173,7 @@ first.
 
 `package.json` declares `@paperclipai/shared` and `@paperclipai/plugin-sdk` as
 `link:` dependencies pointing at `../../paperclip/packages/...`, relative to
-this repository. Plica type-checks against the real upstream types that way,
+this repository. Tickler type-checks against the real upstream types that way,
 which is how it finds out about a breaking Paperclip change at build time
 rather than in the browser. They are development dependencies only; the
 published package does not carry them.
@@ -185,7 +185,7 @@ be two levels above this repo.**
 ~/dev/
 ├── paperclip/           ← the Paperclip checkout
 └── plugins/
-    └── paperclip-plica/ ← this repo
+    └── paperclip-tickler/ ← this repo
 ```
 
 Clone it somewhere else and `pnpm install` fails to resolve those two
@@ -195,7 +195,7 @@ do not commit the repoint; it would break everyone else's layout.
 ### 2. Register it with your instance
 
 ```bash
-paperclipai plugin install /absolute/path/to/paperclip-plica --local
+paperclipai plugin install /absolute/path/to/paperclip-tickler --local
 ```
 
 `--local` makes the argument a filesystem path rather than a package name; an
@@ -213,7 +213,7 @@ pnpm dev   # esbuild watch + CSS rebuild
 Paperclip watches the installed folder's `dist` output and reloads the plugin in
 place, so leaving `pnpm dev` running gives you edit-and-refresh.
 
-### Upgrading Plica
+### Upgrading Tickler
 
 ```bash
 git pull
@@ -224,34 +224,34 @@ pnpm build
 The installed path has not changed, so Paperclip picks up the new `dist` on its
 own — but only the code. The manifest (version, capabilities, slots) is read
 once, at install, and Paperclip keeps its own copy. When a pull bumps the
-version, Plica notices on the next page load and shows a **Reload 0.x.y** chip
+version, Tickler notices on the next page load and shows a **Reload 0.x.y** chip
 in its header. Clicking it asks Paperclip to re-read the plugin from disk in
-place (`POST /api/plugins/nickallevato.plugin-plica/upgrade`); settings are kept
+place (`POST /api/plugins/nickallevato.plugin-tickler/upgrade`); settings are kept
 and the page reloads onto the new build. It needs an instance admin — anyone
 else gets a note saying so.
 
 If the new version adds a capability, Paperclip will not grant it in place, so
-the chip reads **Reinstall needed** instead: uninstall and reinstall Plica from
+the chip reads **Reinstall needed** instead: uninstall and reinstall Tickler from
 the plugin manager.
 
-<a id="after-a-paperclip-upgrade-rebuild-plica"></a>
+<a id="after-a-paperclip-upgrade-rebuild-tickler"></a>
 
 ### After upgrading Paperclip itself
 
-Nothing to do on the Plica side — no rebuild, and no ordering to get right.
-Plica used to subtract the host's stylesheet at build time and had to be rebuilt
+Nothing to do on the Tickler side — no rebuild, and no ordering to get right.
+Tickler used to subtract the host's stylesheet at build time and had to be rebuilt
 after every Paperclip upgrade; that now happens in the browser against whatever
 stylesheet the upgraded Paperclip serves. A Paperclip upgrade can still change
 the `@paperclipai/*` types a clone builds against, so run `pnpm typecheck` if
-you are about to work on Plica.
+you are about to work on Tickler.
 
 ## Uninstalling
 
 ```bash
-paperclipai plugin uninstall nickallevato.plugin-plica
+paperclipai plugin uninstall nickallevato.plugin-tickler
 ```
 
-Or the **Uninstall** button on Plica's row in the Plugin Manager. Add `--force`
-to the CLI form to purge its stored config as well. Plica's per-browser
+Or the **Uninstall** button on Tickler's row in the Plugin Manager. Add `--force`
+to the CLI form to purge its stored config as well. Tickler's per-browser
 preferences live in `localStorage` and are not touched by either; see
-[Configuration](configuration.md#what-plica-remembers).
+[Configuration](configuration.md#what-tickler-remembers).

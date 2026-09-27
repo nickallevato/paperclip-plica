@@ -98,7 +98,7 @@ describe("the CLI", () => {
         stdio: ["ignore", "pipe", "pipe"],
         env: {
           ...process.env,
-          PLICA_ALLOW_SHARED_CHECKOUT: "",
+          TICKLER_ALLOW_SHARED_CHECKOUT: "",
           PAPERCLIP_WORKSPACE_CWD: "",
           // Pinned, not inherited: once the instance turns on isolated
           // workspaces the ambient value changes, and these cases are about
@@ -170,7 +170,7 @@ describe("the CLI", () => {
 });
 
 // The remedy the failure message prints is the whole value of the guard: an
-// agent that cannot follow it reaches for PLICA_ALLOW_SHARED_CHECKOUT=1
+// agent that cannot follow it reaches for TICKLER_ALLOW_SHARED_CHECKOUT=1
 // instead. So run it, in a repository shaped like the one it is written for —
 // a main worktree, on a topic branch, with the commit already staged.
 describe("the remedy it prints", () => {
@@ -184,9 +184,9 @@ describe("the remedy it prints", () => {
 
   /** A fresh repo on BRANCH with a staged change, plus the guard's verdict on it. */
   const fixture = () => {
-    const root = mkdtempSync(join(tmpdir(), "plica-worktree-"));
+    const root = mkdtempSync(join(tmpdir(), "tickler-worktree-"));
     roots.push(root);
-    const repo = join(root, "plica");
+    const repo = join(root, "tickler");
     const sh = (cmd) => execFileSync("sh", ["-c", cmd], { cwd: repo, encoding: "utf8" });
 
     execFileSync("git", ["init", "-q", "-b", "main", repo]);
@@ -208,7 +208,7 @@ describe("the remedy it prints", () => {
         stdio: ["ignore", "pipe", "pipe"],
         env: {
           ...process.env,
-          PLICA_ALLOW_SHARED_CHECKOUT: "",
+          TICKLER_ALLOW_SHARED_CHECKOUT: "",
           PAPERCLIP_WORKSPACE_CWD: repo,
           PAPERCLIP_WORKSPACE_STRATEGY: "project_primary",
         },

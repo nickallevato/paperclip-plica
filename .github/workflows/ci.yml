@@ -2,14 +2,14 @@ name: ci
 
 # Typecheck, build, and test on every pull request and every push to main.
 #
-# The interesting part is the Paperclip checkout. Plica's `@paperclipai/*` dev
+# The interesting part is the Paperclip checkout. Tickler's `@paperclipai/*` dev
 # dependencies are `link:../../paperclip/...`, so nothing installs without a
 # Paperclip tree next to this one. CI clones it from the public upstream at the
 # commit pinned in `.github/paperclip-core.ref` — read-only, never written to,
-# never committed here. That is what lets Plica type-check against the host's
+# never committed here. That is what lets Tickler type-check against the host's
 # real types rather than hand-written stubs that drift.
 #
-# The layout matters: this repo is checked out at `repo/plica` so that
+# The layout matters: this repo is checked out at `repo/tickler` so that
 # `../../paperclip` resolves to the core checkout at the workspace root.
 
 on:
@@ -26,7 +26,7 @@ concurrency:
 
 env:
   # Corepack picks the pnpm version from each repo's `packageManager` field —
-  # Plica is on pnpm 10, Paperclip on pnpm 9 — and must not stop to ask.
+  # Tickler is on pnpm 10, Paperclip on pnpm 9 — and must not stop to ask.
   COREPACK_ENABLE_DOWNLOAD_PROMPT: "0"
 
 jobs:
@@ -43,14 +43,14 @@ jobs:
     name: build and test
     runs-on: ubuntu-latest
     steps:
-      - name: Check out Plica
+      - name: Check out Tickler
         uses: actions/checkout@v4
         with:
-          path: repo/plica
+          path: repo/tickler
 
       - name: Read the pinned Paperclip core commit
         id: core
-        working-directory: repo/plica
+        working-directory: repo/tickler
         run: |
           ref=$(grep -v '^[[:space:]]*#' .github/paperclip-core.ref | tr -d '[:space:]')
           if [ -z "$ref" ]; then
@@ -75,12 +75,12 @@ jobs:
       - name: Enable corepack
         run: corepack enable
 
-      # Only the workspace projects Plica links against. The host UI is not
-      # built: Plica subtracts the host's stylesheet at runtime now
+      # Only the workspace projects Tickler links against. The host UI is not
+      # built: Tickler subtracts the host's stylesheet at runtime now
       # (src/ui/lib/host-subtract.ts), so its build reads nothing of core's.
       #
       # `--ignore-scripts` skips core's postinstall, which links the SDK into
-      # core's own plugin examples. Plica has no business triggering that.
+      # core's own plugin examples. Tickler has no business triggering that.
       - name: Install Paperclip core packages
         working-directory: paperclip
         run: pnpm install --frozen-lockfile --ignore-scripts --filter "@paperclipai/plugin-sdk..." --filter "@paperclipai/shared..."
@@ -89,21 +89,21 @@ jobs:
         working-directory: paperclip
         run: pnpm --filter @paperclipai/plugin-sdk build
 
-      - name: Install Plica
-        working-directory: repo/plica
+      - name: Install Tickler
+        working-directory: repo/tickler
         run: pnpm install --frozen-lockfile
 
       - name: Typecheck
-        working-directory: repo/plica
+        working-directory: repo/tickler
         run: pnpm typecheck
 
       # Build before test on purpose: src/bundle.test.ts asserts against
       # dist/ui/index.js and skips itself when that file is missing, so running
       # tests first would quietly drop the host-loader contract checks.
       - name: Build
-        working-directory: repo/plica
+        working-directory: repo/tickler
         run: pnpm build
 
       - name: Test
-        working-directory: repo/plica
+        working-directory: repo/tickler
         run: pnpm test

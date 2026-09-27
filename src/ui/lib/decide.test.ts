@@ -9,7 +9,7 @@ import {
   isSnoozed,
   localDateKey,
   summarizeDecide,
-  type PlicaQueueItem,
+  type TicklerQueueItem,
 } from "./queue";
 import { applyTriageOverrides } from "../components/useQueueTriage";
 
@@ -17,7 +17,7 @@ import { applyTriageOverrides } from "../components/useQueueTriage";
 const NOW = new Date(2026, 8, 17, 12).getTime();
 const dayKey = (offset: number) => localDateKey(NOW + offset * 24 * 60 * 60_000);
 
-const item = (overrides: Partial<PlicaQueueItem> = {}): PlicaQueueItem =>
+const item = (overrides: Partial<TicklerQueueItem> = {}): TicklerQueueItem =>
   ({
     kind: "attention",
     id: "attention:x",
@@ -31,7 +31,7 @@ const item = (overrides: Partial<PlicaQueueItem> = {}): PlicaQueueItem =>
     item: { severity: "high" },
     issue: null,
     ...overrides,
-  }) as PlicaQueueItem;
+  }) as TicklerQueueItem;
 
 describe("decideLane", () => {
   it("files presets in their lanes and leaves an unset item unsorted", () => {
@@ -56,7 +56,7 @@ describe("decideLane", () => {
     expect(isSnoozed(item({ snoozedUntil: earlier }), NOW)).toBe(false);
   });
 
-  it("sends Plica's own conditions, which have no triage row, to Alerts", () => {
+  it("sends Tickler's own conditions, which have no triage row, to Alerts", () => {
     expect(decideLane(item({ kind: "heartbeat", triage: null } as never), NOW)).toBe("alerts");
   });
 

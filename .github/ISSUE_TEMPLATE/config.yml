@@ -3,8 +3,8 @@
 blank_issues_enabled: true
 contact_links:
   - name: How a request becomes a merged change
-    url: https://github.com/nickallevato/paperclip-plica/blob/main/docs/intake.md
+    url: https://github.com/nickallevato/paperclip-tickler/blob/main/docs/intake.md
     about: What happens to an issue after you send it, and where the decisions sit.
   - name: Contributing, and the no-core-changes rule
-    url: https://github.com/nickallevato/paperclip-plica/blob/main/CONTRIBUTING.md
-    about: Branches, pull requests, CI, the review gate, and the one rule Plica does not bend.
+    url: https://github.com/nickallevato/paperclip-tickler/blob/main/CONTRIBUTING.md
+    about: Branches, pull requests, CI, the review gate, and the one rule Tickler does not bend.

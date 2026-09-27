@@ -28,7 +28,7 @@
  *   node scripts/check-worktree.mjs
  *
  * Escape hatch, for the deliberate exception:
- *   PLICA_ALLOW_SHARED_CHECKOUT=1 git commit ...
+ *   TICKLER_ALLOW_SHARED_CHECKOUT=1 git commit ...
  */
 
 import { execFileSync } from "node:child_process";
@@ -50,7 +50,7 @@ export const SHARED_STRATEGY = "project_primary";
  * @param {boolean} facts.isSharedCheckout  This is the main worktree, not a linked one.
  * @param {string}  facts.branch            Current branch name.
  * @param {string}  [facts.strategy]        `PAPERCLIP_WORKSPACE_STRATEGY`, if set.
- * @param {boolean} [facts.overridden]      `PLICA_ALLOW_SHARED_CHECKOUT` is set.
+ * @param {boolean} [facts.overridden]      `TICKLER_ALLOW_SHARED_CHECKOUT` is set.
  * @returns {{ ok: boolean, reason: string }}
  */
 export function classifyCheckout({
@@ -77,7 +77,7 @@ export function classifyCheckout({
     return { ok: true, reason: `${branch} is not one agent's in-flight work` };
   }
   if (overridden) {
-    return { ok: true, reason: "PLICA_ALLOW_SHARED_CHECKOUT set" };
+    return { ok: true, reason: "TICKLER_ALLOW_SHARED_CHECKOUT set" };
   }
   return { ok: false, reason: `topic branch "${branch}" in the shared checkout` };
 }
@@ -102,13 +102,13 @@ function gitOutput(args) {
 }
 
 /**
- * Where the worktree for a branch goes: `../plica-<issue-key>`.
+ * Where the worktree for a branch goes: `../tickler-<issue-key>`.
  *
  * @param {string} branch
  * @returns {string}
  */
 export function worktreePathFor(branch) {
-  return `../plica-${branch.split("/")[0]}`;
+  return `../tickler-${branch.split("/")[0]}`;
 }
 
 /**
@@ -121,7 +121,7 @@ export function worktreePathFor(branch) {
  * git refuses it outright — and even if it did not, a worktree branched from
  * `origin/main` would not carry the staged changes across. A remedy that fails
  * at the moment it is offered is the moment someone reaches for
- * `PLICA_ALLOW_SHARED_CHECKOUT=1` and defeats the guard instead.
+ * `TICKLER_ALLOW_SHARED_CHECKOUT=1` and defeats the guard instead.
  *
  * So: save the work, put the shared tree back on `main`, check the branch out
  * in a worktree of its own, and restore the work there with the index intact
@@ -155,7 +155,7 @@ function main() {
     isSharedCheckout: isMainWorktree(),
     branch,
     strategy: process.env.PAPERCLIP_WORKSPACE_STRATEGY ?? "",
-    overridden: Boolean(process.env.PLICA_ALLOW_SHARED_CHECKOUT),
+    overridden: Boolean(process.env.TICKLER_ALLOW_SHARED_CHECKOUT),
   });
 
   if (verdict.ok) {

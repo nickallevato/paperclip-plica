@@ -1,5 +1,5 @@
 name: Bug report
-description: Something Plica already ships does the wrong thing.
+description: Something Tickler already ships does the wrong thing.
 labels: ["bug", "needs-triage"]
 body:
   - type: markdown
@@ -15,7 +15,7 @@ body:
       label: What did you do?
       description: Enough for someone else to reach the same screen.
       placeholder: |
-        1. Open /acme/plica
+        1. Open /acme/tickler
         2. Switch the grouping to "By project"
         3. Expand Ledger Reconciliation
     validations:
@@ -44,7 +44,7 @@ body:
   - type: input
     id: version
     attributes:
-      label: Plica version
+      label: Tickler version
       description: From package.json, or the plugin row in Paperclip's plugin settings.
       placeholder: "0.3.0"
     validations:
@@ -55,7 +55,7 @@ body:
     attributes:
       label: Paperclip version or commit
       description: >-
-        Plica is coupled to the host's compiled stylesheet, so "which host build"
+        Tickler is coupled to the host's compiled stylesheet, so "which host build"
         is a real question for anything that looks like a layout bug.
     validations:
       required: false
@@ -85,9 +85,9 @@ body:
   - type: textarea
     id: rebuilt
     attributes:
-      label: Have you rebuilt Plica since upgrading Paperclip?
+      label: Have you rebuilt Tickler since upgrading Paperclip?
       description: >-
-        Plica subtracts the host's duplicate CSS selectors once, at build time.
+        Tickler subtracts the host's duplicate CSS selectors once, at build time.
         After a host upgrade that subtraction is stale, and the symptom is a
         layout that looks wrong for no reason. If you are not sure, run
         `pnpm build` and say whether it changed anything.

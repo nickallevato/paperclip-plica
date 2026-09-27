@@ -1,19 +1,19 @@
 # Configuration
 
-Plica has two kinds of setting: a small amount of **instance config** the host
+Tickler has two kinds of setting: a small amount of **instance config** the host
 stores for it, and a larger amount of **per-browser preference** it stores
 itself. Nothing here is per-user on the server.
 
 ## Instance settings
 
-Paperclip generates a settings form for every plugin from its manifest. Plica's
+Paperclip generates a settings form for every plugin from its manifest. Tickler's
 lives at:
 
 ```
 /<COMPANY-PREFIX>/company/settings/instance/plugins/<plugin id>
 ```
 
-![The host's plugin settings page for Plica](screenshots/plugin-settings.png)
+![The host's plugin settings page for Tickler](screenshots/plugin-settings.png)
 
 **Demo mode** — serve the whole HUD from a bundled fixture instead of this
 instance. See below.
@@ -23,7 +23,7 @@ and the host renders it, but nothing reads the value; the fixture is always
 loaded from the copy shipped with the plugin. Do not rely on it until this note
 goes away.
 
-> Paperclip stores plugin config **per company**, while Plica is a cross-company
+> Paperclip stores plugin config **per company**, while Tickler is a cross-company
 > page. So ticking Demo mode for *any one* company turns the whole page into a
 > demo. Reading the setting costs one `/api/companies` call at mount, to work
 > out which config row to ask for; nothing real is rendered while that resolves.
@@ -43,8 +43,8 @@ docs is demo mode with nothing else done to it.
 
 Two switches:
 
-- **`?demo=1`** on the Plica URL. Sticks for the rest of the browser session, so
-  Plica's cross-company links (which do a full document load) stay in demo.
+- **`?demo=1`** on the Tickler URL. Sticks for the rest of the browser session, so
+  Tickler's cross-company links (which do a full document load) stay in demo.
   `?demo=0` leaves. This is the switch to reach for mid-demonstration.
 - **The Demo mode checkbox** on the settings page above. This is the durable
   one. Changing the checkbox drops any remembered `?demo=` override, so the
@@ -62,7 +62,7 @@ comments posted during a walkthrough, and none of it reaches the server. No
 component knows demo mode exists, which is why none of them can leak real data
 by forgetting about it.
 
-It **fails closed**: if the fixture cannot be loaded, Plica shows an error
+It **fails closed**: if the fixture cannot be loaded, Tickler shows an error
 rather than falling back to real data.
 
 ### Editing the fixture
@@ -113,7 +113,7 @@ Defaults are 250M (warn) and 500M (critical).
 The **bell** in the header toggles browser notifications. Off by default.
 
 Turning it on asks for notification permission only while the browser has not
-yet been asked. Plica raises an alert on an *edge* — a company going red, a
+yet been asked. Tickler raises an alert on an *edge* — a company going red, a
 critical attention item arriving, a CEO heartbeat going overdue — not on every
 poll that finds the condition still true.
 
@@ -125,24 +125,24 @@ the same button, `Esc`, or your browser's own control.
 
 It is deliberately not persisted: it always starts off, and fullscreen state is
 read from the browser rather than remembered, since fullscreen can be left by
-means Plica never sees.
+means Tickler never sees.
 
-## What Plica remembers
+## What Tickler remembers
 
 All of this lives in `localStorage`, per browser. Nothing is stored on the
 server, so it does not follow you between machines.
 
 | Key | What |
 | --- | --- |
-| `plica.pinned` | Companies pinned to the top of the board. |
-| `plica.sort` | Board order: your order, or hot first. |
-| `plica.queueGrouping` | Queue grouping. |
-| `plica.queueSort` | Queue age tiebreaker. |
-| `plica.queueAgeFilter` | Queue age chip. |
-| `plica.portfolioSort` | Portfolio order. |
-| `plica.alerts` | Alerts on/off. |
-| `plica.tokenThresholds` | Token defaults and per-company overrides. |
-| `plica.lastVisit` | Drives the briefing strip. Refreshed on mount and every 5 minutes. |
+| `tickler.pinned` | Companies pinned to the top of the board. |
+| `tickler.sort` | Board order: your order, or hot first. |
+| `tickler.queueGrouping` | Queue grouping. |
+| `tickler.queueSort` | Queue age tiebreaker. |
+| `tickler.queueAgeFilter` | Queue age chip. |
+| `tickler.portfolioSort` | Portfolio order. |
+| `tickler.alerts` | Alerts on/off. |
+| `tickler.tokenThresholds` | Token defaults and per-company overrides. |
+| `tickler.lastVisit` | Drives the briefing strip. Refreshed on mount and every 5 minutes. |
 
 Two things are deliberately **not** remembered: the board's company focus (a
 glance, not a habit — a new visit should start on the whole portfolio) and

@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 /**
- * Enforces the one rule Plica cannot break: it never modifies Paperclip core.
+ * Enforces the one rule Tickler cannot break: it never modifies Paperclip core.
  *
- * Plica is a plugin. Everything it does has to go through a documented plugin
+ * Tickler is a plugin. Everything it does has to go through a documented plugin
  * extension point, inside this repository. Reaching into a Paperclip checkout,
  * patching a core package, or vendoring core source outside the one sanctioned
  * mirror (`src/ui/host/`) is out of bounds — see CONTRIBUTING.md, "Never modify
@@ -112,7 +112,7 @@ const ESCAPING_TARGET = [
 ];
 
 /** `paperclip` as a path segment, but not this repo's own name. */
-const CORE_PATH_REF = /paperclip(?!-plica)(?![-\w])/;
+const CORE_PATH_REF = /paperclip(?!-tickler)(?![-\w])/;
 
 /**
  * The checker and its tests spell out every pattern they ban, so scanning them
@@ -314,13 +314,13 @@ function main(argv) {
     return 0;
   }
 
-  console.error("\nPlugin surface violation — this change reaches outside the Plica plugin.\n");
+  console.error("\nPlugin surface violation — this change reaches outside the Tickler plugin.\n");
   for (const v of violations) {
     const where = v.line ? `${v.file}:${v.line}` : v.file;
     console.error(`  ✖ ${where}\n      [${v.rule}] ${v.detail}`);
   }
   console.error(
-    "\nPlica never modifies Paperclip core. See CONTRIBUTING.md, " +
+    "\nTickler never modifies Paperclip core. See CONTRIBUTING.md, " +
       '"Never modify Paperclip core".\n' +
       "If the plugin surface genuinely cannot express this change, do not work\n" +
       "around it: open a core-limitation issue and let the user decide.\n",

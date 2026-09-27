@@ -5,19 +5,19 @@ import { PLUGIN_ID } from "../../plugin-id";
  *
  * Two switches, in priority order:
  *
- * 1. `?demo=1` / `?demo=0` on the Plica URL. Costs no network at all and
+ * 1. `?demo=1` / `?demo=0` on the Tickler URL. Costs no network at all and
  *    sticks for the browser session, which is what you actually want mid
  *    walkthrough — flip it in the address bar and every later navigation
  *    inside the app stays in demo.
  * 2. The `demoMode` box on the host's plugin settings page. This is the
  *    durable, discoverable setting, but Paperclip stores plugin config per
- *    company while Plica is a cross-company page — so reading it costs one
+ *    company while Tickler is a cross-company page — so reading it costs one
  *    `/api/companies` call to learn which config row to ask for. That call is
  *    made with a bare `fetch` (not `host/api`), returns only ids, and nothing
  *    it returns is ever rendered.
  *
  * The URL parameter is remembered in `sessionStorage`, because it is an
- * explicit choice that has to survive a route hop: Plica's cross-company links
+ * explicit choice that has to survive a route hop: Tickler's cross-company links
  * do a full document load, so an override that lasted only as long as the
  * query string would evaporate the moment you clicked anything.
  *
@@ -38,7 +38,7 @@ import { PLUGIN_ID } from "../../plugin-id";
  * a setting that cannot be trusted to do anything.
  */
 
-const SESSION_KEY = "plica.demo";
+const SESSION_KEY = "tickler.demo";
 
 /**
  * A remembered `?demo=` choice, plus the configured value it was overriding —

@@ -5,7 +5,7 @@
  * The README's rule is that vendored host files stay byte-identical to their
  * upstream originals apart from import paths, and that anything else drifting
  * is a bug. Nothing enforced it, so a Paperclip upgrade could change a host
- * component (v2026.916.0 replaced the in-progress status glyph) and Plica
+ * component (v2026.916.0 replaced the in-progress status glyph) and Tickler
  * would keep drawing the old one with nothing to say so. Run this after every
  * Paperclip upgrade, beside `pnpm build`.
  *
@@ -20,7 +20,7 @@
  *   node scripts/check-vendored.mjs --diff     # plus a diff per drifted file
  *
  * Environment:
- *   PLICA_PAPERCLIP   Paperclip checkout (default ~/paperclip)
+ *   TICKLER_PAPERCLIP   Paperclip checkout (default ~/paperclip)
  */
 
 import { existsSync, readFileSync } from "node:fs";
@@ -30,10 +30,10 @@ import { homedir } from "node:os";
 import { spawnSync } from "node:child_process";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const paperclip = resolve(process.env.PLICA_PAPERCLIP ?? join(homedir(), "paperclip"));
+const paperclip = resolve(process.env.TICKLER_PAPERCLIP ?? join(homedir(), "paperclip"));
 const showDiff = process.argv.includes("--diff");
 
-/** Plica copy → upstream original, relative to the Paperclip checkout. */
+/** Tickler copy → upstream original, relative to the Paperclip checkout. */
 const VENDORED = {
   "src/ui/host/status-colors.ts": "ui/src/lib/status-colors.ts",
   "src/ui/host/ui-kit/CompanyPatternIcon.tsx": "ui/src/components/CompanyPatternIcon.tsx",
@@ -54,9 +54,9 @@ const VENDORED = {
 const SKIPPED = {
   "src/ui/host/ui-kit/dialog.tsx": "documented exception: plain Tailwind positioning",
   "src/ui/host/useCompanyOrder.ts": "documented exception: read path only",
-  "src/ui/host/ui-kit/hover-card.tsx": "documented exception: a Plica original",
+  "src/ui/host/ui-kit/hover-card.tsx": "documented exception: a Tickler original",
   "src/ui/host/companies-query.ts": "a reshaped subset of ui/src/api/companies-query.ts",
-  "src/ui/host/api.ts": "a subset of ui/src/api/client.ts plus Plica's own endpoints",
+  "src/ui/host/api.ts": "a subset of ui/src/api/client.ts plus Tickler's own endpoints",
   "src/ui/host/util.ts": "several host modules; BOARD_ROUTE_ROOTS is compared below",
 };
 
@@ -76,7 +76,7 @@ function setLiteral(source, name) {
 }
 
 if (!existsSync(join(paperclip, "ui", "src"))) {
-  console.error(`check-vendored: no Paperclip checkout at ${paperclip}. Set PLICA_PAPERCLIP.`);
+  console.error(`check-vendored: no Paperclip checkout at ${paperclip}. Set TICKLER_PAPERCLIP.`);
   process.exit(2);
 }
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Captures the screenshots the docs embed, from a real running Paperclip with
- * Plica installed.
+ * Tickler installed.
  *
  * Every image under `docs/screenshots/` comes out of this script, so a UI
  * change is one command away from up-to-date pictures instead of a manual
@@ -9,7 +9,7 @@
  * screenshots are the documentation defect nobody files a bug for.
  *
  * The instance it drives is always in **demo mode** (`?demo=1`), so what lands
- * in `docs/` is Plica's bundled fixture — invented companies, tickets and
+ * in `docs/` is Tickler's bundled fixture — invented companies, tickets and
  * agents. No real company name can reach a published image, and the shots stay
  * reproducible because the fixture does not change under us.
  *
@@ -24,15 +24,15 @@
  *   node scripts/capture-screenshots.mjs --list
  *
  * Environment:
- *   PLICA_SHOT_URL        base URL of the instance   (default http://127.0.0.1:3199)
- *   PLICA_SHOT_PREFIX     company prefix for the route (default: first active company)
- *   PLICA_SHOT_PLUGIN_ID  plugin row UUID, for the settings-page shot
+ *   TICKLER_SHOT_URL        base URL of the instance   (default http://127.0.0.1:3199)
+ *   TICKLER_SHOT_PREFIX     company prefix for the route (default: first active company)
+ *   TICKLER_SHOT_PLUGIN_ID  plugin row UUID, for the settings-page shot
  *                         (default: looked up from /api/plugins)
- *   PLICA_PLAYWRIGHT      package root to resolve `playwright` from
+ *   TICKLER_PLAYWRIGHT      package root to resolve `playwright` from
  *                         (default: the Paperclip checkout under $HOME)
- *   PLICA_CHROME          browser executable (default /usr/bin/google-chrome)
- *   PLICA_SHOT_OUT        output directory (default docs/screenshots)
- *   PLICA_SHOT_THEME      "dark" (default) or "light"
+ *   TICKLER_CHROME          browser executable (default /usr/bin/google-chrome)
+ *   TICKLER_SHOT_OUT        output directory (default docs/screenshots)
+ *   TICKLER_SHOT_THEME      "dark" (default) or "light"
  *
  * See docs/screenshots/README.md for how to stand up the instance it needs.
  */
@@ -44,20 +44,20 @@ import { fileURLToPath } from "node:url";
 import { homedir } from "node:os";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const outDir = process.env.PLICA_SHOT_OUT
-  ? resolve(process.env.PLICA_SHOT_OUT)
+const outDir = process.env.TICKLER_SHOT_OUT
+  ? resolve(process.env.TICKLER_SHOT_OUT)
   : join(root, "docs", "screenshots");
 
 /**
  * The docs are shot in dark mode — the owner's choice, and the theme most of
- * Plica's time is spent in. Both the browser's colour scheme and Paperclip's
+ * Tickler's time is spent in. Both the browser's colour scheme and Paperclip's
  * own theme preference (`paperclip.theme` in localStorage) are set, so the
  * host chrome and the plugin can never disagree about which one they are in.
  */
-const theme = process.env.PLICA_SHOT_THEME === "light" ? "light" : "dark";
+const theme = process.env.TICKLER_SHOT_THEME === "light" ? "light" : "dark";
 
-const baseUrl = (process.env.PLICA_SHOT_URL ?? "http://127.0.0.1:3199").replace(/\/+$/, "");
-const chrome = process.env.PLICA_CHROME ?? "/usr/bin/google-chrome";
+const baseUrl = (process.env.TICKLER_SHOT_URL ?? "http://127.0.0.1:3199").replace(/\/+$/, "");
+const chrome = process.env.TICKLER_CHROME ?? "/usr/bin/google-chrome";
 
 /**
  * The default is one machine's path. Say so here rather than letting Playwright
@@ -67,7 +67,7 @@ const chrome = process.env.PLICA_CHROME ?? "/usr/bin/google-chrome";
 function resolveChrome() {
   if (existsSync(chrome)) return chrome;
   throw new Error(
-    `capture-screenshots: no browser at ${chrome}. Set PLICA_CHROME to a Chrome or ` +
+    `capture-screenshots: no browser at ${chrome}. Set TICKLER_CHROME to a Chrome or ` +
       `Chromium executable.`,
   );
 }
@@ -99,7 +99,7 @@ const PAD = 12;
  * already has.
  */
 function playwrightRoot() {
-  if (process.env.PLICA_PLAYWRIGHT) return process.env.PLICA_PLAYWRIGHT;
+  if (process.env.TICKLER_PLAYWRIGHT) return process.env.TICKLER_PLAYWRIGHT;
   return join(homedir(), "paperclip");
 }
 
@@ -108,7 +108,7 @@ function loadPlaywright() {
   const pkg = join(from, "package.json");
   if (!existsSync(pkg)) {
     throw new Error(
-      `capture-screenshots: no package root at ${from}. Set PLICA_PLAYWRIGHT to a ` +
+      `capture-screenshots: no package root at ${from}. Set TICKLER_PLAYWRIGHT to a ` +
         `directory whose node_modules carries playwright.`,
     );
   }
@@ -117,7 +117,7 @@ function loadPlaywright() {
   } catch (error) {
     throw new Error(
       `capture-screenshots: could not resolve playwright from ${from}. ` +
-        `Set PLICA_PLAYWRIGHT to a package root that has it installed. (${error.message})`,
+        `Set TICKLER_PLAYWRIGHT to a package root that has it installed. (${error.message})`,
     );
   }
 }
@@ -129,12 +129,12 @@ async function getJson(path) {
 }
 
 /**
- * The route is `/:companyPrefix/plica`, and the host matches that segment
- * against a company's `issuePrefix`. Any active company will do — Plica spans
+ * The route is `/:companyPrefix/tickler`, and the host matches that segment
+ * against a company's `issuePrefix`. Any active company will do — Tickler spans
  * all of them, and in demo mode none of the real ones are rendered anyway.
  */
 async function resolvePrefix() {
-  if (process.env.PLICA_SHOT_PREFIX) return process.env.PLICA_SHOT_PREFIX;
+  if (process.env.TICKLER_SHOT_PREFIX) return process.env.TICKLER_SHOT_PREFIX;
   const companies = await getJson("/api/companies");
   const active = companies.find((company) => company.status !== "archived");
   if (!active) {
@@ -174,10 +174,10 @@ async function dismissAnnouncement() {
 }
 
 async function resolvePluginId() {
-  if (process.env.PLICA_SHOT_PLUGIN_ID) return process.env.PLICA_SHOT_PLUGIN_ID;
+  if (process.env.TICKLER_SHOT_PLUGIN_ID) return process.env.TICKLER_SHOT_PLUGIN_ID;
   const plugins = await getJson("/api/plugins");
-  const plica = plugins.find((plugin) => plugin.pluginKey?.endsWith("plugin-plica"));
-  return plica?.id ?? null;
+  const tickler = plugins.find((plugin) => plugin.pluginKey?.endsWith("plugin-tickler"));
+  return tickler?.id ?? null;
 }
 
 /**
@@ -209,30 +209,30 @@ async function region(page, selectors, pad = PAD) {
 }
 
 /** The HUD, without the host's sidebar and breadcrumb chrome around it. */
-const HUD_SELECTORS = ["[data-plica-companies]", "[data-plica-portfolio]", "[data-plica-queue]"];
+const HUD_SELECTORS = ["[data-tickler-companies]", "[data-tickler-portfolio]", "[data-tickler-queue]"];
 
 /**
  * The shots, in the order the docs introduce them.
  *
- * Each `take` runs against a page already loaded on the Plica route in demo
+ * Each `take` runs against a page already loaded on the Tickler route in demo
  * mode, with the queue settled, in a context of its own — so a shot that
  * clicks a grouping cannot change what the next shot sees.
  */
 const SHOTS = [
   {
-    name: "plica-page",
+    name: "tickler-page",
     doc: "The whole page: Orgs, portfolio and routines at left, the queue owning the main column.",
     take: async (page) => ({ clip: await region(page, [...HUD_SELECTORS, "h1"]) }),
   },
   {
     name: "toolbar-button",
-    doc: "The Plica mark the plugin adds to the host's breadcrumb bar.",
-    take: async (page) => ({ clip: await region(page, ['a[aria-label="Plica — all orgs"]'], 16) }),
+    doc: "The Tickler mark the plugin adds to the host's breadcrumb bar.",
+    take: async (page) => ({ clip: await region(page, ['a[aria-label="Tickler — all orgs"]'], 16) }),
   },
   {
     name: "board",
     doc: "The Orgs list: one line per org, capacity, and the totals line.",
-    take: async (page) => ({ clip: await region(page, ["[data-plica-companies]"]) }),
+    take: async (page) => ({ clip: await region(page, ["[data-tickler-companies]"]) }),
   },
   {
     name: "company-detail",
@@ -242,12 +242,12 @@ const SHOTS = [
       await page.waitForSelector("[data-company-detail]", { timeout: 10_000 });
       await page.waitForTimeout(400);
     },
-    take: async (page) => ({ clip: await region(page, ["[data-plica-companies]", "[data-company-detail]"]) }),
+    take: async (page) => ({ clip: await region(page, ["[data-tickler-companies]", "[data-company-detail]"]) }),
   },
   {
     name: "recent-tasks",
     doc: "Recent: one line per task, live rows first, capped height.",
-    take: async (page) => ({ clip: await region(page, ["[data-plica-recent]"]) }),
+    take: async (page) => ({ clip: await region(page, ["[data-tickler-recent]"]) }),
   },
   {
     name: "capacity-hover",
@@ -263,7 +263,7 @@ const SHOTS = [
   },
   {
     name: "phone",
-    doc: "Plica at phone width: the Orgs list, then the queue, each row's actions on a line of their own.",
+    doc: "Tickler at phone width: the Orgs list, then the queue, each row's actions on a line of their own.",
     // Phone-sized, and scaled like the desktop shots so text stays crisp. The
     // host scrolls an inner <main>, so a tall viewport is what puts the Orgs
     // list and the head of the queue in one frame (see VIEWPORT above).
@@ -275,12 +275,12 @@ const SHOTS = [
       userAgent:
         "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
     },
-    take: async (page) => ({ clip: await region(page, ["[data-plica-companies]", "[data-queue-group='decide:today']"]) }),
+    take: async (page) => ({ clip: await region(page, ["[data-tickler-companies]", "[data-queue-group='decide:today']"]) }),
   },
   {
     name: "queue-by-decide",
     doc: "The queue in its default grouping: Today, Unsorted, This week, and the rest by when you said you'd decide.",
-    take: async (page) => ({ clip: await region(page, ["[data-plica-queue]"]) }),
+    take: async (page) => ({ clip: await region(page, ["[data-tickler-queue]"]) }),
   },
   {
     name: "queue-triage-menu",
@@ -298,19 +298,19 @@ const SHOTS = [
     name: "queue-by-severity",
     doc: "The same queue grouped by severity: Now, Soon, Later.",
     before: async (page) => groupQueueBy(page, "Severity"),
-    take: async (page) => ({ clip: await region(page, ["[data-plica-queue]"]) }),
+    take: async (page) => ({ clip: await region(page, ["[data-tickler-queue]"]) }),
   },
   {
     name: "queue-by-company",
     doc: "The same queue grouped by org — a per-org worklist.",
     before: async (page) => groupQueueBy(page, "Org"),
-    take: async (page) => ({ clip: await region(page, ["[data-plica-queue]"]) }),
+    take: async (page) => ({ clip: await region(page, ["[data-tickler-queue]"]) }),
   },
   {
     name: "queue-by-project",
     doc: "The same queue grouped by project, which is how one noisy project shows up.",
     before: async (page) => groupQueueBy(page, "Project"),
-    take: async (page) => ({ clip: await region(page, ["[data-plica-queue]"]) }),
+    take: async (page) => ({ clip: await region(page, ["[data-tickler-queue]"]) }),
   },
   {
     name: "queue-controls",
@@ -318,7 +318,7 @@ const SHOTS = [
     // The full width of the queue, from its top edge down to the last age
     // chip — the two header rows, and nothing of the list below them.
     take: async (page) => {
-      const queue = await region(page, ["[data-plica-queue]"], 0);
+      const queue = await region(page, ["[data-tickler-queue]"], 0);
       const chips = await region(page, ["[data-age-chip]"], 0);
       return {
         clip: {
@@ -348,7 +348,7 @@ const SHOTS = [
   {
     name: "portfolio",
     doc: "The portfolio rail and the routine exceptions beneath it.",
-    take: async (page) => ({ clip: await region(page, ["[data-plica-portfolio]", "[data-plica-routines]"]) }),
+    take: async (page) => ({ clip: await region(page, ["[data-tickler-portfolio]", "[data-tickler-routines]"]) }),
   },
   {
     name: "token-thresholds",
@@ -366,14 +366,14 @@ const SHOTS = [
     // The strip only renders when a previous visit was recorded more than 30
     // minutes ago, so seed one before the page mounts and reads the key.
     seed: (prefix) => ({
-      "plica.lastVisit": new Date(Date.now() - 6 * 60 * 60_000).toISOString(),
+      "tickler.lastVisit": new Date(Date.now() - 6 * 60 * 60_000).toISOString(),
       __prefix: prefix,
     }),
     before: async (page) => {
-      await page.waitForSelector('[data-testid="plica-briefing"]', { timeout: 20_000 });
+      await page.waitForSelector('[data-testid="tickler-briefing"]', { timeout: 20_000 });
       await page.waitForTimeout(1500);
     },
-    take: async (page) => ({ clip: await region(page, ['[data-testid="plica-briefing"]']) }),
+    take: async (page) => ({ clip: await region(page, ['[data-testid="tickler-briefing"]']) }),
   },
   {
     name: "plugin-settings",
@@ -389,7 +389,7 @@ const SHOTS = [
 ];
 
 async function groupQueueBy(page, label) {
-  await page.locator("[data-plica-queue]").first().scrollIntoViewIfNeeded();
+  await page.locator("[data-tickler-queue]").first().scrollIntoViewIfNeeded();
   await page.getByRole("button", { name: label, exact: true }).first().click();
   await page.waitForTimeout(600);
 }
@@ -418,7 +418,7 @@ const { chromium } = loadPlaywright();
 const prefix = await resolvePrefix();
 const pluginId = await resolvePluginId();
 await dismissAnnouncement();
-const plicaUrl = `${baseUrl}/${prefix}/plica?demo=1`;
+const ticklerUrl = `${baseUrl}/${prefix}/tickler?demo=1`;
 
 mkdirSync(outDir, { recursive: true });
 
@@ -431,7 +431,7 @@ const browser = await chromium.launch({
 /**
  * One browser context per shot, not one for the run.
  *
- * Plica persists the queue's grouping, the age chip, the board sort and the
+ * Tickler persists the queue's grouping, the age chip, the board sort and the
  * pins to `localStorage`. A shared context would carry the grouping a previous
  * shot clicked into every shot after it — which is how "group by project" (a
  * much taller queue) once pushed the briefing off the bottom of the viewport
@@ -446,7 +446,7 @@ const contextOptions = {
   // every date label read the same on every machine that runs this.
   locale: "en-US",
   timeZoneId: "UTC",
-  // Plica's own animations are decorative; a pulsing row mid-capture is noise.
+  // Tickler's own animations are decorative; a pulsing row mid-capture is noise.
   reducedMotion: "reduce",
 };
 
@@ -475,12 +475,12 @@ try {
         }
       }, { "paperclip.theme": theme, ...(shot.seed ? shot.seed(prefix) : {}) });
 
-      const url = shot.route ? `${baseUrl}${shot.route({ prefix, pluginId })}` : plicaUrl;
+      const url = shot.route ? `${baseUrl}${shot.route({ prefix, pluginId })}` : ticklerUrl;
       await page.goto(url, { waitUntil: "domcontentloaded", timeout: 90_000 });
       if (!shot.route) {
         // The queue is the last thing to settle: it needs every company's poll
         // to have answered at least once.
-        await page.waitForSelector("[data-plica-queue] [data-queue-item]", { timeout: 60_000 });
+        await page.waitForSelector("[data-tickler-queue] [data-queue-item]", { timeout: 60_000 });
         await page.waitForTimeout(2500);
       }
       if (shot.before) await shot.before(page);

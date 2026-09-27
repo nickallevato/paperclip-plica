@@ -53,7 +53,7 @@ export function installTestBridge(overrides: TestBridgeOverrides = {}): TestBrid
     sdkUi: {
       useHostContext: () => hostContext,
       useHostNavigation: () => navigation,
-      useHostLocation: () => ({ pathname: `/${hostContext.companyPrefix}/plica`, search: "", hash: "" }),
+      useHostLocation: () => ({ pathname: `/${hostContext.companyPrefix}/tickler`, search: "", hash: "" }),
       usePluginToast: () => toast,
       usePluginData: () => ({ data: null, isLoading: false, error: null }),
       usePluginAction: () => vi.fn(),

@@ -1,16 +1,16 @@
 /**
- * Typed client for the core Paperclip HTTP APIs that Plica reads.
+ * Typed client for the core Paperclip HTTP APIs that Tickler reads.
  *
  * Plugin UI runs as same-origin trusted JavaScript, and manifest capabilities
  * gate worker-side host RPC only — they do not restrict plugin UI from calling
  * ordinary Paperclip HTTP APIs (PLUGIN_SPEC.md, "Current implementation
- * caveats" — not a numbered section; §24 is Operator UX). So Plica keeps
+ * caveats" — not a numbered section; §24 is Operator UX). So Tickler keeps
  * talking to the same endpoints it always did, carrying the session cookie.
  *
- * This module deliberately implements ONLY the methods Plica calls. The host's
+ * This module deliberately implements ONLY the methods Tickler calls. The host's
  * own api modules carry dozens more; copying them wholesale would create a
  * large surface that silently drifts from upstream without anything exercising
- * it. If Plica needs a new endpoint, add it here with a test.
+ * it. If Tickler needs a new endpoint, add it here with a test.
  *
  * Mirrors ui/src/api/client.ts (paperclip @ canary/v2026.807.0-canary.13).
  */
@@ -121,7 +121,7 @@ export const dashboardApi = {
 
 /**
  * Token usage. There is no company-level token total in the API — the
- * dashboard summary carries costs in cents only — so Plica sums the per-agent
+ * dashboard summary carries costs in cents only — so Tickler sums the per-agent
  * breakdown, which is the coarsest endpoint that reports tokens at all.
  *
  * `from`/`to` are ISO dates; omitting them gives the endpoint's default range.
@@ -139,7 +139,7 @@ export const costsApi = {
 /**
  * Routines. The list endpoint returns each routine with its triggers
  * (including nextRunAt / lastFiredAt / lastResult) and its last run, which is
- * everything Plica needs to say whether the schedule is actually firing —
+ * everything Tickler needs to say whether the schedule is actually firing —
  * no per-routine follow-up calls.
  */
 export const routinesApi = {
@@ -160,7 +160,7 @@ export const attentionApi = {
 /**
  * Decide-by, snooze and archive for one attention item — the same writes
  * Paperclip's own DecisionTriageStrip makes (ui/src/api/decisionQueues.ts),
- * so a day set in Plica is the day the host's Decisions page shows.
+ * so a day set in Tickler is the day the host's Decisions page shows.
  *
  * Keyed by the item's source identity: `item.sourceKind` and
  * `item.subject.id`, never `item.id`.
@@ -198,7 +198,7 @@ export const decisionTriageApi = {
  * Mirrors ui/src/api/heartbeats.ts, minus `livenessState` and `outputSilence`.
  *
  * Those two are typed by indexing into `HeartbeatRun`, which drags in a long
- * chain of host-internal run types. Plica reads neither — it uses id, status,
+ * chain of host-internal run types. Tickler reads neither — it uses id, status,
  * invocationSource, triggerDetail, startedAt, createdAt, agentName, issueId,
  * currentStatusMessage, and nextAction — so they are omitted rather than
  * vendored along with their whole dependency chain.
@@ -275,7 +275,7 @@ export const workTimelineApi = {
 // Issues
 // ---------------------------------------------------------------------------
 
-/** Only the filters Plica passes. See the module doc for why this is narrow. */
+/** Only the filters Tickler passes. See the module doc for why this is narrow. */
 export interface IssueListFilters {
   status?: string;
   limit?: number;
@@ -343,7 +343,7 @@ export type AuthSession = {
 
 export const authApi = {
   /**
-   * Returns null rather than throwing when unauthenticated — Plica renders a
+   * Returns null rather than throwing when unauthenticated — Tickler renders a
    * signed-out state instead of an error boundary.
    */
   getSession: async (): Promise<AuthSession> => {
@@ -363,7 +363,7 @@ export const companiesApi = {
 };
 
 /**
- * Read-only: Plica sorts panes by the user's sidebar company order but never
+ * Read-only: Tickler sorts panes by the user's sidebar company order but never
  * reorders it, so the update half of the host's sidebarPreferencesApi is not
  * carried.
  */
@@ -372,7 +372,7 @@ export const sidebarPreferencesApi = {
 };
 
 /**
- * Plica's own registration, and the host's in-place upgrade for it — see
+ * Tickler's own registration, and the host's in-place upgrade for it — see
  * `lib/plugin-reload` for why. Reading needs board access; upgrading needs an
  * instance admin, and the host answers anyone else with a 403.
  */

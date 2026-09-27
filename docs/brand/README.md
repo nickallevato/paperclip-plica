@@ -1,14 +1,15 @@
 # Brand
 
-`plica-mark-256.png` is the source artwork for Plica's mark, as supplied on
-PLI-24: a sheet folded down its middle seen end-on — a *plica* — which reads
-flat as a caret.
+`tickler-mark-256.png` is the source artwork for Tickler's mark, as supplied on
+PLI-24: a sheet folded down its middle seen end-on — the edge of a file folder,
+which is what a tickler file is made of — and which reads flat as a caret. (The
+mark predates the rename: the plugin was called Plica, Latin for "fold".)
 
 It is here for provenance, not for use. Nothing in the plugin loads it.
-`plica-icon.png` is the same mark on a dark tile, for the README header and
+`tickler-icon.png` is the same mark on a dark tile, for the README header and
 anywhere else the mark has to read on both light and dark backgrounds. Every
 surface that shows the mark renders
-[`src/ui/components/PlicaMark.tsx`](../../src/ui/components/PlicaMark.tsx),
+[`src/ui/components/TicklerMark.tsx`](../../src/ui/components/TicklerMark.tsx),
 an SVG traced from this file, because a component inherits `currentColor` and
 so survives light mode, dark mode, and a hover state that recolours the text
 beside it — a PNG in one fixed cream does none of that.

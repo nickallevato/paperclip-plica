@@ -1,6 +1,6 @@
-import { ensurePlicaStyles } from "./styles";
+import { ensureTicklerStyles } from "./styles";
 
-ensurePlicaStyles();
+ensureTicklerStyles();
 
-export { PlicaPage } from "./PlicaPage";
-export { PlicaToolbarButton } from "./PlicaToolbarButton";
+export { TicklerPage } from "./TicklerPage";
+export { TicklerToolbarButton } from "./TicklerToolbarButton";

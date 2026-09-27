@@ -10,10 +10,10 @@ describe("checkPaths", () => {
   it("accepts the paths a plugin change actually touches", () => {
     expect(
       checkPaths([
-        "src/ui/PlicaHud.tsx",
+        "src/ui/TicklerHud.tsx",
         "src/ui/host/api.ts",
         "scripts/build-css.mjs",
-        "docs/screenshots/plica-hud.png",
+        "docs/screenshots/tickler-hud.png",
         ".github/workflows/plugin-surface.yml",
         ".githooks/pre-commit",
         "CONTRIBUTING.md",
@@ -63,7 +63,7 @@ describe("checkFileContent", () => {
   });
 
   it("flags a write that climbs above the repo root", () => {
-    const text = 'cpSync("dist/ui", "../paperclip/ui/public/plica", { recursive: true });';
+    const text = 'cpSync("dist/ui", "../paperclip/ui/public/tickler", { recursive: true });';
     expect(rules(checkFileContent("esbuild.config.mjs", text))).toEqual(["writes-outside-repo"]);
   });
 
@@ -95,7 +95,7 @@ describe("checkFileContent", () => {
   });
 
   it("does not flag the repository's own name", () => {
-    const text = 'cpSync("dist", "/tmp/paperclip-plica-out");';
+    const text = 'cpSync("dist", "/tmp/paperclip-tickler-out");';
     expect(checkFileContent("scripts/x.mjs", text)).toEqual([]);
   });
 });

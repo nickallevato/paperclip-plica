@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Plica — viewport probe</title>
+<title>Tickler — viewport probe</title>
 <style>
 :root{color-scheme:dark light}
 body{margin:0;min-height:100vh;display:grid;place-items:center;
@@ -28,7 +28,7 @@ code{font-size:12px;opacity:.8}
 </head>
 <body>
 <div class="card">
-  <h1>Plica viewport probe</h1>
+  <h1>Tickler viewport probe</h1>
   <p class="sub">Open on the tablet. Rotate to read both orientations. Values update live.</p>
   <dl>
     <dt>CSS viewport</dt><dd class="big" id="vp">–</dd>
@@ -42,7 +42,7 @@ code{font-size:12px;opacity:.8}
   <div class="verdict" id="verdict"></div>
 </div>
 <script>
-// Tailwind's defaults, which is what both the host and Plica are built on.
+// Tailwind's defaults, which is what both the host and Tickler are built on.
 const BP = [["2xl",1536],["xl",1280],["lg",1024],["md",768],["sm",640]];
 const SIDEBAR = 240, RAIL = 64, PAD = 32, MOBILE = 768;
 

@@ -1,16 +1,16 @@
-import css from "./plica.generated.css";
+import css from "./tickler.generated.css";
 import { collectSelectors, subtractSelectors, type SheetLike } from "./lib/host-subtract";
 
-const STYLE_ID = "plica-plugin-styles";
+const STYLE_ID = "tickler-plugin-styles";
 
 /**
- * Injects Plica's compiled utilities once per document, minus every class rule
+ * Injects Tickler's compiled utilities once per document, minus every class rule
  * the host already defines (see `lib/host-subtract` for why that subtraction is
  * load-bearing). Idempotent across hot-reloads: a second bundle load replaces
  * the tag's text rather than stacking a second copy, and an unchanged tag is
  * left alone — its rules were already subtracted.
  */
-export function ensurePlicaStyles(): void {
+export function ensureTicklerStyles(): void {
   if (typeof document === "undefined") return;
   let tag = document.getElementById(STYLE_ID) as HTMLStyleElement | null;
   if (!tag) {

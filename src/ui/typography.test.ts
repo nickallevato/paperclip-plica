@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
  * Guards the type scale against the two faults that have actually happened
  * here, twice each.
  *
- * Plica writes every size as `text-[length:var(--plica-fs-*,<default>)]`. That
+ * Tickler writes every size as `text-[length:var(--tickler-fs-*,<default>)]`. That
  * utility sets font-size and nothing else — unlike Tailwind's `text-sm`, it
  * carries no line-height — so a size written without a paired `leading-` lands
  * at whatever leading its container happens to impose. Correct sizes with
@@ -17,7 +17,7 @@ import { describe, expect, it } from "vitest";
  * so the same semantic role renders at two sizes on different surfaces.
  *
  * host/ui-kit is excluded on purpose — those are vendored copies of host
- * components and should keep matching the app's chrome, not Plica's scale.
+ * components and should keep matching the app's chrome, not Tickler's scale.
  */
 const UI_DIR = join(import.meta.dirname, ".");
 
@@ -41,7 +41,7 @@ const files = sourceFiles(UI_DIR).map((path) => ({ path, source: readFileSync(pa
 /** Icon monograms are sized to their box, not to the text scale. */
 const ICON_MONOGRAM_SIZES = new Set(["text-[7px]", "text-[8px]", "text-[10px]"]);
 
-describe("Plica type scale", () => {
+describe("Tickler type scale", () => {
   it("finds source files to check", () => {
     expect(files.length).toBeGreaterThan(10);
   });
@@ -49,7 +49,7 @@ describe("Plica type scale", () => {
   it("pairs a line-height with every scale size", () => {
     const offenders: string[] = [];
     for (const { path, source } of files) {
-      for (const match of source.matchAll(/text-\[length:var\(--plica-fs-[a-z]+,[^)]*\)\](?! leading-)/g)) {
+      for (const match of source.matchAll(/text-\[length:var\(--tickler-fs-[a-z]+,[^)]*\)\](?! leading-)/g)) {
         const line = source.slice(0, match.index).split("\n").length;
         offenders.push(`${path.split("/").slice(-2).join("/")}:${line} — ${match[0]}`);
       }
@@ -69,7 +69,7 @@ describe("Plica type scale", () => {
     expect(offenders).toEqual([]);
   });
 
-  it("does not mix Tailwind's own steps into Plica's surface", () => {
+  it("does not mix Tailwind's own steps into Tickler's surface", () => {
     const offenders: string[] = [];
     for (const { path, source } of files) {
       // strip comments first: the scale is described in prose in a few places

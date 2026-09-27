@@ -1,15 +1,15 @@
 /**
- * Detects that the Plica build on disk is newer than the one Paperclip has
+ * Detects that the Tickler build on disk is newer than the one Paperclip has
  * registered, so the page can offer to reload it.
  *
- * Why this exists: Paperclip's dev watcher restarts Plica's worker when files
+ * Why this exists: Paperclip's dev watcher restarts Tickler's worker when files
  * change, and the page picks up a rebuilt bundle on the next load — but the
  * manifest (version, capabilities, slots) is read once at install and kept in
  * the database. After a `git pull && pnpm build` that bumps the version, the
  * code is new and the registration is not. The fix is the host's
  * `POST /api/plugins/:id/upgrade`, which for a local-path install re-reads the
  * manifest from disk in place (no uninstall, settings kept). Paperclip's own
- * UI has no button for it, so Plica carries one.
+ * UI has no button for it, so Tickler carries one.
  *
  * The version this bundle was built from is the ground truth for "on disk":
  * the page is running it.

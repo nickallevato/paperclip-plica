@@ -1,14 +1,14 @@
 /**
- * Removes from Plica's injected stylesheet every class rule the host document
+ * Removes from Tickler's injected stylesheet every class rule the host document
  * already defines.
  *
- * Why: Tailwind emits every class Plica's sources mention, including ones
- * Paperclip also ships. Plica's `<style>` is appended after the host's sheet, so
+ * Why: Tailwind emits every class Tickler's sources mention, including ones
+ * Paperclip also ships. Tickler's `<style>` is appended after the host's sheet, so
  * a duplicate wins on document order — a stray `.hidden{display:none}` beats the
  * host's `@media(min-width:40rem){.sm\:flex{...}}` and pins the whole app in its
- * mobile layout. Inserting first does not help either: Plica's `@layer`
+ * mobile layout. Inserting first does not help either: Tickler's `@layer`
  * declarations would then reorder the host's layers. Subtraction is the only
- * approach that works (README, "Why Plica subtracts the host's selectors").
+ * approach that works (README, "Why Tickler subtracts the host's selectors").
  *
  * This used to happen at build time, against whichever host sheet was on the
  * builder's disk — which went stale on every Paperclip upgrade and made a
@@ -18,7 +18,7 @@
  * The browser serialises `selectorText` on both sides, so the comparison is
  * between two normalised strings rather than two authors' spellings.
  *
- * Plugin surface only: nothing but the CSSOM of the document Plica mounts into.
+ * Plugin surface only: nothing but the CSSOM of the document Tickler mounts into.
  */
 
 /** The slice of the CSSOM this module touches, so tests can hand it fakes. */
@@ -96,7 +96,7 @@ export function collectSelectors(sheets: Iterable<{ cssRules?: ArrayLike<RuleLik
  * has, then any grouping rule (`@media`, `@layer`, `@supports`) left empty.
  *
  * Only selectors starting with `.` are candidates, matching what the build used
- * to do: element, `:root` and `:where(...)` rules carry Plica's own scaffolding,
+ * to do: element, `:root` and `:where(...)` rules carry Tickler's own scaffolding,
  * and the host defining a same-named selector does not make them redundant.
  *
  * Returns how many selectors were dropped.

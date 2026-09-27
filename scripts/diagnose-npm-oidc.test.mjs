@@ -28,8 +28,8 @@ const idTokenOk = { status: 200, body: JSON.stringify({ value: "header.payload.s
 
 describe("exchangeUrl", () => {
   it("addresses the package npm trades a token for", () => {
-    expect(exchangeUrl("https://registry.npmjs.org", "paperclip-plugin-plica")).toBe(
-      "https://registry.npmjs.org/-/npm/v1/oidc/token/exchange/package/paperclip-plugin-plica",
+    expect(exchangeUrl("https://registry.npmjs.org", "paperclip-plugin-tickler")).toBe(
+      "https://registry.npmjs.org/-/npm/v1/oidc/token/exchange/package/paperclip-plugin-tickler",
     );
   });
 
@@ -117,13 +117,13 @@ describe("explain", () => {
 
   it("quotes npm's refusal and points at the fields that must match", () => {
     const refusal = { stage: "exchange", ok: false, status: 404, message: "not configured" };
-    const { ok, lines } = explain(refusal, "paperclip-plugin-plica");
+    const { ok, lines } = explain(refusal, "paperclip-plugin-tickler");
     expect(ok).toBe(false);
     const text = lines.join(" ");
     expect(text).toContain("not configured");
     expect(text).toContain("404");
     expect(text).toContain("release.yml");
-    expect(text).toContain("paperclip-plugin-plica");
+    expect(text).toContain("paperclip-plugin-tickler");
   });
 
   it("explains that trusted publishing cannot be tested off a runner", () => {
@@ -138,7 +138,7 @@ describe("main", () => {
     const lines = [];
     const code = await main({ env: actionsEnv, fetchImpl: impl, log: (line) => lines.push(line) });
     expect(code).toBe(0);
-    expect(lines.join("\n")).toContain("paperclip-plugin-plica");
+    expect(lines.join("\n")).toContain("paperclip-plugin-tickler");
   });
 
   it("exits non-zero on a refusal, having printed npm's message", async () => {
