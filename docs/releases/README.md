@@ -116,23 +116,38 @@ failed publish, but they are worth recognising:
   the repository secret.
 
   The same error also means "the entry exists but does not match this run", and
-  the two cases are indistinguishable from `ENEEDAUTH` itself — but not from the
-  registry, which says which one it is and has its answer thrown away by npm. A
-  failed publish on this path now asks for that answer and prints it, and it can
-  be run on its own in any job that has `id-token: write`:
+  the two cases are indistinguishable — not only from `ENEEDAUTH`, but from the
+  registry too: measured on 2026-09-28, the exchange answers `HTTP 404 OIDC
+  token exchange error - package not found` for both. Do not read that 404 as
+  "there is no entry". What the registry's answer *is* good for is its status
+  and wording, which npm throws away, and the run's own OIDC claims. A failed
+  publish on this path now prints both, and the probe can be run on its own:
 
   ```
   node scripts/diagnose-npm-oidc.mjs
   ```
 
-  It makes the same two requests `npm publish` does — mint an OIDC token, trade
-  it for a publish credential — reports the registry's own status and message,
-  and publishes nothing. If it says npm *accepted* the token, trusted publishing
-  is configured correctly and the refusal was something else.
+  It needs a job with `id-token: write`;
+  [`npm oidc diagnostic`](../../.github/workflows/npm-oidc-diagnostic.yml) is
+  that job, dispatched by hand from the Actions tab, and it cannot publish. The
+  script makes the same two requests `npm publish` does — mint an OIDC token,
+  trade it for a publish credential — reports the registry's own status and
+  message, prints the `repository`, `repository_owner`, `workflow_ref` and
+  `environment` claims this run presents, and publishes nothing. Compare those
+  claims with the npmjs.com entry field by field; that comparison, not the
+  status code, is what tells the two cases apart. If it says npm *accepted* the
+  token, trusted publishing is configured correctly and the refusal was
+  something else.
 
-  Failing that, or before re-reading the npm page, rule the workflow side out — every one of these was checked on the run
-  that first hit it, and all of them held, which is how we knew the entry itself
-  was missing:
+  **A rename is the trap.** `nickallevato/paperclip-plica` →
+  `nickallevato/paperclip-tickler` kept the same repository id, and GitHub
+  redirects everything, but npm matches entries on the name — so the entry that
+  published `paperclip-plugin-plica@0.6.0` silently stopped matching. Renaming
+  the repository or the account means re-entering every trusted publisher.
+
+  Failing that, or before re-reading the npm page, rule the workflow side out —
+  every one of these was checked on the run that first hit it, and all of them
+  held:
 
   | requirement | how to check it |
   | --- | --- |
