@@ -5,6 +5,8 @@ Short-form. The reader-facing write-up for each version is in
 
 ## Unreleased
 
+## 0.7.1
+
 - **The board's left column no longer runs off the bottom of the page.** It is
   pinned inside Paperclip's scrolling `<main>`, which is shorter than the window
   by the height of the host's chrome, but it was capped at the window's height —
