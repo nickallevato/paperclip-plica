@@ -1,0 +1,100 @@
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { ApiError, npmRegistryApi, pluginSelfApi } from "../host/api";
+import { isDemoActive } from "../demo/demo-runtime";
+import { checkSelfUpdate, type SelfUpdateCheck } from "../lib/self-update";
+
+/**
+ * The state behind Tickler's update-to-latest button, shared by the header chip
+ * and the row in the settings panel so both read one registration and one
+ * registry answer.
+ *
+ * Both reads are allowed to fail and both are quiet about it — see
+ * `lib/self-update`. The registration is the same query key the reload badge
+ * uses, so the two chips cost one request between them.
+ */
+export function useTicklerSelfUpdate({ onUpdated, check: injected }: {
+  /** What to do once the host has re-registered. Defaults to a page reload. */
+  onUpdated?: () => void;
+  /** Injectable for tests and for a reviewer wanting to see a given state. */
+  check?: SelfUpdateCheck;
+} = {}) {
+  const queryClient = useQueryClient();
+  const live = injected === undefined;
+
+  const installed = useQuery({
+    queryKey: ["tickler", "plugin-self"],
+    queryFn: pluginSelfApi.get,
+    enabled: live,
+    staleTime: Infinity,
+    retry: false,
+  });
+
+  const latest = useQuery({
+    queryKey: ["tickler", "npm-latest"],
+    queryFn: npmRegistryApi.latestVersion,
+    // Demo mode never reaches the network, and a fixture has no npm registry to
+    // speak of. Nothing to check, so nothing is offered.
+    enabled: live && !isDemoActive(),
+    // Releases are not frequent enough to be worth re-asking npm within a
+    // sitting, and this is a cross-origin request on a page that stays open.
+    staleTime: 6 * 60 * 60 * 1000,
+    retry: false,
+  });
+
+  const check = injected ?? checkSelfUpdate(installed.data, latest.data);
+
+  const update = useMutation({
+    mutationFn: () =>
+      pluginSelfApi.upgrade(check.status === "available" ? check.latest : undefined),
+    onSuccess:
+      onUpdated ??
+      (() => {
+        // The host bumps the registration's updatedAt, which is the cache key on
+        // the bundle URL, so a plain reload fetches the new build. Drop the
+        // registration from the cache first, so a `reload` that a browser serves
+        // from memory cache still re-reads it.
+        void queryClient.invalidateQueries({ queryKey: ["tickler", "plugin-self"] });
+        window.location.reload();
+      }),
+  });
+
+  return {
+    check,
+    /** Never both checking and a definite answer: checking means unknown so far. */
+    isChecking: live && (installed.isPending || latest.isPending),
+    isUpdating: update.isPending,
+    error: describeError(update.error),
+    /** Ask npm again now, for the "Check again" affordance in the panel. */
+    recheck: () => {
+      void queryClient.invalidateQueries({ queryKey: ["tickler", "npm-latest"] });
+      void queryClient.invalidateQueries({ queryKey: ["tickler", "plugin-self"] });
+    },
+    start: () => update.mutate(),
+  };
+}
+
+/**
+ * The failures worth naming, because each has a different remedy and the host's
+ * own wording does not make that obvious.
+ *
+ * A 403 is the common one and is not the reader's mistake to fix: Paperclip's
+ * upgrade route is instance-admin only, and a board member reading the HUD sees
+ * the same chip. The capability refusal is the other predictable one — Paperclip
+ * grants capabilities at install and refuses an upgrade that declares a new one
+ * (plugin-loader, `upgradePlugin`), and there the only way forward really is a
+ * reinstall.
+ */
+function describeError(error: unknown): string | null {
+  if (!error) return null;
+  if (error instanceof ApiError && error.status === 403) {
+    return "Only an instance admin can update Tickler.";
+  }
+  const message = error instanceof Error ? error.message : String(error);
+  if (/capabilit/i.test(message)) {
+    return (
+      "This version asks for a permission Paperclip only grants at install. " +
+      "Uninstall and reinstall Tickler from the Plugin Manager to take it."
+    );
+  }
+  return `Update failed: ${message}`;
+}

@@ -5,6 +5,16 @@ Short-form. The reader-facing write-up for each version is in
 
 ## Unreleased
 
+- **Tickler updates itself from a button.** Moving to a new version meant
+  uninstalling and reinstalling the plugin, which throws away its config row —
+  Paperclip's Plugin Manager has no update button, though the server has had the
+  endpoint all along. Tickler now checks npm for a newer version of itself and
+  offers it: an **Update to 0.x.y** chip in the page header, and the same button
+  on a new first row of the gear panel that names the version you are on.
+  Pressing it upgrades in place, keeps your settings, and reloads onto the new
+  build. Instance admins only, silent when npm cannot be reached, and it stands
+  down for a local-path install — there the **Reload** chip still owns updates.
+
 ## 0.7.1
 
 - **The board's left column no longer runs off the bottom of the page.** It is

@@ -31,7 +31,9 @@ export function TicklerReloadBadge({ check: injected, onReloaded }: {
     retry: false,
   });
   const reload = useMutation({
-    mutationFn: pluginSelfApi.upgrade,
+    // No version: a local-path install upgrades by re-reading its directory,
+    // and naming a version would send the host to npm instead.
+    mutationFn: () => pluginSelfApi.upgrade(),
     // The host bumps the registration's updatedAt, which is the cache key on
     // the bundle URL, so a plain reload fetches the new build.
     onSuccess: onReloaded ?? (() => window.location.reload()),

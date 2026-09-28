@@ -11,6 +11,7 @@ import { TicklerBoardPage } from "./components/TicklerBoardPage";
 import { TicklerBriefing } from "./components/TicklerBriefing";
 import { TicklerMark } from "./components/TicklerMark";
 import { TicklerReloadBadge } from "./components/TicklerReloadBadge";
+import { TicklerSelfUpdatePanel, TicklerUpdateChip } from "./components/TicklerSelfUpdate";
 import { TicklerTokenSettingsPanel } from "./components/TicklerTokenSettings";
 import type { TicklerCompanyData } from "./components/useTicklerCompanyData";
 import {
@@ -344,6 +345,10 @@ export function TicklerHud({ demo = false }: TicklerHudProps = {}) {
           {/* Same family: the build on disk is newer than Paperclip's
               registration of it. Silent otherwise. */}
           <TicklerReloadBadge />
+          {/* And the published half of that question: a newer Tickler is on
+              npm. Mutually exclusive with the badge above — that one only
+              fires for a local-path install, this one only for an npm one. */}
+          <TicklerUpdateChip />
         </div>
         <div className="ml-auto flex items-center gap-3 text-[length:var(--tickler-fs-body,14px)] leading-[1.45] text-muted-foreground">
           {anyStale && (
@@ -381,14 +386,22 @@ export function TicklerHud({ demo = false }: TicklerHudProps = {}) {
         </div>
       </div>
 
-      {tokenSettingsOpen && companies.length > 0 && (
-        <TicklerTokenSettingsPanel
-          companies={companies}
-          statsById={statsByCompany}
-          settings={tokenSettings}
-          onChange={persistTokenSettings}
-          onClose={() => setTokenSettingsOpen(false)}
-        />
+      {tokenSettingsOpen && (
+        <div className="space-y-3">
+          {/* The version row comes first and renders whether or not there are
+              companies to threshold: "which Tickler am I on" is the question
+              somebody opens this panel with when nothing else is wrong. */}
+          <TicklerSelfUpdatePanel />
+          {companies.length > 0 && (
+            <TicklerTokenSettingsPanel
+              companies={companies}
+              statsById={statsByCompany}
+              settings={tokenSettings}
+              onChange={persistTokenSettings}
+              onClose={() => setTokenSettingsOpen(false)}
+            />
+          )}
+        </div>
       )}
 
       {companiesQuery.isLoading ? (

@@ -8,7 +8,7 @@ Start here if you have never installed it:
 | | |
 | --- | --- |
 | **[Install](install.md)** | Build it, register it with your instance, find it in the UI, upgrade it. |
-| **[Configuration](configuration.md)** | Demo mode, token thresholds, alerts, kiosk mode, and everything Tickler remembers per browser. |
+| **[Configuration](configuration.md)** | Demo mode, updating to the latest version, token thresholds, alerts, kiosk mode, and everything Tickler remembers per browser. |
 | **[The Board](board.md)** | One row per company: capacity, live runs, what is waiting on you, spend. |
 | **[The Queue](queue.md)** | Every item across every company that wants a human, and how to answer it without leaving the page. |
 | **[Troubleshooting](troubleshooting.md)** | The page is blank, the app looks broken, "polling degraded", and the rest. |

@@ -150,6 +150,41 @@ describe("TicklerHud", () => {
     act(() => root.unmount());
   });
 
+  it("opens the version row alongside the token panel from the gear", async () => {
+    // The gear's panel answers "which Tickler am I on, and is there a newer
+    // one" as well as the thresholds it started as.
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) =>
+        new Response(
+          JSON.stringify(
+            url.startsWith("https://registry.npmjs.org")
+              ? { version: "99.0.0" }
+              : { version: "0.0.1", packagePath: null },
+          ),
+          { status: 200, headers: { "content-type": "application/json" } },
+        ),
+      ),
+    );
+    const root = render();
+    await vi.waitFor(() => {
+      expect(container.querySelector('[aria-label="Token thresholds"]')).not.toBeNull();
+    });
+    await act(async () => {
+      (container.querySelector('[aria-label="Token thresholds"]') as HTMLButtonElement).dispatchEvent(
+        new MouseEvent("click", { bubbles: true }),
+      );
+    });
+    expect(container.querySelector("[data-self-update]")).not.toBeNull();
+    expect(container.querySelector("[data-token-settings]")).not.toBeNull();
+    // And the update it found is offered in the header, without opening anything.
+    await vi.waitFor(() => {
+      expect(container.textContent).toContain("Update to 99.0.0");
+    });
+    act(() => root.unmount());
+    vi.unstubAllGlobals();
+  });
+
   it("shows the briefing as the rail footer when the last visit is old, and not otherwise", async () => {
     localStorage.setItem("tickler.lastVisit", new Date(Date.now() - 60 * 60_000).toISOString());
     let root = render();

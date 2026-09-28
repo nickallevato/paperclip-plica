@@ -40,6 +40,12 @@ export type PluginReloadCheck =
 export interface InstalledPluginRecord {
   version?: string | null;
   manifestJson?: { capabilities?: readonly string[] | null } | null;
+  /**
+   * Set only for a local-path install. `lib/self-update` reads it to tell a
+   * checkout from an npm install, which decides whether the upgrade endpoint
+   * re-reads a directory or fetches a published version.
+   */
+  packagePath?: string | null;
 }
 
 export function checkPluginReload(

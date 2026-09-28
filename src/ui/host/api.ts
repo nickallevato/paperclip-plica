@@ -33,6 +33,7 @@ import type {
 import { demoRespond, isDemoActive } from "../demo/demo-runtime";
 import { PLUGIN_ID } from "../../plugin-id";
 import type { InstalledPluginRecord } from "../lib/plugin-reload";
+import { NPM_LATEST_URL } from "../lib/self-update";
 
 const BASE = "/api";
 
@@ -378,7 +379,39 @@ export const sidebarPreferencesApi = {
  */
 export const pluginSelfApi = {
   get: () => api.get<InstalledPluginRecord>(`/plugins/${PLUGIN_ID}`),
-  upgrade: () => api.post<InstalledPluginRecord>(`/plugins/${PLUGIN_ID}/upgrade`),
+  /**
+   * Re-register Tickler in place, keeping its config.
+   *
+   * With no `version` the host re-reads a local-path install from disk and
+   * fetches the `latest` dist-tag for an npm install. Passing the version means
+   * the update that lands is the one the button was labelled with, rather than
+   * whatever npm's `latest` has become since the check.
+   */
+  upgrade: (version?: string) =>
+    api.post<InstalledPluginRecord>(
+      `/plugins/${PLUGIN_ID}/upgrade`,
+      version ? { version } : {},
+    ),
+};
+
+/**
+ * The npm registry, read anonymously, for exactly one thing: the version of
+ * Tickler that `npm install` would land right now. See `lib/self-update`.
+ *
+ * Cross-origin and outside `request`, so it carries no credentials and gets no
+ * demo short-circuit of its own — callers gate it on demo mode. A registry that
+ * cannot be reached raises, and the caller treats that as "don't know".
+ */
+export const npmRegistryApi = {
+  latestVersion: async (): Promise<string | null> => {
+    const res = await fetch(NPM_LATEST_URL, {
+      credentials: "omit",
+      headers: { Accept: "application/json" },
+    });
+    if (!res.ok) throw new ApiError(`npm registry: ${res.status}`, res.status, null);
+    const body = (await res.json()) as { version?: unknown };
+    return typeof body.version === "string" ? body.version : null;
+  },
 };
 
 // `companiesListQueryOptions` lives in ./companies-query so that its call
