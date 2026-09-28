@@ -14,6 +14,25 @@ const FALLBACK_GAP = 16;
 /** Enough rows to find the tallest one without walking a hundred of them. */
 const ROW_SAMPLE = 12;
 
+/** Above and below the rail when it is pinned — the `top-4` it sticks at, twice. */
+const GUTTER = 16;
+
+/**
+ * The box the rail is pinned inside, which is not the window.
+ *
+ * The host scrolls an inner `<main>` rather than the document, and that element
+ * is both shorter than the viewport and offset down it. A rail sized at
+ * `100vh - 2rem` — which is what it was — is therefore taller than the band it
+ * can ever occupy, and the pane at the bottom hangs below the fold: exactly the
+ * complaint this work exists to answer, arrived at from the other direction.
+ */
+function scrollPort(node: HTMLElement): HTMLElement | null {
+  for (let parent = node.parentElement; parent; parent = parent.parentElement) {
+    if (/auto|scroll|overlay/.test(getComputedStyle(parent).overflowY)) return parent;
+  }
+  return node.ownerDocument.scrollingElement as HTMLElement | null;
+}
+
 /**
  * Measure the rail and hand each pane its height.
  *
@@ -41,6 +60,23 @@ export function useRailBudget(specs: readonly TicklerRailPaneSpec[]): {
   const measure = useCallback(() => {
     const rail = railRef.current;
     if (!rail) return;
+    // Narrow: the rail is `display: contents`, its panes are grid items of the
+    // page, and there is no column to share out. Anything written here would
+    // be ignored anyway, so it is taken back rather than left behind for the
+    // next time the window is wide.
+    if (getComputedStyle(rail).display === "contents") {
+      rail.style.height = "";
+      setBudget((current) => {
+        const next = unbudgeted(specs);
+        return sameRailBudget(current, next) ? current : next;
+      });
+      return;
+    }
+    // The rail is told its height here rather than in a class, because the band
+    // it is pinned inside belongs to the host, not to the window.
+    const port = scrollPort(rail);
+    const band = port ? Math.max(0, port.clientHeight - 2 * GUTTER) : 0;
+    rail.style.height = band > 0 ? `${band}px` : "";
     for (const spec of specs) {
       const pane = rail.querySelector<HTMLElement>(`[data-rail-pane="${spec.key}"]`);
       if (!pane) continue;
@@ -63,7 +99,7 @@ export function useRailBudget(specs: readonly TicklerRailPaneSpec[]): {
     }
     const gap = Number.parseFloat(getComputedStyle(rail).rowGap);
     const next = distributeRailHeight(specs, remembered.current, {
-      available: rail.clientHeight,
+      available: band,
       gap: Number.isFinite(gap) ? gap : FALLBACK_GAP,
     });
     setBudget((current) => (sameRailBudget(current, next) ? current : next));
@@ -79,10 +115,13 @@ export function useRailBudget(specs: readonly TicklerRailPaneSpec[]): {
     (node: HTMLDivElement | null) => {
       railRef.current = node;
       if (!node || typeof ResizeObserver === "undefined") return;
-      // The rail's own height is set by the viewport, not by what we write into
-      // the panes, so observing it cannot feed back into itself.
+      // The scrolling box, not the rail: the rail's height is the thing being
+      // written, and observing what you write is how a layout loop starts. The
+      // box it is pinned inside changes only when the window does.
+      const port = scrollPort(node);
+      if (!port) return;
       const observer = new ResizeObserver(() => measure());
-      observer.observe(node);
+      observer.observe(port);
       return () => observer.disconnect();
     },
     [measure],

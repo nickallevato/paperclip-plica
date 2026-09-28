@@ -85,9 +85,9 @@ the start of its description.
 
 <img src="screenshots/recent-hover.png" alt="A Recent row's hover card: the ticket, its status, and what the agent last said" width="408">
 
-The list scrolls inside a capped height rather than growing with the fleet, so a
-run starting or finishing never shoves Portfolio and Routines down the page. When
-more tasks were touched today than fit, the footer says how many.
+The list scrolls inside the height the rail gave it rather than growing with the
+fleet, so a run starting or finishing never shoves Portfolio and Routines down
+the page. When more tasks were touched today than fit, the footer says how many.
 
 ## Ordering companies
 
@@ -134,6 +134,19 @@ appears in the page header. See
 Down the left of the board:
 
 ![The portfolio chart and the routine exceptions beneath it](screenshots/portfolio.png)
+
+The rail is as tall as the window and **spends that height** on the panes in it.
+Each pane asks for the fewest rows worth drawing and the most rows worth keeping;
+every pane gets its minimum, and what is left over goes out a row at a time,
+Orgs first, then Portfolio, Recent and Routines. So a bigger monitor shows more
+of each pane rather than more empty rail, and watching another org takes rows
+from the panes that can spare them instead of pushing Portfolio off the bottom of
+the screen.
+
+A pane is always its header plus a whole number of rows — never a row cut in half
+— and one holding rows back says so: **+8 more**. On a window too short to seat a
+pane at all, it falls back to its header, where its own summary already lives
+("3 need attention"), rather than being clipped.
 
 **Recent** — what the fleet is on, as described above.
 

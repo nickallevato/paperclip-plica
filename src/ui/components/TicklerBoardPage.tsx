@@ -252,15 +252,17 @@ export function TicklerBoardPage({
   return (
     <div data-view="board" className="@container/board flex flex-col gap-4">
       <div className="grid gap-4 @[64rem]/board:grid-cols-[minmax(320px,400px)_minmax(0,1fr)] @[96rem]/board:grid-cols-[440px_minmax(0,1fr)] [.tickler-kiosk_&]:gap-6 [.tickler-kiosk_&]:@[110rem]/board:grid-cols-[540px_minmax(0,1fr)]">
-        {/* Pinned to the viewport rather than capped at it, because a column
-            that knows its own height can spend it: `useRailBudget` measures
-            this box and hands every pane below a height of header plus a whole
-            number of rows (see `distributeRailHeight`). `overflow-y-auto` is
-            the floor under that, for a window too short to seat even the
-            demoted headers. */}
+        {/* A column that knows its own height can spend it: `useRailBudget`
+            gives this box the height of the band it is pinned inside — the
+            host's scrolling `<main>`, which is shorter than the window and
+            offset down it — and hands every pane below a height of header plus
+            a whole number of rows (see `distributeRailHeight`). The `max-h`
+            here is only what holds until that first measurement, and
+            `overflow-y-auto` is the floor under it all, for a window too short
+            to seat even the demoted headers. */}
         <div
           ref={railRef}
-          className="contents @[64rem]/board:sticky @[64rem]/board:top-4 @[64rem]/board:flex @[64rem]/board:h-[calc(100vh-2rem)] @[64rem]/board:min-w-0 @[64rem]/board:flex-col @[64rem]/board:gap-4 @[64rem]/board:self-start @[64rem]/board:overflow-y-auto"
+          className="contents @[64rem]/board:sticky @[64rem]/board:top-4 @[64rem]/board:flex @[64rem]/board:max-h-[calc(100vh-2rem)] @[64rem]/board:min-w-0 @[64rem]/board:flex-col @[64rem]/board:gap-4 @[64rem]/board:self-start @[64rem]/board:overflow-y-auto"
         >
           <section
             data-tickler-companies

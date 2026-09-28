@@ -20,10 +20,11 @@ const PANES: TicklerRailPaneSpec[] = [
  * jsdom lays nothing out, so every `offsetHeight` it reports is zero — which is
  * exactly the unmeasured case the hook already has to survive. To exercise the
  * measured case, geometry is stubbed onto the element prototypes by the
- * `data-*` markers the panes carry: 28px headers, 32px rows, and whatever the
- * rail is told it is tall.
+ * `data-*` markers the panes carry: 28px headers, 20px footers, 32px rows, and
+ * a scrolling box of whatever height the test asks for. The rail gets that
+ * height less a 16px gutter top and bottom, which is the hook's own arithmetic.
  */
-function stubGeometry(railHeight: number): () => void {
+function stubGeometry(portHeight: number): () => void {
   const height = (node: HTMLElement): number => {
     if (node.dataset.railHead !== undefined) return 28;
     if (node.dataset.railFoot !== undefined) return 20;
@@ -44,7 +45,7 @@ function stubGeometry(railHeight: number): () => void {
   Object.defineProperty(HTMLElement.prototype, "clientHeight", {
     configurable: true,
     get(this: HTMLElement) {
-      return this.dataset.rail === "rail" ? railHeight : 0;
+      return this.dataset.rail === "port" ? portHeight : 0;
     },
   });
   return () => {
@@ -72,17 +73,22 @@ function Rail({ orgRows, projectRows }: { orgRows: number; projectRows: number }
     );
   };
   return (
-    <div ref={railRef} data-rail="rail">
-      {pane("orgs", orgRows)}
-      {pane("portfolio", projectRows)}
+    // The host's scrolling box, which is what the hook measures the rail
+    // against — not the window.
+    <div data-rail="port" style={{ overflowY: "auto" }}>
+      <div ref={railRef} data-rail="rail">
+        {pane("orgs", orgRows)}
+        {pane("portfolio", projectRows)}
+      </div>
     </div>
   );
 }
 
 let teardown: (() => void)[] = [];
 
-function render(railHeight: number, rows = { orgRows: 12, projectRows: 11 }): HTMLDivElement {
-  teardown.push(stubGeometry(railHeight));
+/** `portHeight` is the scrolling box; the rail gets 32px less than it. */
+function render(portHeight: number, rows = { orgRows: 12, projectRows: 11 }): HTMLDivElement {
+  teardown.push(stubGeometry(portHeight));
   const container = document.createElement("div");
   document.body.appendChild(container);
   const root = createRoot(container);
@@ -105,8 +111,13 @@ const pane = (container: HTMLElement, key: string) =>
   container.querySelector<HTMLElement>(`[data-rail-pane="${key}"]`)!;
 
 describe("useRailBudget", () => {
+  it("gives the rail the band it is pinned inside, not the window", () => {
+    const container = render(632);
+    expect(container.querySelector<HTMLElement>("[data-rail='rail']")!.style.height).toBe("600px");
+  });
+
   it("pins each pane to a header plus whole rows", () => {
-    const container = render(600);
+    const container = render(632);
     // 600px, less two 2px borders, two 28px headers, two 20px footers and one
     // 16px gap, leaves 484px for 32px rows: fifteen of them, handed out
     // round-robin from each pane's minimum of three — eight and seven.
@@ -119,15 +130,15 @@ describe("useRailBudget", () => {
   });
 
   it("gives a taller rail's height away instead of holding a cap", () => {
-    const short = render(600);
-    const tall = render(1000);
+    const short = render(632);
+    const tall = render(1032);
     expect(Number.parseInt(pane(tall, "portfolio").style.height, 10)).toBeGreaterThan(
       Number.parseInt(pane(short, "portfolio").style.height, 10),
     );
   });
 
   it("demotes a pane it cannot seat, and can measure it again once demoted", () => {
-    const container = render(220);
+    const container = render(252);
     expect(pane(container, "orgs").dataset.demoted).toBe("false");
     expect(pane(container, "portfolio").dataset.demoted).toBe("true");
     expect(pane(container, "portfolio").style.height).toBe("");
