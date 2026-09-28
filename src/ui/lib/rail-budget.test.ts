@@ -10,9 +10,9 @@ import {
 /** The board's own four panes, so the numbers under test are the real ones. */
 const PANES: TicklerRailPaneSpec[] = [
   { key: "orgs", minRows: 3, idealRows: Infinity, priority: 1 },
+  { key: "recent", minRows: 3, idealRows: 12, priority: 1 },
   { key: "portfolio", minRows: 3, idealRows: 11, priority: 2 },
-  { key: "recent", minRows: 3, idealRows: 12, priority: 3 },
-  { key: "routines", minRows: 2, idealRows: 4, priority: 4 },
+  { key: "routines", minRows: 2, idealRows: 4, priority: 2 },
 ];
 
 /** A measured pane: 28px of header, a 20px footer, 32px rows, a 2px border. */
@@ -89,20 +89,33 @@ describe("distributeRailHeight", () => {
     for (const { key } of PANES) expect(budget[key]!.hidden, key).toBe(boxes[key].total - budget[key]!.rows);
   });
 
-  // Priority buys a place in the queue, not a place on the page: a pane whose
-  // minimum will not fit is passed over, and a cheaper pane behind it is still
-  // served. Two routine failures are worth more of a cramped rail than three of
-  // twenty Recent rows, which is the trade this ordering is meant to make.
-  it("passes over a pane whose minimum will not fit and serves a cheaper one behind it", () => {
+  // What a short screen is spent on, which is the board's one editorial choice:
+  // Orgs and Recent share the first rank and keep their rows, and Portfolio —
+  // second rank, and no cheaper than Recent — falls back to the digest in its
+  // header rather than taking Recent's place.
+  it("keeps the first-rank panes when there is only room for some of them", () => {
     const boxes = metrics({ orgs: 12, portfolio: 11, recent: 20, routines: 3 });
     const budget = distributeRailHeight(PANES, boxes, { available: 500, gap: GAP });
     expect(budget.orgs!.demoted).toBe(false);
-    expect(budget.portfolio!.demoted).toBe(false);
-    expect(budget.recent!.demoted).toBe(true);
-    expect(budget.recent!.height).toBeNull();
-    expect(budget.recent!.hidden).toBe(20);
-    expect(budget.routines!.rows).toBe(2);
+    expect(budget.recent!.demoted).toBe(false);
+    expect(budget.recent!.rows).toBeGreaterThanOrEqual(3);
+    expect(budget.portfolio!.demoted).toBe(true);
+    expect(budget.portfolio!.height).toBeNull();
+    expect(budget.portfolio!.hidden).toBe(11);
     expect(spent(budget, boxes)).toBeLessThanOrEqual(500);
+  });
+
+  // Priority buys a place in the queue, not a place on the page: a pane whose
+  // minimum will not fit is passed over, and a cheaper pane behind it is still
+  // served. Two routine failures are worth more of a cramped rail than the
+  // twelfth Portfolio bar, which is the trade this ordering is meant to make.
+  it("passes over a pane whose minimum will not fit and serves a cheaper one behind it", () => {
+    const boxes = { ...metrics({ orgs: 12, recent: 20, routines: 3 }), portfolio: box(11, { row: 200 }) };
+    const budget = distributeRailHeight(PANES, boxes, { available: 700, gap: GAP });
+    expect(budget.portfolio!.demoted).toBe(true);
+    expect(budget.routines!.demoted).toBe(false);
+    expect(budget.routines!.rows).toBeGreaterThanOrEqual(2);
+    expect(spent(budget, boxes)).toBeLessThanOrEqual(700);
   });
 
   it("demotes rather than clips when the rail is far too short", () => {

@@ -11,7 +11,9 @@ Short-form. The reader-facing write-up for each version is in
   Portfolio was off the bottom of the screen. The rail is now pinned to the
   viewport, measures itself, and gives each pane a height of its header plus a
   whole number of measured rows: everyone gets the fewest rows worth drawing,
-  then the surplus goes out one row at a time in priority order. No pane ends in
+  then the surplus goes out one row at a time in rank order — Orgs and Recent
+  first, Portfolio and Routines equal behind them, so a short screen is spent on
+  the two panes worth reading. No pane ends in
   a row cut in half, a pane holding rows back says `+8 more`, one the rail cannot
   seat falls back to its header instead of being clipped, and a taller monitor
   goes into the panes rather than into a scrollbar. The layout studies behind it

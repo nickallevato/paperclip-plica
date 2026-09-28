@@ -30,7 +30,11 @@ export interface TicklerRailPaneSpec {
   minRows: number;
   /** Past this, height is better spent on another pane. `Infinity` = all of them. */
   idealRows: number;
-  /** Lower goes first, both for minimums and for the surplus. */
+  /**
+   * Lower goes first, both for minimums and for the surplus. Panes may share a
+   * rank — they are then served in the order they are declared, which is how
+   * "these two matter and the rest are equal" is written down.
+   */
   priority: number;
 }
 
@@ -127,7 +131,7 @@ export function distributeRailHeight(
   }
   // The surplus, one row at a time, cycling the panes in priority order and
   // skipping any already at its ideal. Orgs is cheap and first, so it is whole
-  // before Portfolio takes its fourth row; on a tall screen every pane grows
+  // before Routines takes its fourth row; on a tall screen every pane grows
   // together instead of one pane eating the height.
   for (let moving = true; moving; ) {
     moving = false;

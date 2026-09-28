@@ -48,19 +48,23 @@ const MICRO = "text-[length:var(--tickler-fs-micro,11px)] leading-[1.45]";
  * served first when there is not enough for everyone. `distributeRailHeight`
  * in `lib/rail-budget` is what is done with them.
  *
- * Orgs first and with no ideal, because it is navigation — every org you watch
- * belongs on the page, and its rows are the cheapest in the rail. Portfolio
- * next and capped at eleven, since comparing bars past that is not something
- * anyone does at a glance. Recent is allowed more rows than Portfolio but
- * served after it: it is the pane that refills itself, so the rows it loses
- * come back. Routines last, and content with two — on a good day it has none,
- * and the header alone is the answer.
+ * Orgs and Recent are the two that matter, so they share the first rank and a
+ * short screen spends itself on them: Orgs because it is navigation — every org
+ * you watch belongs on the page, and its rows are the cheapest in the rail —
+ * and Recent because it is what the board is for. Orgs has no ideal; Recent
+ * stops at twelve, past which it is a log rather than a glance. Portfolio and
+ * Routines share the second rank, equal to each other, and take what is left:
+ * Portfolio capped at eleven, since comparing bars past that is not something
+ * anyone does at a glance, and Routines content with four — on a good day it
+ * has no exceptions at all and the header alone is the answer.
+ *
+ * Ranks tie by the order written here, which is the only thing this order does.
  */
 const RAIL_PANES: readonly TicklerRailPaneSpec[] = [
   { key: "orgs", minRows: 3, idealRows: Infinity, priority: 1 },
+  { key: "recent", minRows: 3, idealRows: 12, priority: 1 },
   { key: "portfolio", minRows: 3, idealRows: 11, priority: 2 },
-  { key: "recent", minRows: 3, idealRows: 12, priority: 3 },
-  { key: "routines", minRows: 2, idealRows: 4, priority: 4 },
+  { key: "routines", minRows: 2, idealRows: 4, priority: 2 },
 ];
 
 /** Re-render on a slow clock so ages and countdowns don't freeze between polls. */

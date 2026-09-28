@@ -139,11 +139,13 @@ The rail is as tall as the screen leaves it — the band below the board's own
 header, which is shorter than the window — and **spends that height** on the
 panes in it.
 Each pane asks for the fewest rows worth drawing and the most rows worth keeping;
-every pane gets its minimum, and what is left over goes out a row at a time,
-Orgs first, then Portfolio, Recent and Routines. So a bigger monitor shows more
-of each pane rather than more empty rail, and watching another org takes rows
-from the panes that can spare them instead of pushing Portfolio off the bottom of
-the screen.
+every pane gets its minimum, and what is left over goes out a row at a time.
+**Orgs and Recent are served first** and keep their rows on a short screen;
+Portfolio and Routines rank equally behind them and take what is left. So a
+bigger monitor shows more of each pane rather than more empty rail, watching
+another org takes rows from the panes that can spare them instead of pushing
+Portfolio off the bottom of the screen, and a laptop spends the little height it
+has on the two panes worth reading.
 
 A pane is always its header plus a whole number of rows — never a row cut in half
 — and one holding rows back says so: **+8 more**. On a window too short to seat a
