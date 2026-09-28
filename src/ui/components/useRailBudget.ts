@@ -87,6 +87,7 @@ export function useRailBudget(specs: readonly TicklerRailPaneSpec[]): {
     // next time the window is wide.
     if (getComputedStyle(rail).display === "contents") {
       rail.style.height = "";
+      rail.style.maxHeight = "";
       setBudget((current) => {
         const next = unbudgeted(specs);
         return sameRailBudget(current, next) ? current : next;
@@ -107,6 +108,12 @@ export function useRailBudget(specs: readonly TicklerRailPaneSpec[]): {
     const head = port ? Math.max(GUTTER, offsetWithin(rail, port)) : 0;
     const band = port ? Math.max(0, port.clientHeight - head - GUTTER) : 0;
     rail.style.height = band > 0 ? `${band}px` : "";
+    // The `--tickler-rail-max-h` cap is the first-paint value and nothing more:
+    // it is `100dvh` less an allowance for the host's chrome, so on a host with
+    // less chrome than that allowance it is *shorter* than the band we just
+    // measured, and would clip the panes the budget had just been told fit. A
+    // measured rail answers to the measurement.
+    rail.style.maxHeight = band > 0 ? "none" : "";
     for (const spec of specs) {
       const pane = rail.querySelector<HTMLElement>(`[data-rail-pane="${spec.key}"]`);
       if (!pane) continue;
