@@ -1,0 +1,721 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tickler left rail — layout studies (PLI-246)</title>
+<style>
+/* Same palette as board-v2.html, so the studies read against the shipped board. */
+:root{
+  --bg:#e9e7e3; --card:#f6f5f3; --border:#d5d2cd; --border-soft:#e2dfda; --rule:#cfccc6;
+  --fg:#22201d; --muted:#77736d; --muted-bg:#e4e1dc;
+  --idle:#c3bfb9;
+  --live:#5a7d9a;   --live-dim:#5a7d9a2e;
+  --wait:#9c8340;   --wait-dim:#9c834028;
+  --alarm:#a1564e;  --alarm-dim:#a1564e26;
+  --ok:#5f7d5a;
+  --shadow:0 1px 2px rgba(0,0,0,.06);
+}
+:root[data-theme="dark"]{
+  --bg:#121211; --card:#1b1a18; --border:#2c2a27; --border-soft:#232120; --rule:#332f2b;
+  --fg:#e8e5e0; --muted:#8f8a83; --muted-bg:#26241f;
+  --idle:#48443f;
+  --live:#7396b4;   --live-dim:#7396b42e;
+  --wait:#b89b56;   --wait-dim:#b89b5626;
+  --alarm:#bd7d74;  --alarm-dim:#bd7d7424;
+  --ok:#7d9a76;
+  --shadow:0 1px 2px rgba(0,0,0,.5);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);
+  font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Inter,sans-serif;
+  font-size:14px;line-height:1.45;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1560px;margin:0 auto;padding:20px 20px 80px}
+header.top{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-bottom:14px}
+h1{font-size:17px;font-weight:650;letter-spacing:-.01em;margin:0}
+.sub{color:var(--muted);font-size:12px}
+.spacer{flex:1}
+.seg{display:inline-flex;border:1px solid var(--border);border-radius:7px;padding:2px;background:var(--card);gap:2px}
+.seg .lbl{font-size:11px;color:var(--muted);padding:4px 6px 4px 8px;text-transform:uppercase;letter-spacing:.04em;align-self:center}
+.seg button{border:0;background:transparent;color:var(--muted);font:inherit;font-size:12px;padding:4px 9px;border-radius:5px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--muted-bg);color:var(--fg);font-weight:600}
+
+/* ---------- the simulated screen ---------- */
+.stage{display:flex;gap:18px;align-items:flex-start}
+.screenWrap{flex:0 0 auto}
+.screenMeta{font-size:11px;color:var(--muted);margin:0 0 6px;font-variant-numeric:tabular-nums}
+.screen{position:relative;overflow:hidden;background:var(--bg);
+  border:1px solid var(--rule);border-radius:10px;box-shadow:var(--shadow);
+  display:flex}
+.hostbar{flex:0 0 auto;width:52px;border-right:1px solid var(--border);
+  background:color-mix(in srgb,var(--muted-bg) 60%,transparent);
+  display:flex;align-items:center;justify-content:center;
+  writing-mode:vertical-rl;transform:rotate(180deg);
+  font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.page{flex:1;min-width:0;display:flex;flex-direction:column;padding:12px;gap:10px}
+.pagehead{display:flex;align-items:center;gap:8px;flex:0 0 auto}
+.brand{font-size:14px;font-weight:650;letter-spacing:-.01em}
+.tagDemo{font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--wait);
+  border:1px solid color-mix(in srgb,var(--wait) 45%,transparent);border-radius:4px;padding:1px 5px}
+.board{flex:1;min-height:0;display:flex;gap:10px}
+
+/* ---------- panes ---------- */
+.rail{flex:0 0 auto;width:330px;min-width:0;display:flex;flex-direction:column;gap:10px}
+.pane{border:1px solid var(--border);border-radius:8px;background:var(--card);
+  display:flex;flex-direction:column;min-height:0;overflow:hidden}
+.paneHead{display:flex;align-items:center;gap:7px;padding:6px 9px;border-bottom:1px solid var(--border-soft);flex:0 0 auto}
+.paneHead h2{margin:0;font-size:10px;font-weight:650;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.paneHead .right{margin-left:auto;font-size:10px;color:var(--muted);font-variant-numeric:tabular-nums;display:flex;gap:7px;align-items:center}
+.paneBody{min-height:0;overflow-y:auto;scrollbar-width:thin}
+.rows{list-style:none;margin:0;padding:0}
+.row{display:flex;align-items:center;gap:7px;padding:5px 9px;border-top:1px solid var(--border-soft);font-size:12px}
+.rows .row:first-child{border-top:0}
+.row .grow{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .n{font-variant-numeric:tabular-nums;color:var(--muted);font-size:11px}
+.row .need{font-variant-numeric:tabular-nums;font-weight:650;width:18px;text-align:right}
+.avatar{width:18px;height:18px;border-radius:4px;flex:0 0 auto;display:grid;place-items:center;
+  font-size:9px;font-weight:700;color:#fff}
+.key{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10px;color:var(--muted);flex:0 0 auto}
+.bar{height:4px;border-radius:2px;background:var(--muted-bg);overflow:hidden;display:flex;margin-top:3px}
+.bar i{display:block;height:100%}
+.bar i.mv{background:var(--ok)} .bar i.wt{background:var(--wait)} .bar i.bl{background:var(--alarm)}
+.proj{display:block;padding:5px 9px;border-top:1px solid var(--border-soft)}
+.projTop{display:flex;align-items:center;gap:7px;font-size:12px}
+.mut{color:var(--muted)} .alarmT{color:var(--alarm)} .waitT{color:var(--wait)} .okT{color:var(--ok)}
+.micro{font-size:10px;line-height:1.35;color:var(--muted)}
+.dot{width:6px;height:6px;border-radius:50%;flex:0 0 auto;background:var(--idle)}
+.dot.live{background:var(--live)} .dot.alarm{background:var(--alarm)} .dot.wait{background:var(--wait)}
+
+/* ---------- queue ---------- */
+.queue{flex:1;min-width:0;border:1px solid var(--border);border-radius:8px;background:var(--card);
+  display:flex;flex-direction:column;min-height:0;overflow:hidden}
+.qHead{display:flex;align-items:center;gap:8px;padding:7px 10px;border-bottom:1px solid var(--border-soft);flex:0 0 auto}
+.qHead .t{font-size:13px;font-weight:650}
+.badge{font-size:10px;font-variant-numeric:tabular-nums;background:var(--muted-bg);border-radius:10px;padding:1px 7px;font-weight:650}
+.qBody{flex:1;min-height:0;overflow-y:auto;scrollbar-width:thin}
+.qGroup{font-size:9.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);
+  padding:6px 10px 3px;border-top:1px solid var(--border-soft)}
+.qRow{display:flex;gap:8px;align-items:flex-start;padding:6px 10px;border-top:1px solid var(--border-soft);font-size:12px}
+.qRow:hover{background:color-mix(in srgb,var(--muted-bg) 45%,transparent)}
+.qRow .body{flex:1;min-width:0}
+.qRow .ttl{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.qRow .age{font-size:10px;color:var(--muted);font-variant-numeric:tabular-nums;flex:0 0 auto;padding-top:2px}
+.chip{font-size:10px;border:1px solid var(--border);border-radius:5px;padding:1px 6px;color:var(--muted);white-space:nowrap}
+.chip.on{background:var(--muted-bg);color:var(--fg);font-weight:600}
+
+/* ---------- layout-specific ---------- */
+/* A: height budget — a demoted pane becomes one clickable summary line. */
+.pane[data-collapsed="true"]{flex:0 0 auto}
+.pane[data-collapsed="true"] .paneBody{display:none}
+.pane[data-collapsed="true"] .paneHead{border-bottom:0;cursor:pointer}
+.pane[data-collapsed="true"] .paneHead:hover{background:color-mix(in srgb,var(--muted-bg) 45%,transparent)}
+.caret{color:var(--muted);font-size:10px;margin-left:2px}
+
+/* B: tabs */
+.tabs{display:flex;gap:2px;padding:4px;border-bottom:1px solid var(--border-soft);flex:0 0 auto;background:var(--card)}
+.tabs button{flex:1;border:0;background:transparent;color:var(--muted);font:inherit;font-size:11px;
+  padding:4px 6px;border-radius:5px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px}
+.tabs button[aria-selected="true"]{background:var(--muted-bg);color:var(--fg);font-weight:650}
+.tabs .tb{font-size:9.5px;font-variant-numeric:tabular-nums;border-radius:8px;padding:0 5px;
+  background:color-mix(in srgb,var(--muted) 22%,transparent)}
+.tabs .tb.alarm{background:var(--alarm-dim);color:var(--alarm)}
+.tabs .tb.wait{background:var(--wait-dim);color:var(--wait)}
+
+/* C: customize popover */
+.gear{margin-left:auto;border:1px solid var(--border);background:transparent;color:var(--muted);
+  border-radius:5px;font:inherit;font-size:10px;padding:1px 6px;cursor:pointer}
+.pop{position:absolute;z-index:20;width:236px;border:1px solid var(--border);border-radius:8px;
+  background:var(--card);box-shadow:0 10px 30px rgba(0,0,0,.35);padding:8px;font-size:11px}
+.pop h3{margin:0 0 6px;font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.pop .opt{display:flex;align-items:center;gap:7px;padding:3px 4px;border-radius:5px}
+.pop .opt:hover{background:var(--muted-bg)}
+.pop .drag{color:var(--muted);cursor:grab;font-size:11px}
+.pop .sw{width:11px;height:11px;border:1px solid var(--muted);border-radius:3px;flex:0 0 auto;display:grid;place-items:center;font-size:8px}
+.pop .sw.on{background:var(--live);border-color:var(--live);color:#fff}
+.pop hr{border:0;border-top:1px solid var(--border-soft);margin:7px 0}
+.pop .segmini{display:flex;gap:2px;margin-top:4px}
+.pop .segmini button{flex:1;border:1px solid var(--border);background:transparent;color:var(--muted);
+  font:inherit;font-size:10px;padding:2px 0;border-radius:4px;cursor:pointer}
+.pop .segmini button[aria-pressed="true"]{background:var(--muted-bg);color:var(--fg);font-weight:650}
+
+/* D: context strip */
+.strip{flex:0 0 auto;display:flex;align-items:stretch;gap:6px;overflow-x:auto;scrollbar-width:none;padding-bottom:1px}
+.stripCard{flex:0 0 auto;border:1px solid var(--border);border-radius:7px;background:var(--card);
+  padding:5px 9px;display:flex;flex-direction:column;gap:1px;cursor:pointer;min-width:96px}
+.stripCard:hover{border-color:color-mix(in srgb,var(--muted) 55%,transparent)}
+.stripCard .k{font-size:9px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);display:flex;align-items:center;gap:5px}
+.stripCard .v{font-size:15px;font-weight:650;font-variant-numeric:tabular-nums;letter-spacing:-.02em;line-height:1.2}
+.stripCard .v small{font-size:10px;font-weight:500;color:var(--muted);margin-left:3px}
+.stripCard[data-open="true"]{border-color:var(--live);box-shadow:inset 0 -2px 0 var(--live)}
+.drawer{flex:0 0 auto;border:1px solid var(--border);border-radius:8px;background:var(--card);overflow:hidden;
+  display:flex;flex-direction:column}
+
+/* ---------- notes ---------- */
+.notes{flex:1;min-width:300px;position:sticky;top:20px}
+.noteCard{border:1px solid var(--border);border-radius:8px;background:var(--card);padding:12px 14px}
+.noteCard h3{margin:0 0 3px;font-size:13px}
+.noteCard .lead{margin:0 0 10px;font-size:12px;color:var(--muted)}
+.noteCard h4{margin:12px 0 5px;font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.noteCard ul{margin:0;padding-left:16px;font-size:12px;display:flex;flex-direction:column;gap:4px}
+.noteCard li::marker{color:var(--muted)}
+.verdict{margin-top:12px;border-top:1px solid var(--border-soft);padding-top:9px;font-size:12px}
+.tag{display:inline-block;font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;
+  border-radius:4px;padding:1px 6px;border:1px solid;margin-right:6px}
+.tag.rec{color:var(--ok);border-color:color-mix(in srgb,var(--ok) 45%,transparent);background:color-mix(in srgb,var(--ok) 12%,transparent)}
+.tag.alt{color:var(--live);border-color:color-mix(in srgb,var(--live) 45%,transparent);background:var(--live-dim)}
+.tag.no{color:var(--alarm);border-color:color-mix(in srgb,var(--alarm) 45%,transparent);background:var(--alarm-dim)}
+.scrollcount{margin-top:10px;font-size:11px;color:var(--muted)}
+.scrollcount b{color:var(--fg)}
+@media (max-width:1200px){.stage{flex-direction:column}.notes{position:static;width:100%}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <div>
+    <h1>Tickler left rail — layout studies</h1>
+    <div class="sub">PLI-246 · placeholder data · the frame below is a simulated screen, so the height problem is visible rather than described.</div>
+  </div>
+  <div class="spacer"></div>
+  <div class="seg" role="group" aria-label="Layout">
+    <span class="lbl">Layout</span>
+    <button data-layout="current" aria-pressed="true">Today</button>
+    <button data-layout="budget" aria-pressed="false">A · Budget</button>
+    <button data-layout="tabs" aria-pressed="false">B · Tabs</button>
+    <button data-layout="custom" aria-pressed="false">C · Custom</button>
+    <button data-layout="strip" aria-pressed="false">D · Strip</button>
+  </div>
+  <div class="seg" role="group" aria-label="Screen">
+    <span class="lbl">Screen</span>
+    <button data-screen="1512x790" aria-pressed="false">Laptop 13″</button>
+    <button data-screen="1440x900" aria-pressed="true">Laptop 15″</button>
+    <button data-screen="1280x720" aria-pressed="false">Small</button>
+    <button data-screen="1180x600" aria-pressed="false">Short</button>
+    <button data-screen="2560x1400" aria-pressed="false">Desk 27″</button>
+  </div>
+  <div class="seg" role="group" aria-label="Orgs watched">
+    <span class="lbl">Orgs</span>
+    <button data-orgs="4" aria-pressed="true">4</button>
+    <button data-orgs="12" aria-pressed="false">12</button>
+  </div>
+  <div class="seg" role="group" aria-label="Theme">
+    <button id="bDark" aria-pressed="true">Dark</button>
+    <button id="bLight" aria-pressed="false">Light</button>
+  </div>
+</header>
+
+<div class="stage">
+  <div class="screenWrap">
+    <p class="screenMeta" id="screenMeta"></p>
+    <div class="screen" id="screen">
+      <aside class="hostbar">host sidebar</aside>
+      <div class="page">
+        <div class="pagehead">
+          <span class="brand">Tickler</span>
+          <span class="mut micro">all orgs</span>
+          <span class="tagDemo">demo data</span>
+        </div>
+        <div id="boardSlot"></div>
+      </div>
+    </div>
+    <p class="scrollcount" id="scrollcount"></p>
+  </div>
+  <div class="notes"><div class="noteCard" id="notes"></div></div>
+</div>
+</div>
+
+<script>
+/* ------------------------------------------------------------------ data */
+const ORGS = [
+  { s:"A", name:"Acme Robotics",   c:"#4f9d4f", rate:"24.4/d", need:5, dots:["","","live","live","wait","",""] },
+  { s:"G", name:"Globex Analytics",c:"#c0506e", rate:"12.7/d", need:4, dots:["","","live","","live",""] },
+  { s:"I", name:"Initech Payments",c:"#a548c0", rate:"23.9/d", need:8, dots:["","","alarm","live","live"] },
+  { s:"U", name:"Umbra Logistics", c:"#3f8f57", rate:"3.9/d",  need:0, dots:["","",""] },
+];
+/* The rail is comfortable with four orgs. Twelve is the case that breaks it,
+   and it is not hypothetical — Orgs has no scroll cap today, so every org
+   added pushes Portfolio further off the bottom of the column. */
+const ORGS_MANY = ORGS.concat([
+  { s:"S", name:"Stellar Freight",   c:"#3f7fa8", rate:"9.1/d",  need:3, dots:["","live",""] },
+  { s:"V", name:"Vertex Analytics",  c:"#b06a2f", rate:"15.2/d", need:2, dots:["","live","live",""] },
+  { s:"H", name:"Halcyon Health",    c:"#2f8f8f", rate:"6.8/d",  need:6, dots:["","alarm","live"] },
+  { s:"N", name:"Northgate Retail",  c:"#8f4f9d", rate:"11.4/d", need:0, dots:["","",""] },
+  { s:"C", name:"Cobalt Insurance",  c:"#9d5f4f", rate:"4.2/d",  need:1, dots:["","live"] },
+  { s:"P", name:"Pinnacle Energy",   c:"#5f7d5a", rate:"18.9/d", need:4, dots:["","live","wait",""] },
+  { s:"T", name:"Terrace Media",     c:"#7c6bb0", rate:"2.1/d",  need:0, dots:["",""] },
+  { s:"D", name:"Delmar Foods",      c:"#a5734f", rate:"7.7/d",  need:2, dots:["","live",""] },
+]);
+let orgList = ORGS;
+const RECENT = [
+  ["A","ACME-100","Backfill telemetry gaps for the Denver fleet","26m","live"],
+  ["A","ACME-103","Route solver times out above 400 stops","26m","live"],
+  ["A","ACME-106","Flaky test: dock handoff integration suite","26m","live"],
+  ["G","GLBX-100","Ingest v3 dedupe drops late-arriving rows","26m","live"],
+  ["G","GLBX-109","Ingest worker OOMs on wide partner schemas","26m","live"],
+  ["I","INIT-101","Payout retries double-charge on a partial capture","26m","live"],
+  ["I","INIT-105","Audit log retention for PCI","26m","live"],
+  ["I","INIT-100","Ledger reconciliation drifts on multi-currency","1h 12m",""],
+  ["A","ACME-101","Pickers drop their route when the dock scanner reconnects","1h 20m",""],
+  ["U","UMBR-004","Lane pricing model refresh","1h 34m",""],
+  ["G","GLBX-112","Report builder export times out","2h 02m",""],
+  ["I","INIT-108","Decide on the ledger partitioning strategy","2h 40m",""],
+];
+const PROJECTS = [
+  ["I","Ledger Reconciliation",5,"3w",62,24,14],
+  ["A","Fleet Telemetry",5,"3w",70,20,10],
+  ["A","Pick Path Optimizer",5,"5w",55,30,15],
+  ["G","Ingest Pipeline v3",6,"3w",64,26,10],
+  ["G","Report Builder",4,"5w",48,40,12],
+  ["U","Lane Pricing Model",3,"3w",40,45,15],
+  ["I","PCI Readiness",3,"7w",30,55,15],
+  ["I","Payout Rails",2,"5w",35,50,15],
+  ["A","Warehouse Onboarding",2,"7w",25,60,15],
+  ["G","Partner Feed Health",2,"4w",52,33,15],
+  ["U","Dock Scheduling",1,"6w",44,41,15],
+];
+const ROUTINES = [
+  ["I","Hourly ledger snapshot","failed","alarm"],
+  ["G","Daily data quality sweep","failed","alarm"],
+  ["G","Partner feed freshness check","blocked","wait"],
+  ["A","Nightly telemetry rollup","late","wait"],
+];
+const QUEUE = [
+  ["TODAY 3", [
+    ["I","INIT-100","Ledger reconciliation drifts on multi-currency payouts","blocked · Prim · overdue · was due Sat, Sep 26","31m","alarm"],
+    ["I","INIT-101","Quill needs sign-off before shipping the retry idempotency fix.","question · Prim","4m","wait"],
+    ["I","","Budget Override Required","approval · Nadia asks · 40m ago","40m","wait"],
+  ]],
+  ["UNSORTED 7 — give each a day", [
+    ["I","","Approve Ceo Strategy","approval · Nadia asks · 5h ago","5h","wait"],
+    ["G","","Hire Agent","approval · Hollis asks · 3h ago","3h","wait"],
+    ["I","","Prim's adapter login expired — no work is moving on the ledger.","agent error · Prim","2h","alarm"],
+    ["G","GLBX-100","Jonas needs a call on how to treat late-arriving duplicates.","question · Jonas","9m","wait"],
+    ["A","ACME-100","Cleo asked which retention window to apply before backfilling.","question · Cleo","6m","wait"],
+    ["I","INIT-108","Decide on the ledger partitioning strategy","decision · Prim","12h","wait"],
+    ["A","ACME-113","Telemetry retention policy needs a decision","decision · Cleo","9h","wait"],
+  ]],
+  ["THIS WEEK 3", [
+    ["A","ACME-101","Pickers drop their route when the dock scanner reconnects","blocked · Cleo","22m","alarm"],
+    ["G","GLBX-104","Warehouse cost attribution is off by tenant","blocked · Jonas","6h","alarm"],
+    ["I","INIT-102","Settlement file parser rejects the new bank format","failed run · Prim","17m","alarm"],
+  ]],
+  ["ALERTS 3 — conditions that clear themselves", [
+    ["I","","Nadia heartbeat overdue","last beat 3h ago · expected every 1h","3h","wait"],
+    ["G","","Daily data quality sweep","routine · last run failed","2h","wait"],
+    ["I","","Hourly ledger snapshot","routine · scheduled run is overdue","2h","wait"],
+  ]],
+];
+const COLOR = Object.fromEntries(ORGS_MANY.map(o => [o.s, o.c]));
+
+/* --------------------------------------------------------------- helpers */
+const el = (tag, cls, html) => { const n = document.createElement(tag);
+  if (cls) n.className = cls; if (html != null) n.innerHTML = html; return n; };
+const av = s => `<span class="avatar" style="background:${COLOR[s]}">${s}</span>`;
+const esc = s => s.replace(/&/g,"&amp;").replace(/</g,"&lt;");
+
+/* ------------------------------------------------------------ pane bodies */
+function orgRows() {
+  const ul = el("ul","rows");
+  for (const o of orgList) {
+    const dots = o.dots.map(d => `<span class="dot ${d}"></span>`).join("");
+    ul.append(el("li","row",
+      `${av(o.s)}<span class="grow">${o.name}</span><span class="strip" style="gap:3px">${dots}</span>
+       <span class="n">${o.rate}</span>
+       <span class="need ${o.need ? "alarmT" : "mut"}">${o.need}</span>`));
+  }
+  return ul;
+}
+function recentRows(n = RECENT.length) {
+  const ul = el("ul","rows");
+  for (const [s,key,title,age,live] of RECENT.slice(0,n))
+    ul.append(el("li","row",
+      `${av(s)}<span class="dot ${live}"></span><span class="key">${key}</span>
+       <span class="grow">${esc(title)}</span><span class="n">${age}</span>`));
+  return ul;
+}
+function projectRows(n = PROJECTS.length) {
+  const box = el("div");
+  for (const [s,name,open,age,mv,wt,bl] of PROJECTS.slice(0,n)) {
+    box.append(el("div","proj",
+      `<div class="projTop">${av(s)}<span class="grow">${name}</span>
+         <span class="n">${open}</span><span class="n">${age}</span></div>
+       <div class="bar"><i class="mv" style="width:${mv}%"></i><i class="wt" style="width:${wt}%"></i><i class="bl" style="width:${bl}%"></i></div>`));
+  }
+  return box;
+}
+function routineRows(n = ROUTINES.length) {
+  const ul = el("ul","rows");
+  for (const [s,name,state,tone] of ROUTINES.slice(0,n))
+    ul.append(el("li","row",
+      `${av(s)}<span class="grow">${name}</span><span class="n ${tone}T">${state}</span>`));
+  return ul;
+}
+
+/* Each pane declares `rows: [minimum, ideal]` and a priority. Heights are
+   always a header plus a whole number of rows — a pane that ends in half a row
+   is the thing the current board does that reads as broken — and a pane that
+   cannot be given its minimum is demoted to its one-line digest. */
+const PANES = {
+  orgs:     { title:"Orgs", body:orgRows, prio:1,
+              get total() { return orgList.length; },
+              get rows() { return [3, orgList.length]; },
+              get right() { return `need you ${orgList.reduce((n,o) => n + o.need, 0)}`; },
+              get digest() { return `<span class="alarmT">${orgList.reduce((n,o) => n + o.need, 0)}</span> need you · ${orgList.length} orgs`; } },
+  portfolio:{ title:"Portfolio", right:"35 open · 5 blocked", body:projectRows, rows:[3,11], prio:2,
+              total:PROJECTS.length,
+              digest:'35 open · <span class="alarmT">5 blocked</span> · 11 projects' },
+  recent:   { title:"Recent",    right:"8 working",     body:recentRows,  rows:[3,12], prio:3,
+              total:RECENT.length,
+              digest:'8 working · 2 queued · 15 touched today' },
+  routines: { title:"Routines",  right:"3 need attention",   body:routineRows, rows:[2,4], prio:4,
+              total:ROUTINES.length,
+              digest:'<span class="alarmT">3</span> need attention · 4 healthy' },
+};
+const GAP = 10;   /* matches .rail's flex gap */
+
+function pane(key, opts = {}) {
+  const spec = PANES[key];
+  const p = el("section","pane");
+  p.dataset.pane = key;
+  const head = el("div","paneHead",
+    `<h2>${spec.title}</h2><span class="right">${opts.headRight ?? spec.right}</span>`);
+  if (opts.gear) head.append(gearButton());
+  p.append(head);
+  const body = el("div","paneBody");
+  body.append(spec.body(opts.rows));
+  p.append(body);
+  return p;
+}
+function collapse(p, key) {
+  const spec = PANES[key];
+  p.dataset.collapsed = "true";
+  p.querySelector(".paneHead .right").innerHTML =
+    `<span class="micro">${spec.digest}</span><span class="caret">▸</span>`;
+}
+
+/* ---------------------------------------------------------------- queue */
+function queue() {
+  const q = el("section","queue");
+  q.append(el("div","qHead",
+    `<span class="t">Needs you</span><span class="badge">14</span>
+     <span class="micro">3 today (1 overdue) · 7 unsorted · 1 snoozed</span>
+     <span class="right" style="margin-left:auto;display:flex;gap:4px">
+       <span class="chip on">Decide by</span><span class="chip">Severity</span>
+       <span class="chip">Org</span><span class="chip">Kind</span></span>`));
+  const body = el("div","qBody");
+  for (const [group, rows] of QUEUE) {
+    body.append(el("div","qGroup", group));
+    for (const [s,key,title,meta,age,tone] of rows)
+      body.append(el("div","qRow",
+        `${av(s)}<div class="body"><div class="ttl">${key ? `<span class="key">${key}</span> ` : ""}${esc(title)}</div>
+           <div class="micro ${tone}T">${esc(meta)}</div></div>
+         <span class="age">${age}</span>`));
+  }
+  q.append(body);
+  return q;
+}
+
+/* -------------------------------------------------------------- layouts */
+function gearButton() {
+  const b = el("button","gear","⚙ rail");
+  b.addEventListener("click", ev => { ev.stopPropagation(); togglePop(b); });
+  return b;
+}
+let popEl = null;
+/* The list reflects the rail beside it: the two panes this person kept are
+   ticked, the four they turned off are not. A settings panel that disagrees
+   with what is on screen is how a mockup lies. */
+const PANE_CHOICES = [["Orgs",1],["Portfolio",1],["Recent",0],["Routines",0],["Capacity",0],["Briefing",0]];
+function togglePop(anchor) {
+  if (popEl) { popEl.remove(); popEl = null; return; }
+  popEl = el("div","pop",`
+    <h3>Panes</h3>
+    ${PANE_CHOICES
+      .map(([n,on]) => `<div class="opt"><span class="drag">⠿</span>
+        <span class="sw ${on?"on":""}">${on?"✓":""}</span><span>${n}</span></div>`).join("")}
+    <hr>
+    <h3>Density</h3>
+    <div class="segmini"><button aria-pressed="false">Compact</button>
+      <button aria-pressed="true">Cosy</button><button aria-pressed="false">Roomy</button></div>
+    <h3 style="margin-top:9px">Rail width</h3>
+    <div class="segmini"><button aria-pressed="false">Narrow</button>
+      <button aria-pressed="true">Wide</button><button aria-pressed="false">Hidden</button></div>
+    <hr>
+    <div class="micro">Saved per person, per screen size. A short screen keeps its own list.</div>`);
+  const screen = document.getElementById("screen");
+  // Opens to the right of the gear, not over the rail: the point of the panel
+  // is to change what the rail shows, so the rail has to stay visible.
+  const a = anchor.getBoundingClientRect(), s = screen.getBoundingClientRect();
+  popEl.style.left = (a.right - s.left + 8) + "px";
+  popEl.style.top  = (a.top - s.top) + "px";
+  screen.append(popEl);
+}
+
+function layoutCurrent() {
+  const board = el("div","board");
+  const rail = el("div","rail");
+  // Today: four stacked cards, each with its own scroll cap in px.
+  const orgs = pane("orgs"); orgs.style.flex = "0 0 auto";
+  const recent = pane("recent"); recent.style.flex = "0 0 auto";
+  recent.querySelector(".paneBody").style.maxHeight = "256px";  /* max-h-64 */
+  const port = pane("portfolio"); port.style.flex = "1 1 auto"; port.style.minHeight = "0";
+  const rout = pane("routines"); rout.style.flex = "0 0 auto";
+  rout.querySelector(".paneBody").style.maxHeight = "160px";    /* max-h-40 */
+  rail.append(orgs, recent, port, rout);
+  board.append(rail, queue());
+  return board;
+}
+
+function layoutBudget() {
+  const board = el("div","board");
+  const rail = el("div","rail"); rail.dataset.mode = "budget";
+  for (const k of ["orgs","recent","portfolio","routines"]) {
+    const p = pane(k); p.style.flex = "0 0 auto"; rail.append(p);
+  }
+  board.append(rail, queue());
+  requestAnimationFrame(() => applyBudget(rail));
+  return board;
+}
+/* The whole point of A: the rail is told how tall it is, and it spends that
+   height instead of applying pixel caps that were chosen on somebody else's
+   monitor.
+     1. Every pane starts demoted — one header line, its digest in the corner.
+     2. In priority order, promote a pane if its minimum rows still fit.
+     3. Hand out what is left one row at a time, priority order, round-robin,
+        so the pane that most wants height gets it first but nothing starves.
+   Heights are always header + a whole number of rows, so no pane ever ends in
+   a half-drawn row. */
+function applyBudget(rail) {
+  const keys = ["orgs","portfolio","recent","routines"];
+  const order = [...keys].sort((a,b) => PANES[a].prio - PANES[b].prio);
+  // Measured, not guessed: a row's height depends on the theme's line-height
+  // and on density, and a constant that drifts from it is exactly how the
+  // current rail ends up drawing half a row.
+  const box = {};
+  for (const k of keys) {
+    const p = rail.querySelector(`[data-pane="${k}"]`);
+    // Second row, not the first: the first has no top border and would
+    // under-measure by a pixel per pane.
+    const list = p.querySelector(".paneBody").firstElementChild;
+    const row = list.children[1] ?? list.children[0];
+    box[k] = { p, head: p.querySelector(".paneHead").offsetHeight, rowH: row.offsetHeight };
+  }
+  const avail = rail.clientHeight - GAP * (keys.length - 1);
+  const rows = Object.fromEntries(keys.map(k => [k, 0]));   // 0 = demoted
+  const cost = () => keys.reduce((n,k) => n + box[k].head + rows[k] * box[k].rowH, 0);
+
+  for (const k of order) {
+    if (cost() + PANES[k].rows[0] * box[k].rowH <= avail) rows[k] = PANES[k].rows[0];
+  }
+  // Surplus goes out one row at a time, cycling the panes in priority order
+  // and skipping any that is already at its ideal. Orgs is cheap and first, so
+  // it is whole before Portfolio takes its fourth row; on a tall screen every
+  // pane grows together rather than one pane eating the height.
+  for (let moved = true; moved; ) {
+    moved = false;
+    for (const k of order) {
+      if (rows[k] === 0 || rows[k] >= PANES[k].rows[1]) continue;
+      if (cost() + box[k].rowH > avail) continue;
+      rows[k] += 1; moved = true;
+    }
+  }
+  for (const k of keys) {
+    if (rows[k] === 0) { collapse(box[k].p, k); box[k].p.style.height = ""; continue; }
+    box[k].p.style.height = (box[k].head + rows[k] * box[k].rowH) + "px";
+    // A pane that is holding rows back has to say so. The current rail hides
+    // them behind a pixel cap and the only tell is a row cut in half.
+    const hidden = PANES[k].total - rows[k];
+    if (hidden > 0)
+      box[k].p.querySelector(".paneHead .right").innerHTML =
+        `<span>${PANES[k].right}</span><span class="micro">+${hidden} more</span>`;
+  }
+  countScrollers();
+}
+
+function layoutTabs() {
+  const board = el("div","board");
+  const rail = el("div","rail");
+  const orgs = pane("orgs"); orgs.style.flex = "0 0 auto";
+  // Everything that is not navigation shares one tall panel with one scrollbar.
+  const box = el("section","pane"); box.style.flex = "1 1 auto"; box.style.minHeight = "0";
+  const tabs = el("div","tabs",`
+    <button aria-selected="true">Portfolio <span class="tb alarm">5</span></button>
+    <button aria-selected="false">Recent <span class="tb">8</span></button>
+    <button aria-selected="false">Routines <span class="tb alarm">3</span></button>`);
+  const body = el("div","paneBody"); body.style.flex = "1 1 auto";
+  body.append(projectRows());
+  const render = i => { body.innerHTML = "";
+    body.append([projectRows, recentRows, routineRows][i]()); };
+  [...tabs.children].forEach((b,i) => b.addEventListener("click", () => {
+    [...tabs.children].forEach(x => x.setAttribute("aria-selected","false"));
+    b.setAttribute("aria-selected","true"); render(i); countScrollers();
+  }));
+  box.append(tabs, body);
+  rail.append(orgs, box);
+  board.append(rail, queue());
+  return board;
+}
+
+function layoutCustom() {
+  const board = el("div","board");
+  const rail = el("div","rail"); rail.style.width = "300px";
+  // The user's saved list: Orgs + Portfolio only, compact, Recent and Routines off.
+  const orgs = pane("orgs",{ gear:true }); orgs.style.flex = "0 0 auto";
+  const port = pane("portfolio"); port.style.flex = "1 1 auto"; port.style.minHeight = "0";
+  rail.append(orgs, port);
+  board.append(rail, queue());
+  requestAnimationFrame(() => {
+    const gear = rail.querySelector(".gear");
+    if (gear) togglePop(gear);
+  });
+  return board;
+}
+
+function layoutStrip() {
+  const board = el("div","board"); board.style.flexDirection = "column";
+  const strip = el("div","strip");
+  const cards = [
+    ["Needs you", `14<small>3 today</small>`, "alarm"],
+    ["Acme", `5<small>24/d</small>`, ""], ["Globex", `4<small>13/d</small>`, ""],
+    ["Initech", `8<small>24/d</small>`, ""], ["Umbra", `0<small>4/d</small>`, ""],
+    ["Portfolio", `35<small>5 blocked</small>`, "alarm"],
+    ["Recent", `8<small>working</small>`, "live"],
+    ["Routines", `3<small>need you</small>`, "alarm"],
+  ];
+  cards.forEach(([k,v,tone],i) => {
+    const c = el("div","stripCard",
+      `<span class="k"><span class="dot ${tone}"></span>${k}</span><span class="v">${v}</span>`);
+    if (i === 5) c.dataset.open = "true";
+    c.addEventListener("click", () => {
+      [...strip.children].forEach(x => delete x.dataset.open);
+      c.dataset.open = "true";
+    });
+    strip.append(c);
+  });
+  const drawer = el("section","drawer");
+  drawer.append(el("div","paneHead",
+    `<h2>Portfolio</h2><span class="right">35 open · 5 blocked · click a card above to swap · Esc closes</span>`));
+  // Four whole rows, not a pixel cap: the drawer is sized by what it shows.
+  const db = el("div","paneBody"); db.append(projectRows(4)); drawer.append(db);
+  const q = queue(); q.style.flex = "1 1 auto";
+  board.append(strip, drawer, q);
+  return board;
+}
+
+const LAYOUTS = { current:layoutCurrent, budget:layoutBudget, tabs:layoutTabs, custom:layoutCustom, strip:layoutStrip };
+
+/* ----------------------------------------------------------------- notes */
+const NOTES = {
+current:{ title:"Today — four cards, four scroll caps", tag:["no","Ships today"],
+  lead:"Orgs, Recent, Portfolio and Routines are stacked in one sticky column capped at <code>100vh − 2rem</code>. Recent is capped at 256px, Routines at 160px, Portfolio takes what is left, and Orgs is capped at nothing at all.",
+  what:["Those caps are pixel constants: a 27&Prime; monitor gets the same 160px of Routines as a 13&Prime; laptop.",
+        "Because Orgs has no cap, every org you watch pushes the panes below it down. Switch the org count above to 12 and Portfolio leaves the screen entirely — this is the failure, and it arrives by adding orgs, not by resizing.",
+        "Heights are not a whole number of rows, so panes end in a row cut through the middle. That is most of what reads as “ugly”.",
+        "Five scroll regions on one page, four of them in a 330px column, and none of them says how much it is holding back.",
+        "Nothing is optional: a person who never opens Portfolio still pays its height on every screen."],
+  verdict:"The bug is not the styling — it is that the rail does not know how tall it is, how many orgs it has, or which panes you care about." },
+
+budget:{ title:"A · Height budget", tag:["rec","Recommended"],
+  lead:"The rail is told its height and spends it. Each pane declares a minimum, an ideal and a priority; every pane gets its minimum, then the surplus goes out a row at a time in priority order until the height is gone.",
+  what:["No pixel caps anywhere. Heights are a header plus a whole number of measured rows, so no pane ever ends mid-row.",
+        "A pane that is holding rows back says <em>“+8 more”</em> in its header instead of letting you discover it by scrolling into it.",
+        "Twelve orgs no longer push Portfolio off the screen: Orgs is capped by the budget like everything else, and the other three panes keep their minimum.",
+        "Below its minimum a pane demotes to a single digest line — <em>“3 need attention ▸”</em>, one click from opening. On a 4-pane rail that only happens under about 480px of height; it is what keeps a 6-pane custom rail (C) honest.",
+        "Same panes, same order, same components. This is a layout change in <code>TicklerBoardPage</code> plus <code>min/ideal/priority</code> per pane — no new user-facing concepts.",
+        "Switch screen size and org count above and watch the rows redistribute."],
+  verdict:"Smallest change that actually answers “account for screen size”, and it is what makes C safe to ship." },
+
+tabs:{ title:"B · One tall panel, tabbed", tag:["alt","Alternative"],
+  lead:"Orgs stays pinned — it is navigation and a filter, not content. Recent, Portfolio and Routines become one panel that takes every remaining pixel, with badges carrying the signal you would otherwise lose.",
+  what:["One scrollbar in the rail instead of four. The open pane gets roughly 3× the height it has today.",
+        "Badges do the work of the hidden panes: <em>Routines 3</em> in alarm colour is the same alert the pane was carrying.",
+        "Costs a click to see something you can see today, and the tab you left is out of sight — a failed routine is only a number until you go back.",
+        "Cheap to build and it fully removes the nested-scroll problem."],
+  verdict:"Take this if the rail should be strictly one thing at a time; otherwise A keeps more on screen." },
+
+custom:{ title:"C · Customisable rail", tag:["rec","Recommended — with A"],
+  lead:"A gear on the rail: which panes appear, in what order, how dense, and how wide — saved per person and per screen size, so a laptop and a desk monitor can keep different lists. Shown here as one person has it: Orgs and Portfolio kept, the rest turned off, and Portfolio given the whole column.",
+  what:["Answers the part of the request that layout alone cannot: if you never read Portfolio, turn it off and give the height to Recent.",
+        "Per-breakpoint saves matter. One list for every screen just moves the problem — the laptop wants three panes, the 27&Prime; wants six.",
+        "Opens the door to panes we already have but do not show here (Capacity, Briefing) without crowding the default.",
+        "Needs somewhere to persist: plugin user settings, same place the token thresholds live.",
+        "Defaults still have to be right, which is why this ships <em>with</em> A and not instead of it."],
+  verdict:"Ship after A. Customisation on top of a rail that already behaves is a preference; on top of one that does not, it is a workaround." },
+
+strip:{ title:"D · No rail — context strip + drawer", tag:["alt","For narrow screens"],
+  lead:"The rail becomes a row of dense cards above the queue. Clicking a card opens it in a drawer; the queue keeps the full width the rest of the time.",
+  what:["The queue gets ~330px back, which is the difference between truncating a task title and reading it.",
+        "It is already what the board does below 64rem, where the rail stacks on top — this makes the fallback deliberate instead of accidental.",
+        "Everything becomes a number: you lose the at-a-glance shape of the Portfolio bars and the Recent list.",
+        "Strongest on a phone or a narrow split screen, weakest on the 27&Prime; monitor where there is height to spare."],
+  verdict:"Not the default. Worth adopting as the sub-64rem layout that A and C fall back to." },
+};
+function renderNotes(key) {
+  const n = NOTES[key];
+  document.getElementById("notes").innerHTML = `
+    <h3><span class="tag ${n.tag[0]}">${n.tag[1]}</span>${n.title}</h3>
+    <p class="lead">${n.lead}</p>
+    <h4>What it does</h4>
+    <ul>${n.what.map(x => `<li>${x}</li>`).join("")}</ul>
+    <div class="verdict">${n.verdict}</div>`;
+}
+
+/* ------------------------------------------------------------------ wire */
+let layout = "current", screenSize = [1440,900];
+function countScrollers() {
+  const n = [...document.querySelectorAll("#screen .paneBody, #screen .qBody")]
+    .filter(x => x.scrollHeight > x.clientHeight + 2).length;
+  document.getElementById("scrollcount").innerHTML =
+    `<b>${n}</b> scroll region${n === 1 ? "" : "s"} with content hidden below the fold, at this screen size.`;
+}
+function render() {
+  const [w,h] = screenSize;
+  const screen = document.getElementById("screen");
+  // Shown at 0.62 of true size so a 27" screen fits on the page; layout maths
+  // runs at full size, so what collapses here is what collapses for real.
+  const scale = Math.min(1, 940 / w, 640 / h);
+  screen.style.width = w + "px"; screen.style.height = h + "px";
+  screen.style.transform = `scale(${scale})`;
+  screen.style.transformOrigin = "top left";
+  const wrap = screen.parentElement;
+  wrap.style.width = Math.round(w * scale) + "px";
+  wrap.style.height = Math.round(h * scale) + 46 + "px";
+  document.getElementById("screenMeta").textContent =
+    `${w} × ${h} CSS px · shown at ${Math.round(scale*100)}% · host sidebar collapsed to a rail`;
+  const slot = document.getElementById("boardSlot");
+  slot.className = ""; slot.style.flex = "1"; slot.style.minHeight = "0";
+  slot.style.display = "flex";
+  slot.innerHTML = "";
+  if (popEl) { popEl.remove(); popEl = null; }
+  const board = LAYOUTS[layout]();
+  board.style.flex = "1"; board.style.minWidth = "0";
+  slot.append(board);
+  renderNotes(layout);
+  requestAnimationFrame(countScrollers);
+}
+document.querySelectorAll("[data-layout]").forEach(b => b.addEventListener("click", () => {
+  document.querySelectorAll("[data-layout]").forEach(x => x.setAttribute("aria-pressed","false"));
+  b.setAttribute("aria-pressed","true"); layout = b.dataset.layout; render();
+}));
+document.querySelectorAll("[data-screen]").forEach(b => b.addEventListener("click", () => {
+  document.querySelectorAll("[data-screen]").forEach(x => x.setAttribute("aria-pressed","false"));
+  b.setAttribute("aria-pressed","true");
+  screenSize = b.dataset.screen.split("x").map(Number); render();
+}));
+document.querySelectorAll("[data-orgs]").forEach(b => b.addEventListener("click", () => {
+  document.querySelectorAll("[data-orgs]").forEach(x => x.setAttribute("aria-pressed","false"));
+  b.setAttribute("aria-pressed","true");
+  orgList = b.dataset.orgs === "12" ? ORGS_MANY : ORGS; render();
+}));
+document.getElementById("bDark").addEventListener("click", () => setTheme("dark"));
+document.getElementById("bLight").addEventListener("click", () => setTheme("light"));
+function setTheme(t) {
+  document.documentElement.dataset.theme = t;
+  document.getElementById("bDark").setAttribute("aria-pressed", String(t === "dark"));
+  document.getElementById("bLight").setAttribute("aria-pressed", String(t === "light"));
+}
+document.addEventListener("keydown", e => { if (e.key === "Escape" && popEl) { popEl.remove(); popEl = null; } });
+render();
+</script>
+</body>
+</html>
