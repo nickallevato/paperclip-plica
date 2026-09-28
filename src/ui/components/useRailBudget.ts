@@ -34,6 +34,23 @@ function scrollPort(node: HTMLElement): HTMLElement | null {
 }
 
 /**
+ * How far the rail's top sits below the top of the box it scrolls inside.
+ *
+ * Laid-out offsets rather than client rects, because `position: sticky` moves
+ * where a box is painted without moving where it was laid out: a pinned rail
+ * reports a rect at the top of the band, and sizing against that is how the
+ * height starts changing under a scroll.
+ */
+function offsetWithin(node: HTMLElement, port: HTMLElement): number {
+  const laidOutTop = (from: HTMLElement): number => {
+    let top = 0;
+    for (let el: HTMLElement | null = from; el; el = el.offsetParent as HTMLElement | null) top += el.offsetTop;
+    return top;
+  };
+  return Math.max(0, laidOutTop(node) - laidOutTop(port));
+}
+
+/**
  * Measure the rail and hand each pane its height.
  *
  * The panes mark themselves up for this: `data-rail-pane` on the pane,
@@ -75,7 +92,16 @@ export function useRailBudget(specs: readonly TicklerRailPaneSpec[]): {
     // The rail is told its height here rather than in a class, because the band
     // it is pinned inside belongs to the host, not to the window.
     const port = scrollPort(rail);
-    const band = port ? Math.max(0, port.clientHeight - 2 * GUTTER) : 0;
+    // Less what the rail starts below: the board's own header is inside the
+    // scrolling box and above the rail, so at rest — which is where the page
+    // opens, and where it stays until someone scrolls it — a rail given the
+    // whole band hangs exactly that far below the fold. Measured at 2560×1400:
+    // a 1308px rail starting 118px down a 1340px box, with Routines 65px past
+    // the bottom of the screen. The offset is static, so the rail keeps one
+    // height whatever the scroll position; once it pins at `top-4` the cost is
+    // that much unused room under it, which is a gap rather than a clipped pane.
+    const head = port ? Math.max(GUTTER, offsetWithin(rail, port)) : 0;
+    const band = port ? Math.max(0, port.clientHeight - head - GUTTER) : 0;
     rail.style.height = band > 0 ? `${band}px` : "";
     for (const spec of specs) {
       const pane = rail.querySelector<HTMLElement>(`[data-rail-pane="${spec.key}"]`);

@@ -135,7 +135,9 @@ Down the left of the board:
 
 ![The portfolio chart and the routine exceptions beneath it](screenshots/portfolio.png)
 
-The rail is as tall as the window and **spends that height** on the panes in it.
+The rail is as tall as the screen leaves it — the band below the board's own
+header, which is shorter than the window — and **spends that height** on the
+panes in it.
 Each pane asks for the fewest rows worth drawing and the most rows worth keeping;
 every pane gets its minimum, and what is left over goes out a row at a time,
 Orgs first, then Portfolio, Recent and Routines. So a bigger monitor shows more

@@ -17,6 +17,12 @@ node scripts/capture-screenshots.mjs --only board,queue-by-company
 Refresh them whenever a UI change makes one wrong. A stale screenshot is the
 documentation defect nobody files a bug for.
 
+`rail/` is the exception, and comes from `scripts/capture-rail.mjs` instead.
+Those are whole screens rather than crops, because the question they answer —
+does the bottom of the rail fit above the fold — is a question about the fold,
+which a crop has already thrown away. They come in `-before`/`-after` pairs and
+are kept as the evidence for one change rather than refreshed with the rest.
+
 ## The instance it needs
 
 Do **not** point this at your working instance: it drives the browser, and in

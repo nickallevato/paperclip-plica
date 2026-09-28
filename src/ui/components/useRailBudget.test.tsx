@@ -24,7 +24,7 @@ const PANES: TicklerRailPaneSpec[] = [
  * a scrolling box of whatever height the test asks for. The rail gets that
  * height less a 16px gutter top and bottom, which is the hook's own arithmetic.
  */
-function stubGeometry(portHeight: number): () => void {
+function stubGeometry(portHeight: number, railTop = 0): () => void {
   const height = (node: HTMLElement): number => {
     if (node.dataset.railHead !== undefined) return 28;
     if (node.dataset.railFoot !== undefined) return 20;
@@ -48,9 +48,20 @@ function stubGeometry(portHeight: number): () => void {
       return this.dataset.rail === "port" ? portHeight : 0;
     },
   });
+  // What the rail starts below inside the scrolling box — the board's own
+  // header, in the app. jsdom reports every `offsetTop` as zero, which is the
+  // pinned case; a test asks for the resting one by passing a height.
+  const top = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "offsetTop");
+  Object.defineProperty(HTMLElement.prototype, "offsetTop", {
+    configurable: true,
+    get(this: HTMLElement) {
+      return this.dataset.rail === "rail" ? railTop : 0;
+    },
+  });
   return () => {
     if (offset) Object.defineProperty(HTMLElement.prototype, "offsetHeight", offset);
     if (client) Object.defineProperty(HTMLElement.prototype, "clientHeight", client);
+    if (top) Object.defineProperty(HTMLElement.prototype, "offsetTop", top);
   };
 }
 
@@ -87,8 +98,8 @@ function Rail({ orgRows, projectRows }: { orgRows: number; projectRows: number }
 let teardown: (() => void)[] = [];
 
 /** `portHeight` is the scrolling box; the rail gets 32px less than it. */
-function render(portHeight: number, rows = { orgRows: 12, projectRows: 11 }): HTMLDivElement {
-  teardown.push(stubGeometry(portHeight));
+function render(portHeight: number, rows = { orgRows: 12, projectRows: 11 }, railTop = 0): HTMLDivElement {
+  teardown.push(stubGeometry(portHeight, railTop));
   const container = document.createElement("div");
   document.body.appendChild(container);
   const root = createRoot(container);
@@ -114,6 +125,16 @@ describe("useRailBudget", () => {
   it("gives the rail the band it is pinned inside, not the window", () => {
     const container = render(632);
     expect(container.querySelector<HTMLElement>("[data-rail='rail']")!.style.height).toBe("600px");
+  });
+
+  it("leaves out what the rail starts below, so the last pane is above the fold", () => {
+    // The page opens at the top, where the rail begins under the board's own
+    // header rather than at the top of the scrolling box. A rail given the
+    // whole band there is that much taller than the screen, and the bottom
+    // pane hangs off it: 632 less a 118px header and one 16px gutter, not
+    // less two gutters.
+    const container = render(632, { orgRows: 12, projectRows: 11 }, 118);
+    expect(container.querySelector<HTMLElement>("[data-rail='rail']")!.style.height).toBe("498px");
   });
 
   it("pins each pane to a header plus whole rows", () => {
