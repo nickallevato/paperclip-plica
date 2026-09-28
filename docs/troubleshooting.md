@@ -104,6 +104,27 @@ instance's logs for that company. If a company's poll fails outright with no
 data at all, its row is marked unavailable instead, and its numbers are blanked
 rather than drawn as zeroes.
 
+## No update button, though a newer Tickler is published
+
+The gear panel's first row says which of these it is.
+
+- **"Could not check npm for a newer version."** The check is a browser request
+  to `registry.npmjs.org/paperclip-plugin-tickler/latest`, so an instance behind
+  a proxy that does not allow it, or with no route out at all, cannot answer.
+  Upgrade from the CLI instead
+  ([Install](install.md#upgrading-an-npm-install)). Tickler deliberately offers
+  nothing rather than a button whose version it had to guess.
+- **"Installed from a local checkout."** This install's updates come from its
+  own `dist`, not from npm — `git pull && pnpm build`, then the **Reload** chip
+  ([Install](install.md#upgrading-tickler)).
+- **"Up to date", with a version you know is behind.** Paperclip's registration
+  is what Tickler compares, and a registration can lag the files on disk. That
+  is the **Reload** case above.
+
+And if the button is there but refuses: **"Only an instance admin can update
+Tickler"** is Paperclip's rule, not Tickler's — the upgrade route is
+admin-only.
+
 ## A company shows no token figure
 
 Token spend comes from a permission-gated costs endpoint. A viewer without cost

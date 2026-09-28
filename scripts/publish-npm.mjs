@@ -116,8 +116,10 @@ export function resolveAuth({ token = "", tokenSource = "", oidcAvailable = fals
  *
  * npm's own two failures here are both misleading. `ENEEDAUTH` ("you need to
  * authorize this machine") is what a job with an OIDC token gets when the
- * package has no trusted publisher configured — nothing is wrong with the
- * machine. `E403` ("you may not perform that action with these credentials") is
+ * registry refuses the token exchange for any reason at all — nothing is wrong
+ * with the machine, and the message is the same whether the package has no
+ * trusted publisher or has one that does not match this run, so this hint must
+ * not pick one. `E403` ("you may not perform that action with these credentials") is
  * what a read-only token gets, and it reads like an account problem even though
  * the same token authenticates fine and can read the package.
  *
@@ -141,9 +143,13 @@ export function failureHint(authKind) {
   if (authKind === "oidc") {
     return (
       "If npm said it needs auth: no token was set, so this used trusted " +
-      "publishing — which npm only honours once the package lists this " +
-      "workflow as a trusted publisher (npmjs.com → the package → Settings → " +
-      "Trusted publishers). Configure it there, or set the NPM_TOKEN secret."
+      "publishing, and npm refused the exchange. That refusal does not say " +
+      "whether the package has no trusted publisher entry or has one that does " +
+      "not match this run — including an entry left naming a former repository " +
+      "or account name, which stops matching the moment the rename lands. The " +
+      "diagnostic below prints npm's own answer and this run's OIDC claims; " +
+      "compare them with npmjs.com → the package → Settings → Trusted " +
+      "publishers. Or set the NPM_TOKEN secret."
     );
   }
   return "";

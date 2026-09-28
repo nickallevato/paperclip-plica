@@ -1,0 +1,46 @@
+name: npm oidc diagnostic
+
+# Asks npm why it refused trusted publishing, and publishes nothing.
+#
+# The exchange npm performs before a publish can only be observed from a job
+# holding a GitHub OIDC token, so until now answering "does the trusted
+# publisher entry match?" meant pushing a throwaway branch and tag and reading
+# a failed release. Three release attempts on PLI-239 went that way. This runs
+# the same probe on demand instead.
+#
+# It must not be able to publish, and the safeguards are structural rather than
+# a promise: `contents: read` is the only repository permission, no npm token
+# is passed in, dependencies are never installed so no lifecycle script runs,
+# and the only step is `node` on a script that performs two HTTP requests.
+# `id-token: write` is what makes the diagnosis possible and is the one thing
+# that cannot be dropped — it mints an OIDC token, which is not a publish
+# credential; only a trusted publisher entry could turn one into a publish, and
+# that is the very thing under investigation.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  diagnose:
+    name: ask npm why
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          # No `registry-url`: that writes an .npmrc, and this job wants npm's
+          # unauthenticated answer, not one shaped by a credential.
+
+      # No install step. The script imports nothing outside node:*, and keeping
+      # it that way is what makes "this cannot publish" checkable by reading.
+      #
+      # A red run here means npm refused the exchange, which is the finding, not
+      # a broken workflow. The reason is in the step log either way.
+      - name: Diagnose the npm OIDC exchange
+        run: node scripts/diagnose-npm-oidc.mjs

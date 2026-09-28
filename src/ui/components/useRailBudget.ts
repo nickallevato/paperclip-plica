@@ -7,6 +7,7 @@ import {
   type TicklerRailPaneMetrics,
   type TicklerRailPaneSpec,
 } from "../lib/rail-budget";
+import { resolveScrollport } from "../lib/scrollport";
 
 /** Fallback when the rail has no computed gap to read — matches `gap-4`. */
 const FALLBACK_GAP = 16;
@@ -25,12 +26,15 @@ const GUTTER = 16;
  * `100vh - 2rem` — which is what it was — is therefore taller than the band it
  * can ever occupy, and the pane at the bottom hangs below the fold: exactly the
  * complaint this work exists to answer, arrived at from the other direction.
+ *
+ * `resolveScrollport` is the walk, and it answers `null` for the two cases where
+ * the page itself scrolls — narrow hosts that leave `<main>` visible, and kiosk
+ * mode, where the top-layer box is the screen and a scroller above it governs
+ * nothing. There the document element is the band, and its `clientHeight` is the
+ * viewport.
  */
 function scrollPort(node: HTMLElement): HTMLElement | null {
-  for (let parent = node.parentElement; parent; parent = parent.parentElement) {
-    if (/auto|scroll|overlay/.test(getComputedStyle(parent).overflowY)) return parent;
-  }
-  return node.ownerDocument.scrollingElement as HTMLElement | null;
+  return resolveScrollport(node) ?? node.ownerDocument.documentElement;
 }
 
 /**

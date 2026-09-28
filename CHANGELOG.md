@@ -18,6 +18,42 @@ Short-form. The reader-facing write-up for each version is in
   seat falls back to its header instead of being clipped, and a taller monitor
   goes into the panes rather than into a scrollbar. The layout studies behind it
   are in [docs/mockups](docs/mockups/README.md).
+- **Tickler updates itself from a button.** Moving to a new version meant
+  uninstalling and reinstalling the plugin, which throws away its config row —
+  Paperclip's Plugin Manager has no update button, though the server has had the
+  endpoint all along. Tickler now checks npm for a newer version of itself and
+  offers it: an **Update to 0.x.y** chip in the page header, and the same button
+  on a new first row of the gear panel that names the version you are on.
+  Pressing it upgrades in place, keeps your settings, and reloads onto the new
+  build. Instance admins only, silent when npm cannot be reached, and it stands
+  down for a local-path install — there the **Reload** chip still owns updates.
+- **The npm OIDC diagnostic no longer guesses why npm refused.** The registry
+  answers `404 ... package not found` both when a package has no trusted
+  publisher entry and when it has one that does not match the run, so the old
+  message — a hardcoded list of what the fields were supposed to be — read as a
+  verdict it could not support, and `publish-npm.mjs` separately claimed the
+  entry was missing. Both now say the 404 is ambiguous and name the case that
+  produced it: a repository rename leaves entries pointing at the old path.
+  On a refusal the script decodes its own OIDC token and prints the
+  `repository`, `repository_owner`, `workflow_ref` and `environment` claims the
+  run actually presents, which is the half of the comparison npmjs.com cannot
+  show. Never the token itself.
+- **A `npm oidc diagnostic` workflow runs that probe on demand**, so answering
+  "does the trusted publisher entry match?" no longer costs a throwaway branch
+  and a failed release. It holds `contents: read`, installs nothing and takes no
+  npm token; it cannot publish.
+
+## 0.7.1
+
+- **The board's left column no longer runs off the bottom of the page.** It is
+  pinned inside Paperclip's scrolling `<main>`, which is shorter than the window
+  by the height of the host's chrome, but it was capped at the window's height —
+  so its last panels were painted below the edge of the scroll area and nothing
+  could scroll to them, and the column appeared to move only while the queue on
+  the right scrolled. The cap is now measured from the box the column is
+  actually pinned in, the column scrolls itself when its panels still do not
+  fit, and Portfolio keeps a minimum height instead of being squeezed to a bare
+  heading.
 
 ## 0.7.0
 

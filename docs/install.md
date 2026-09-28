@@ -66,8 +66,15 @@ Then [confirm it loaded](#confirm-it-loaded) and
 
 ### Upgrading an npm install
 
-Paperclip's Plugin Manager has no upgrade button, but the server has an upgrade
-endpoint and the CLI exposes it:
+**From the page.** Tickler checks npm for a newer version of itself and offers
+it: an **Update to 0.x.y** chip in the page header, and the same button on the
+first row of the gear panel, which also names the version you are on. Pressing
+it upgrades in place — no uninstall, settings kept — and reloads the page onto
+the new build. Instance admins only, and silent when npm cannot be reached. See
+[configuration.md](configuration.md#version-and-updates).
+
+**From the CLI**, which is what that button calls and the way to pin a
+particular version:
 
 ```bash
 paperclipai plugin upgrade nickallevato.plugin-tickler
@@ -91,12 +98,16 @@ limits, both the host's:
 - **A version that adds a capability is refused.** Paperclip only grants
   capabilities at install, so an upgrade that declares a new one fails with an
   error naming it. Uninstall and reinstall Tickler to take that version; the
-  release notes say when a version needs this.
+  release notes say when a version needs this. The in-page button says the same
+  thing when the host refuses for this reason.
 
 The **Reload 0.x.y** chip described under [upgrading from source](#upgrading-tickler)
 does not appear for an npm install: the code Paperclip serves and the version it
 has registered always move together, so there is never a newer build on disk
-for the chip to offer.
+for the chip to offer. The **Update to 0.x.y** chip is the npm counterpart, and
+appears only for an npm install — Tickler tells the two apart by the
+`packagePath` on its own plugin record, which the host sets for a local-path
+install and leaves null for an npm one.
 
 ### Upgrading Paperclip
 

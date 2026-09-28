@@ -258,15 +258,20 @@ export function TicklerBoardPage({
       <div className="grid gap-4 @[64rem]/board:grid-cols-[minmax(320px,400px)_minmax(0,1fr)] @[96rem]/board:grid-cols-[440px_minmax(0,1fr)] [.tickler-kiosk_&]:gap-6 [.tickler-kiosk_&]:@[110rem]/board:grid-cols-[540px_minmax(0,1fr)]">
         {/* A column that knows its own height can spend it: `useRailBudget`
             gives this box the height of the band it is pinned inside — the
-            host's scrolling `<main>`, which is shorter than the window and
-            offset down it — and hands every pane below a height of header plus
-            a whole number of rows (see `distributeRailHeight`). The `max-h`
-            here is only what holds until that first measurement, and
-            `overflow-y-auto` is the floor under it all, for a window too short
-            to seat even the demoted headers. */}
+            host's scrolling `<main>` (see `lib/scrollport`), which is shorter
+            than the window and offset down it, so `100vh` overshot it by the
+            height of the host's chrome and hung the rail's last panel below the
+            edge where nothing could scroll to it (PLI-243) — and hands every
+            pane below a height of header plus a whole number of rows (see
+            `distributeRailHeight`). `--tickler-rail-max-h` is only the
+            viewport-based cap that holds until that first measurement, or for a
+            host without ResizeObserver, and `overflow-y-auto` is the floor
+            under it all, for a window too short to seat even the demoted
+            headers. Scroll chaining is left on: at the end of the rail the
+            wheel should carry on down the page, not stop dead. */}
         <div
           ref={railRef}
-          className="contents @[64rem]/board:sticky @[64rem]/board:top-4 @[64rem]/board:flex @[64rem]/board:max-h-[calc(100vh-2rem)] @[64rem]/board:min-w-0 @[64rem]/board:flex-col @[64rem]/board:gap-4 @[64rem]/board:self-start @[64rem]/board:overflow-y-auto"
+          className="contents @[64rem]/board:sticky @[64rem]/board:top-4 @[64rem]/board:flex @[64rem]/board:max-h-[var(--tickler-rail-max-h)] @[64rem]/board:min-w-0 @[64rem]/board:flex-col @[64rem]/board:gap-4 @[64rem]/board:self-start @[64rem]/board:overflow-y-auto"
         >
           <section
             data-tickler-companies
@@ -356,6 +361,10 @@ export function TicklerBoardPage({
             companies={companies}
             sort={portfolioSort}
             onSort={onPortfolioSort}
+            // No `min-h` floor here any more: the budget is what keeps Portfolio
+            // from being squeezed to nothing by a tall stack of orgs — it is
+            // given a height of its own, or demoted to its header, rather than
+            // left to fight the panes above it for the leftovers.
             budget={budget.portfolio}
             className="order-4 min-h-0 min-w-0 flex-1 @[64rem]/board:order-none"
           />
