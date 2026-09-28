@@ -3,6 +3,7 @@
 One page per version, written for someone deciding whether to upgrade: what
 changed, what it means for them, and anything they have to do by hand.
 
+- [0.7.1](0.7.1.md) — the board's left column is no longer cut off at the bottom.
 - [0.7.0](0.7.0.md) — Plica is now Tickler: new package name, plugin id and route.
 - [0.6.0](0.6.0.md) — no plugin change: the first release published by pushing a
   tag, not by hand.
