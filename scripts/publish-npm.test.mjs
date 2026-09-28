@@ -141,6 +141,12 @@ describe("failureHint", () => {
     expect(failureHint("oidc")).toContain("Trusted publishers");
   });
 
+  it("does not assert the entry is missing, which npm's refusal never says", () => {
+    const hint = failureHint("oidc");
+    expect(hint).toContain("does not say whether");
+    expect(hint).toMatch(/renam/i);
+  });
+
   it("says nothing extra for a local ~/.npmrc, where npm's own error is the truth", () => {
     expect(failureHint("local")).toBe("");
   });

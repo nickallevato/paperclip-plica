@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { AUDIENCE, diagnose, exchangeUrl, explain, main } from "./diagnose-npm-oidc.mjs";
+import { AUDIENCE, decodeClaims, diagnose, exchangeUrl, explain, main } from "./diagnose-npm-oidc.mjs";
 
 /** A fetch that answers a scripted sequence, and records what it was asked. */
 function fakeFetch(responses) {
@@ -24,7 +24,31 @@ const actionsEnv = {
   ACTIONS_ID_TOKEN_REQUEST_TOKEN: "request-token",
 };
 
-const idTokenOk = { status: 200, body: JSON.stringify({ value: "header.payload.signature" }) };
+/** A token shaped like GitHub's: three segments, the middle one base64url JSON. */
+function jwt(claims) {
+  return `header.${Buffer.from(JSON.stringify(claims)).toString("base64url")}.signature`;
+}
+
+/**
+ * A plausible run: the repository was renamed, so these no longer match an entry
+ * naming the old path. `actor` is here to prove only the four claims are shown.
+ */
+const runClaims = {
+  repository: "an-owner/repo-after-the-rename",
+  repository_owner: "an-owner",
+  workflow_ref: "an-owner/repo-after-the-rename/.github/workflows/release.yml@refs/tags/v9.9.9",
+  environment: "",
+  actor: "unreported-actor-claim",
+};
+
+const idToken = jwt(runClaims);
+const idTokenOk = { status: 200, body: JSON.stringify({ value: idToken }) };
+const decodedRunClaims = {
+  repository: runClaims.repository,
+  repository_owner: runClaims.repository_owner,
+  workflow_ref: runClaims.workflow_ref,
+  environment: "",
+};
 
 describe("exchangeUrl", () => {
   it("addresses the package npm trades a token for", () => {
@@ -65,7 +89,7 @@ describe("diagnose", () => {
     const { impl, calls } = fakeFetch([idTokenOk, { status: 200, body: JSON.stringify({ token: "npm_x" }) }]);
     const result = await diagnose({ env: actionsEnv, packageName: "pkg", fetchImpl: impl });
     expect(calls[1].init.method).toBe("POST");
-    expect(calls[1].init.headers.authorization).toBe("Bearer header.payload.signature");
+    expect(calls[1].init.headers.authorization).toBe(`Bearer ${idToken}`);
     expect(result).toMatchObject({ stage: "exchange", ok: true, status: 200 });
   });
 
@@ -92,13 +116,53 @@ describe("diagnose", () => {
       ok: false,
       status: 404,
       message: "package is not configured for trusted publishing",
+      claims: decodedRunClaims,
     });
+  });
+
+  it("carries the run's own claims back, so the refusal has something to compare against", async () => {
+    const { impl } = fakeFetch([idTokenOk, { status: 404, body: JSON.stringify({ message: "package not found" }) }]);
+    const result = await diagnose({ env: actionsEnv, packageName: "pkg", fetchImpl: impl });
+    expect(result.claims).toEqual(decodedRunClaims);
+    expect(result.claims).not.toHaveProperty("actor");
+  });
+
+  it("reports no claims rather than failing when the token will not decode", async () => {
+    const { impl } = fakeFetch([
+      { status: 200, body: JSON.stringify({ value: "not-a-jwt" }) },
+      { status: 404, body: "package not found" },
+    ]);
+    const result = await diagnose({ env: actionsEnv, packageName: "pkg", fetchImpl: impl });
+    expect(result).toMatchObject({ stage: "exchange", ok: false, claims: null });
   });
 
   it("falls back to the raw body when the registry does not answer in JSON", async () => {
     const { impl } = fakeFetch([idTokenOk, { status: 502, body: "<html>bad gateway</html>" }]);
     const result = await diagnose({ env: actionsEnv, packageName: "pkg", fetchImpl: impl });
     expect(result.message).toBe("<html>bad gateway</html>");
+  });
+});
+
+describe("decodeClaims", () => {
+  it("reads the four claims npm matches on", () => {
+    expect(decodeClaims(idToken)).toEqual(decodedRunClaims);
+  });
+
+  it("copies out nothing else, whatever the token carries", () => {
+    const claims = decodeClaims(jwt({ ...runClaims, sub: "repo:owner/name:ref:refs/heads/main" }));
+    expect(Object.keys(claims).sort()).toEqual(["environment", "repository", "repository_owner", "workflow_ref"]);
+  });
+
+  it("reports a missing claim as empty rather than dropping it", () => {
+    expect(decodeClaims(jwt({ repository: "owner/name" })).environment).toBe("");
+  });
+
+  it("returns null for anything that is not a token, instead of throwing", () => {
+    expect(decodeClaims("")).toBeNull();
+    expect(decodeClaims(undefined)).toBeNull();
+    expect(decodeClaims("one-segment")).toBeNull();
+    expect(decodeClaims("header.bm90LWpzb24.signature")).toBeNull();
+    expect(decodeClaims(`header.${Buffer.from('"a string"').toString("base64url")}.sig`)).toBeNull();
   });
 });
 
@@ -115,15 +179,44 @@ describe("explain", () => {
     expect(lines.join(" ")).toContain("some other reason");
   });
 
-  it("quotes npm's refusal and points at the fields that must match", () => {
-    const refusal = { stage: "exchange", ok: false, status: 404, message: "not configured" };
+  it("quotes npm's refusal and echoes the run's claims verbatim", () => {
+    const refusal = {
+      stage: "exchange",
+      ok: false,
+      status: 404,
+      message: "package not found",
+      claims: decodedRunClaims,
+    };
     const { ok, lines } = explain(refusal, "paperclip-plugin-tickler");
     expect(ok).toBe(false);
-    const text = lines.join(" ");
-    expect(text).toContain("not configured");
+    const text = lines.join("\n");
+    expect(text).toContain("package not found");
     expect(text).toContain("404");
-    expect(text).toContain("release.yml");
     expect(text).toContain("paperclip-plugin-tickler");
+    expect(text).toContain(decodedRunClaims.repository);
+    expect(text).toContain(decodedRunClaims.repository_owner);
+    expect(text).toContain(decodedRunClaims.workflow_ref);
+    expect(text).toMatch(/environment:\s+\(empty\)/);
+  });
+
+  it("does not claim to know whether the entry is missing or merely mismatched", () => {
+    const refusal = { stage: "exchange", ok: false, status: 404, message: "package not found", claims: decodedRunClaims };
+    const text = explain(refusal, "pkg").lines.join("\n");
+    expect(text).toContain("does not say which of two things");
+    expect(text).toMatch(/renam/i);
+  });
+
+  it("states no repository or owner of its own, only the ones the token carries", () => {
+    const refusal = { stage: "exchange", ok: false, status: 404, message: "package not found", claims: decodedRunClaims };
+    const text = explain(refusal, "pkg").lines.join("\n");
+    expect(text).not.toContain("nickallevato");
+    expect(text).not.toContain("paperclip-tickler");
+  });
+
+  it("still gives the reader something to compare when the token would not decode", () => {
+    const refusal = { stage: "exchange", ok: false, status: 404, message: "package not found", claims: null };
+    const text = explain(refusal, "pkg").lines.join("\n");
+    expect(text).toContain("would not decode");
   });
 
   it("explains that trusted publishing cannot be tested off a runner", () => {
@@ -159,13 +252,36 @@ describe("main", () => {
     expect(lines.join("\n")).toContain("network down");
   });
 
+  it("prints the run's claims on a 404, which is the whole point of the script", async () => {
+    const { impl } = fakeFetch([idTokenOk, { status: 404, body: JSON.stringify({ message: "package not found" }) }]);
+    const lines = [];
+    const code = await main({ env: actionsEnv, fetchImpl: impl, log: (line) => lines.push(line) });
+    expect(code).toBe(1);
+    const text = lines.join("\n");
+    expect(text).toContain("package not found");
+    expect(text).toContain(runClaims.repository);
+    expect(text).toContain(runClaims.workflow_ref);
+  });
+
   it("prints no credential, so a CI log stays safe to read", async () => {
     const { impl } = fakeFetch([idTokenOk, { status: 200, body: JSON.stringify({ token: "npm_secret_value" }) }]);
     const lines = [];
     await main({ env: actionsEnv, fetchImpl: impl, log: (line) => lines.push(line) });
     const text = lines.join("\n");
     expect(text).not.toContain("npm_secret_value");
-    expect(text).not.toContain("header.payload.signature");
+    expect(text).not.toContain(idToken);
     expect(text).not.toContain("request-token");
+  });
+
+  it("prints no credential on the refusal path either, where claims are shown", async () => {
+    const { impl } = fakeFetch([idTokenOk, { status: 404, body: JSON.stringify({ message: "package not found" }) }]);
+    const lines = [];
+    await main({ env: actionsEnv, fetchImpl: impl, log: (line) => lines.push(line) });
+    const text = lines.join("\n");
+    expect(text).not.toContain(idToken);
+    expect(text).not.toContain(idToken.split(".")[1]);
+    expect(text).not.toContain("signature");
+    expect(text).not.toContain("request-token");
+    expect(text).not.toContain(runClaims.actor);
   });
 });

@@ -14,6 +14,21 @@ Short-form. The reader-facing write-up for each version is in
   Pressing it upgrades in place, keeps your settings, and reloads onto the new
   build. Instance admins only, silent when npm cannot be reached, and it stands
   down for a local-path install — there the **Reload** chip still owns updates.
+- **The npm OIDC diagnostic no longer guesses why npm refused.** The registry
+  answers `404 ... package not found` both when a package has no trusted
+  publisher entry and when it has one that does not match the run, so the old
+  message — a hardcoded list of what the fields were supposed to be — read as a
+  verdict it could not support, and `publish-npm.mjs` separately claimed the
+  entry was missing. Both now say the 404 is ambiguous and name the case that
+  produced it: a repository rename leaves entries pointing at the old path.
+  On a refusal the script decodes its own OIDC token and prints the
+  `repository`, `repository_owner`, `workflow_ref` and `environment` claims the
+  run actually presents, which is the half of the comparison npmjs.com cannot
+  show. Never the token itself.
+- **A `npm oidc diagnostic` workflow runs that probe on demand**, so answering
+  "does the trusted publisher entry match?" no longer costs a throwaway branch
+  and a failed release. It holds `contents: read`, installs nothing and takes no
+  npm token; it cannot publish.
 
 ## 0.7.1
 
