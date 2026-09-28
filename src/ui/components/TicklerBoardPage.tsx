@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import type { Company } from "@paperclipai/shared";
 import { cn } from "../host/util";
 import {
@@ -28,17 +28,44 @@ import {
   type TicklerQueueGrouping,
   type TicklerQueueSort,
 } from "../lib/queue";
+import type { TicklerRailPaneSpec } from "../lib/rail-budget";
 import { TicklerCompanySlot } from "./TicklerCompanySlot";
 import { TicklerPortfolio } from "./TicklerPortfolio";
+import { railPaneBox, TicklerRailMore } from "./TicklerRailPane";
 import { TicklerQueue } from "./TicklerQueue";
 import { TicklerRecentTasks } from "./TicklerRecentTasks";
 import { TicklerRoutineExceptions } from "./TicklerRoutineExceptions";
 import { TicklerSegmented } from "./TicklerSegmented";
 import type { TicklerCompanyData } from "./useTicklerCompanyData";
 import { applyTriageOverrides, useQueueTriage } from "./useQueueTriage";
-import { useRailMaxHeight } from "./useRailMaxHeight";
+import { useRailBudget } from "./useRailBudget";
 
 const MICRO = "text-[length:var(--tickler-fs-micro,11px)] leading-[1.45]";
+
+/**
+ * How the rail spends its height. Three numbers per pane and nothing else:
+ * the fewest rows worth drawing, the most rows worth keeping, and who gets
+ * served first when there is not enough for everyone. `distributeRailHeight`
+ * in `lib/rail-budget` is what is done with them.
+ *
+ * Orgs and Recent are the two that matter, so they share the first rank and a
+ * short screen spends itself on them: Orgs because it is navigation — every org
+ * you watch belongs on the page, and its rows are the cheapest in the rail —
+ * and Recent because it is what the board is for. Orgs has no ideal; Recent
+ * stops at twelve, past which it is a log rather than a glance. Portfolio and
+ * Routines share the second rank, equal to each other, and take what is left:
+ * Portfolio capped at eleven, since comparing bars past that is not something
+ * anyone does at a glance, and Routines content with four — on a good day it
+ * has no exceptions at all and the header alone is the answer.
+ *
+ * Ranks tie by the order written here, which is the only thing this order does.
+ */
+const RAIL_PANES: readonly TicklerRailPaneSpec[] = [
+  { key: "orgs", minRows: 3, idealRows: Infinity, priority: 1 },
+  { key: "recent", minRows: 3, idealRows: 12, priority: 1 },
+  { key: "portfolio", minRows: 3, idealRows: 11, priority: 2 },
+  { key: "routines", minRows: 2, idealRows: 4, priority: 2 },
+];
 
 /** Re-render on a slow clock so ages and countdowns don't freeze between polls. */
 function useNowMs(intervalMs = 30_000): number {
@@ -107,7 +134,6 @@ export function TicklerBoardPage({
   footer?: ReactNode;
 }) {
   const nowMs = useNowMs();
-  const [railRef, railMaxHeight] = useRailMaxHeight();
   // Clicking a row's Need-you count narrows the rail to that company; clicking
   // it again (or the rail's chip) widens it back. Not persisted — it is a
   // glance, not a setting.
@@ -205,6 +231,12 @@ export function TicklerBoardPage({
     { needs: 0, runs: 0, tokens: 0 },
   );
 
+  // The rail's height, shared out. Orgs is read back here because its markup
+  // lives on this page rather than in a component of its own.
+  const { railRef, budget } = useRailBudget(RAIL_PANES);
+  const orgsBudget = budget.orgs;
+  const orgsBox = railPaneBox(orgsBudget);
+
   // Wide: one sticky column of context (Companies, Recent, Portfolio, Routines)
   // beside the queue, which owns the main column because it is where the work
   // is. The left column's wrapper is `display: contents` when narrow, so its
@@ -224,32 +256,34 @@ export function TicklerBoardPage({
   return (
     <div data-view="board" className="@container/board flex flex-col gap-4">
       <div className="grid gap-4 @[64rem]/board:grid-cols-[minmax(320px,400px)_minmax(0,1fr)] @[96rem]/board:grid-cols-[440px_minmax(0,1fr)] [.tickler-kiosk_&]:gap-6 [.tickler-kiosk_&]:@[110rem]/board:grid-cols-[540px_minmax(0,1fr)]">
-        {/* Capped at the scroller rather than pinned to it: the column is as
-            tall as its contents until that would overflow, and only then does
-            Portfolio scroll inside itself. Companies and Routines are
-            `shrink-0`, so neither can be squeezed out of view.
-            The cap is measured (`useRailMaxHeight`), because the box a sticky
-            element is pinned inside is the host's scroller, not the window —
-            `100vh` overshot it by the height of the host's chrome and hung the
-            rail's last panel below the edge where nothing could scroll to it
-            (PLI-243). `--tickler-rail-max-h` keeps a viewport-based fallback
-            for the first paint and for hosts without ResizeObserver.
-            `overflow-y-auto` is the backstop for the rest of that bug: when the
-            `shrink-0` panels alone are taller than the cap — many orgs, say —
-            Portfolio cannot absorb the excess, so the rail scrolls itself
-            instead of clipping. Scroll chaining is left on: at the end of the
-            rail the wheel should carry on down the page, not stop dead. */}
+        {/* A column that knows its own height can spend it: `useRailBudget`
+            gives this box the height of the band it is pinned inside — the
+            host's scrolling `<main>` (see `lib/scrollport`), which is shorter
+            than the window and offset down it, so `100vh` overshot it by the
+            height of the host's chrome and hung the rail's last panel below the
+            edge where nothing could scroll to it (PLI-243) — and hands every
+            pane below a height of header plus a whole number of rows (see
+            `distributeRailHeight`). `--tickler-rail-max-h` is only the
+            viewport-based cap that holds until that first measurement, or for a
+            host without ResizeObserver, and `overflow-y-auto` is the floor
+            under it all, for a window too short to seat even the demoted
+            headers. Scroll chaining is left on: at the end of the rail the
+            wheel should carry on down the page, not stop dead. */}
         <div
           ref={railRef}
-          style={railMaxHeight === null ? undefined : { "--tickler-rail-max-h": `${railMaxHeight}px` } as CSSProperties}
           className="contents @[64rem]/board:sticky @[64rem]/board:top-4 @[64rem]/board:flex @[64rem]/board:max-h-[var(--tickler-rail-max-h)] @[64rem]/board:min-w-0 @[64rem]/board:flex-col @[64rem]/board:gap-4 @[64rem]/board:self-start @[64rem]/board:overflow-y-auto"
         >
           <section
             data-tickler-companies
+            data-rail-pane="orgs"
             aria-label="Orgs"
-            className="order-1 flex min-w-0 shrink-0 flex-col rounded-lg border bg-card @[64rem]/board:order-none"
+            style={orgsBox.style}
+            className={cn(
+              "order-1 flex min-h-0 min-w-0 shrink-0 flex-col rounded-lg border bg-card @[64rem]/board:order-none",
+              orgsBox.className,
+            )}
           >
-            <div className="flex items-center gap-2 border-b px-3 py-2">
+            <div data-rail-head className="flex shrink-0 items-center gap-2 border-b px-3 py-2">
               <h2 className={cn(MICRO, "font-semibold uppercase tracking-(--tracking-label) text-muted-foreground")}>
                 Orgs
               </h2>
@@ -262,29 +296,47 @@ export function TicklerBoardPage({
                 value={sortMode}
                 onChange={onSortMode}
               />
-              <span className={cn(MICRO, "ml-auto text-muted-foreground")}>need you</span>
+              {/* Demoted, the header is the whole pane, so it carries the count
+                  the lines underneath would have carried. */}
+              <span className={cn(MICRO, "ml-auto text-muted-foreground")}>
+                {orgsBudget?.demoted ? (
+                  <>
+                    <span className="font-semibold text-foreground">{totals.needs}</span> need you · {companies.length}{" "}
+                    orgs
+                  </>
+                ) : (
+                  "need you"
+                )}
+              </span>
+              <TicklerRailMore budget={orgsBudget} />
             </div>
-            <ul className="flex flex-col">
-              {companies.map((company) => (
-                <TicklerCompanySlot
-                  key={company.id}
-                  company={company}
-                  onActionable={onActionable}
-                  onStats={onStats}
-                  onData={onData}
-                  tokenThresholds={thresholdsFor(tokenSettings, company.id)}
-                  alertsEnabled={alertsEnabled}
-                  pinned={pinnedIds.includes(company.id)}
-                  onTogglePin={() => onTogglePin(company.id)}
-                  onFocusNeeds={() => toggleFocus(company.id)}
-                  needsFocused={focusCompanyId === company.id}
-                />
-              ))}
-            </ul>
-            {companies.length > 1 && (
+            {!orgsBudget?.demoted && (
+              <ul className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+                {companies.map((company) => (
+                  <TicklerCompanySlot
+                    key={company.id}
+                    company={company}
+                    onActionable={onActionable}
+                    onStats={onStats}
+                    onData={onData}
+                    tokenThresholds={thresholdsFor(tokenSettings, company.id)}
+                    alertsEnabled={alertsEnabled}
+                    pinned={pinnedIds.includes(company.id)}
+                    onTogglePin={() => onTogglePin(company.id)}
+                    onFocusNeeds={() => toggleFocus(company.id)}
+                    needsFocused={focusCompanyId === company.id}
+                  />
+                ))}
+              </ul>
+            )}
+            {companies.length > 1 && !orgsBudget?.demoted && (
               <div
                 data-board-totals
-                className={cn(MICRO, "flex items-center gap-2.5 border-t px-3 py-1.5 tabular-nums text-muted-foreground")}
+                data-rail-foot
+                className={cn(
+                  MICRO,
+                  "flex shrink-0 items-center gap-2.5 border-t px-3 py-1.5 tabular-nums text-muted-foreground",
+                )}
               >
                 <span className="uppercase tracking-(--tracking-label)">All</span>
                 <span className="ml-auto">{formatTokensMillions(totals.tokens)}M tokens</span>
@@ -295,25 +347,33 @@ export function TicklerBoardPage({
           </section>
           {/* Directly under Orgs, above Portfolio: it is the only pane on the
               page that changes while you watch it, and it answers "what is the
-              fleet on" — the question the Orgs lines above it raise. Its own
-              height is capped, so a run starting cannot shove Portfolio. */}
-          <div className="order-3 min-w-0 shrink-0 @[64rem]/board:order-none">
-            <TicklerRecentTasks tasks={recent} nowMs={nowMs} />
-          </div>
+              fleet on" — the question the Orgs lines above it raise. The budget
+              fixes its height, so a run starting cannot shove Portfolio. */}
+          <TicklerRecentTasks
+            tasks={recent}
+            nowMs={nowMs}
+            budget={budget.recent}
+            className="order-3 min-w-0 @[64rem]/board:order-none"
+          />
           <TicklerPortfolio
             items={projectEntries}
             nowMs={nowMs}
             companies={companies}
             sort={portfolioSort}
             onSort={onPortfolioSort}
-            // The floor matters once the rail scrolls: `flex-1 min-h-0` lets a
-            // tall stack of orgs squeeze Portfolio to nothing, so it keeps
-            // roughly four rows and the rail overflows instead.
-            className="order-4 min-h-0 min-w-0 flex-1 @[64rem]/board:order-none @[64rem]/board:min-h-56"
+            // No `min-h` floor here any more: the budget is what keeps Portfolio
+            // from being squeezed to nothing by a tall stack of orgs — it is
+            // given a height of its own, or demoted to its header, rather than
+            // left to fight the panes above it for the leftovers.
+            budget={budget.portfolio}
+            className="order-4 min-h-0 min-w-0 flex-1 @[64rem]/board:order-none"
           />
-          <div className="order-5 min-w-0 shrink-0 @[64rem]/board:order-none">
-            <TicklerRoutineExceptions items={routines} nowMs={nowMs} />
-          </div>
+          <TicklerRoutineExceptions
+            items={routines}
+            nowMs={nowMs}
+            budget={budget.routines}
+            className="order-5 min-w-0 @[64rem]/board:order-none"
+          />
         </div>
 
         <div className="order-2 min-w-0 @[64rem]/board:order-none">

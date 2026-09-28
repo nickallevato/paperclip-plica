@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { findScrollport, railMaxHeight, type NodeLike } from "./scrollport";
+import { findScrollport, type NodeLike } from "./scrollport";
 
 interface FakeNode extends NodeLike {
   name: string;
@@ -66,18 +66,5 @@ describe("findScrollport", () => {
       ["rail", "visible", 2000],
     );
     expect(findScrollport(leaf, overflowY, hudRoot)?.name).toBe("hud");
-  });
-});
-
-describe("railMaxHeight", () => {
-  it("leaves the gutter at both ends of the scrollport", () => {
-    expect(railMaxHeight(700, 32)).toBe(668);
-  });
-
-  it("declines to measure a scrollport no taller than the gutter", () => {
-    // Mid-layout, or detached: better to keep the CSS fallback than pin to ~0.
-    expect(railMaxHeight(0, 32)).toBeNull();
-    expect(railMaxHeight(32, 32)).toBeNull();
-    expect(railMaxHeight(Number.NaN, 32)).toBeNull();
   });
 });

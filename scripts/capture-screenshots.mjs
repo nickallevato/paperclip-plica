@@ -246,7 +246,7 @@ const SHOTS = [
   },
   {
     name: "recent-tasks",
-    doc: "Recent: one line per task, live rows first, capped height.",
+    doc: "Recent: one line per task, live rows first, scrolling inside the height the rail gave it.",
     take: async (page) => ({ clip: await region(page, ["[data-tickler-recent]"]) }),
   },
   {

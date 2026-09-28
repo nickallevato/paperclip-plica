@@ -1,5 +1,5 @@
 /**
- * Finds the element that actually scrolls Tickler's page, and how tall it is.
+ * Finds the element that actually scrolls Tickler's page.
  *
  * Why this exists: the board's left rail is `position: sticky`, and a sticky
  * element is pinned inside its *scrollport* — not inside the window. Paperclip
@@ -11,9 +11,11 @@
  * the rail reads as cut off and appears to move only while the main column
  * scrolls (before the sticky offset engages).
  *
- * Measuring the scrollport instead of the window fixes the cap wherever Tickler
- * is mounted, including hosts whose chrome is a different height, and needs
- * nothing from the host but the DOM the plugin is already rendered into.
+ * Measuring the scrollport instead of the window fixes the height wherever
+ * Tickler is mounted, including hosts whose chrome is a different height, and
+ * needs nothing from the host but the DOM the plugin is already rendered into.
+ * `useRailBudget` is what does the measuring now — it takes this box, subtracts
+ * what the rail starts below it, and shares the rest out between the panes.
  */
 
 /** The slice of the DOM this module needs, so tests can hand it plain objects. */
@@ -46,20 +48,6 @@ export function findScrollport<T extends NodeLike>(
 }
 
 /**
- * The tallest the rail may be, in px: the visible height of whatever scrolls
- * it, less `gutter` — one sticky offset at the top and the same breathing room
- * at the bottom, so the last panel's border is not flush with the edge.
- *
- * Returns `null` when nothing usable was measured (a detached node, a zero-height
- * scrollport mid-layout), so the caller can leave the CSS fallback in place
- * rather than pin the rail to 0.
- */
-export function railMaxHeight(scrollportHeight: number, gutter: number): number | null {
-  if (!Number.isFinite(scrollportHeight) || scrollportHeight <= gutter) return null;
-  return scrollportHeight - gutter;
-}
-
-/**
  * DOM-bound `findScrollport`: the box that scrolls `el`, or `null` when the
  * window does (mobile, where the host leaves `<main>` `overflow: visible`, and
  * kiosk mode, where the top-layer box is the screen).
@@ -73,12 +61,4 @@ export function resolveScrollport(el: HTMLElement): HTMLElement | null {
     (node) => view.getComputedStyle(node).overflowY,
     fullscreen && fullscreen.contains(el) ? fullscreen : null,
   );
-}
-
-/** DOM-bound convenience wrapper: the px cap for a rail mounted at `el`. */
-export function measureRailMaxHeight(el: HTMLElement, gutter: number): number | null {
-  const view = el.ownerDocument?.defaultView;
-  if (!view) return null;
-  const scrollport = resolveScrollport(el);
-  return railMaxHeight(scrollport ? scrollport.clientHeight : view.innerHeight, gutter);
 }

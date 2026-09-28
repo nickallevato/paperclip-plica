@@ -44,10 +44,11 @@
   /* Where a routine's colour rests between cycles: present, but receded. */
   --tickler-rest: #86817a;
   /*
-   * How tall the board's sticky left rail may be. The board overwrites this
-   * inline with the measured height of the host scroller it is pinned inside
-   * (`components/useRailMaxHeight`); this is the first-paint value, and the
-   * only one in a host without ResizeObserver. Deliberately smaller than the
+   * How tall the board's sticky left rail may be. The board sets the rail's own
+   * height from the measured band it is pinned inside, and shares that height
+   * out between the panes (`components/useRailBudget`); this cap is the
+   * first-paint value, and the only one in a host without ResizeObserver.
+   * Deliberately smaller than the
    * viewport: the host's chrome sits above Tickler, so a rail the full height
    * of the window hangs past the bottom of the scrollport.
    */

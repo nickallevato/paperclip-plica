@@ -9,7 +9,9 @@ import {
   type TicklerPortfolioSort,
   type TicklerProjectEntry,
 } from "../lib/queue";
+import type { TicklerRailPaneBudget } from "../lib/rail-budget";
 import { TicklerLink } from "./TicklerLink";
+import { railPaneBox, TicklerRailMore } from "./TicklerRailPane";
 import { TicklerSegmented } from "./TicklerSegmented";
 
 const MICRO = "text-[length:var(--tickler-fs-micro,11px)] leading-[1.45]";
@@ -76,6 +78,7 @@ function CompanyHeader({ company, totals }: { company: Company; totals: CompanyT
   return (
     <li
       data-portfolio-company={company.id}
+      data-rail-row
       className={cn(
         "sticky top-0 z-10 -mx-3 flex items-center gap-1.5 border-b bg-card px-3 pb-1 pt-2 first:pt-0",
         MICRO,
@@ -111,6 +114,7 @@ export function TicklerPortfolio({
   companies = [],
   sort = "trouble",
   onSort,
+  budget,
   className,
 }: {
   items: TicklerProjectEntry[];
@@ -119,6 +123,7 @@ export function TicklerPortfolio({
   companies?: Company[];
   sort?: TicklerPortfolioSort;
   onSort?: (sort: TicklerPortfolioSort) => void;
+  budget?: TicklerRailPaneBudget;
   className?: string;
 }) {
   const { entries, open, blocked, overdue } = derivePortfolio(items, nowMs, { sort, companies });
@@ -137,10 +142,17 @@ export function TicklerPortfolio({
   // One shared scale across every bar; a floor of 1 keeps an all-empty
   // portfolio from dividing by zero.
   const scale = Math.max(1, ...entries.map((entry) => entry.open));
+  const box = railPaneBox(budget);
 
   return (
-    <section data-tickler-portfolio className={cn("flex min-h-0 flex-col rounded-lg border bg-card", className)}>
+    <section
+      data-tickler-portfolio
+      data-rail-pane="portfolio"
+      style={box.style}
+      className={cn("flex min-h-0 flex-col rounded-lg border bg-card", className, box.className)}
+    >
       <h3
+        data-rail-head
         className={cn(
           "flex shrink-0 flex-wrap items-center gap-x-2 gap-y-1 px-3 pb-2 pt-3 font-semibold uppercase tracking-(--tracking-label) text-muted-foreground",
           MICRO,
@@ -164,10 +176,17 @@ export function TicklerPortfolio({
             {overdue > 0 && <span className="text-tickler-alarm">{overdue} late</span>}
           </span>
         )}
+        <TicklerRailMore budget={budget} />
       </h3>
 
       {entries.length === 0 ? (
-        <p className={cn("px-3 pb-3 italic text-muted-foreground", MICRO)}>no open project work</p>
+        <p data-rail-foot className={cn("px-3 pb-3 italic text-muted-foreground", MICRO)}>
+          no open project work
+        </p>
+      ) : budget?.demoted ? (
+        // Bars are only worth drawing against each other, and three of eleven
+        // are not a portfolio. The header keeps open, blocked and late.
+        null
       ) : (
         <>
           <ul className="min-h-0 flex-1 overflow-y-auto px-3">
@@ -184,6 +203,7 @@ export function TicklerPortfolio({
                   )}
                 <li
                   data-portfolio-project={entry.project.id}
+                  data-rail-row
                   className="flex flex-col gap-1 py-1.5"
                 >
                   <span className={cn("flex items-center gap-1.5", MICRO)}>
@@ -223,7 +243,10 @@ export function TicklerPortfolio({
               );
             })}
           </ul>
-          <p className={cn("flex shrink-0 items-center gap-3 border-t px-3 py-1.5 text-muted-foreground", MICRO)}>
+          <p
+            data-rail-foot
+            className={cn("flex shrink-0 items-center gap-3 border-t px-3 py-1.5 text-muted-foreground", MICRO)}
+          >
             <span className="flex items-center gap-1">
               <span className="h-1.5 w-3 rounded-full bg-tickler-ok/70" /> moving
             </span>

@@ -4,6 +4,7 @@ import { createRoot } from "react-dom/client";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, describe, expect, it } from "vitest";
 import type { TicklerRecentTask, TicklerRecentTasks as TicklerRecentTasksModel } from "../lib/queue";
+import type { TicklerRailPaneBudget } from "../lib/rail-budget";
 import { TicklerRecentTasks } from "./TicklerRecentTasks";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -51,14 +52,14 @@ describe("TicklerRecentTasks", () => {
     document.body.innerHTML = "";
   });
 
-  function render(model: TicklerRecentTasksModel) {
+  function render(model: TicklerRecentTasksModel, budget?: TicklerRailPaneBudget) {
     container = document.createElement("div");
     document.body.appendChild(container);
     const root = createRoot(container);
     act(() => {
       root.render(
         <MemoryRouter>
-          <TicklerRecentTasks tasks={model} nowMs={NOW} />
+          <TicklerRecentTasks tasks={model} nowMs={NOW} budget={budget} />
         </MemoryRouter>,
       );
     });
@@ -118,7 +119,7 @@ describe("TicklerRecentTasks", () => {
     act(() => root.unmount());
   });
 
-  it("scrolls inside a capped height rather than growing with the fleet", () => {
+  it("scrolls inside the height the rail gave it rather than growing with the fleet", () => {
     const items = Array.from({ length: 12 }, (_, index) => ({
       key: `c1:i-${index}`,
       company,
@@ -127,12 +128,44 @@ describe("TicklerRecentTasks", () => {
       phase: "working" as const,
       atMs: NOW - index * 60_000,
     }));
-    const root = render(tasks(items, { hidden: 5 }));
+    const root = render(tasks(items, { hidden: 5 }), { rows: 4, height: 180, hidden: 8, demoted: false });
+    // Every row is on the page — the pane scrolls to them rather than the page
+    // growing to fit them — and the header owns up to the ones under the fold.
     expect(container.querySelectorAll("li")).toHaveLength(12);
     const list = container.querySelector("ul")?.className ?? "";
     expect(list).toContain("overflow-y-auto");
-    expect(list).toContain("max-h-64");
+    expect(list).not.toContain("max-h-");
+    const pane = container.querySelector<HTMLElement>("[data-rail-pane='recent']")!;
+    expect(pane.style.height).toBe("180px");
+    expect(pane.querySelector("[data-rail-more]")?.textContent).toBe("+8 more");
     expect(container.textContent).toContain("5 more touched today");
+    act(() => root.unmount());
+  });
+
+  it("keeps its own height, and no rail markers to measure, when the rail is not budgeting", () => {
+    const root = render(tasks([{ key: "c1:i-1", company, issue: issue(), run: run(), phase: "working", atMs: NOW }]));
+    const pane = container.querySelector<HTMLElement>("[data-rail-pane='recent']")!;
+    expect(pane.style.height).toBe("");
+    expect(pane.querySelector("[data-rail-more]")).toBeNull();
+    expect(pane.querySelectorAll("[data-rail-row]")).toHaveLength(1);
+    act(() => root.unmount());
+  });
+
+  it("falls back to its header when the rail cannot seat even three rows", () => {
+    const items = Array.from({ length: 9 }, (_, index) => ({
+      key: `c1:i-${index}`,
+      company,
+      issue: issue({ id: `i-${index}`, identifier: `ACM-${index}` }),
+      run: run({ id: `r${index}`, issueId: `i-${index}` }),
+      phase: "working" as const,
+      atMs: NOW - index * 60_000,
+    }));
+    const root = render(tasks(items), { rows: 0, height: null, hidden: 9, demoted: true });
+    // Nine clipped rows would say less than the header does, and the pane it
+    // would have pushed off the bottom of the rail says nothing at all.
+    expect(container.querySelectorAll("li")).toHaveLength(0);
+    expect(container.querySelector("h3")?.textContent).toContain("9 working");
+    expect(container.querySelector("[data-rail-more]")?.textContent).toBe("+9 more");
     act(() => root.unmount());
   });
 
