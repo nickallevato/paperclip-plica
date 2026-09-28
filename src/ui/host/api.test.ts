@@ -8,11 +8,13 @@ import {
   dashboardApi,
   heartbeatsApi,
   issuesApi,
+  npmRegistryApi,
   pluginSelfApi,
   projectsApi,
   sidebarBadgesApi,
   workTimelineApi,
 } from "./api";
+import { NPM_LATEST_URL } from "../lib/self-update";
 
 function mockJson(body: unknown, status = 200) {
   return vi.fn(async () => new Response(JSON.stringify(body), {
@@ -94,6 +96,12 @@ describe("host/api", () => {
       await pluginSelfApi.upgrade();
       expect(lastCall()[0]).toBe("/api/plugins/nickallevato.plugin-tickler/upgrade");
       expect(lastCall()[1].method).toBe("POST");
+      expect(lastCall()[1].body).toBe("{}");
+
+      // A named version is what makes the update the one the button offered,
+      // rather than whatever npm's `latest` has become since the check.
+      await pluginSelfApi.upgrade("0.7.1");
+      expect(lastCall()[1].body).toBe(JSON.stringify({ version: "0.7.1" }));
     });
 
     it("adds includeDismissed only when requested", async () => {
@@ -185,6 +193,27 @@ describe("host/api", () => {
     it("returns the session payload when authenticated", async () => {
       vi.stubGlobal("fetch", mockJson({ user: { id: "u1" } }));
       await expect(authApi.getSession()).resolves.toEqual({ user: { id: "u1" } });
+    });
+  });
+
+  describe("npmRegistryApi.latestVersion", () => {
+    it("reads the published version cross-origin, without the session cookie", async () => {
+      vi.stubGlobal("fetch", mockJson({ name: "paperclip-plugin-tickler", version: "0.7.1" }));
+      await expect(npmRegistryApi.latestVersion()).resolves.toBe("0.7.1");
+      const [url, init] = lastCall();
+      expect(url).toBe(NPM_LATEST_URL);
+      // A third party has no business receiving Paperclip's cookies.
+      expect(init.credentials).toBe("omit");
+    });
+
+    it("raises when the registry cannot be reached, so the caller says 'don't know'", async () => {
+      vi.stubGlobal("fetch", mockJson({ error: "not found" }, 404));
+      await expect(npmRegistryApi.latestVersion()).rejects.toBeInstanceOf(ApiError);
+    });
+
+    it("returns null for a body without a version rather than inventing one", async () => {
+      vi.stubGlobal("fetch", mockJson({}));
+      await expect(npmRegistryApi.latestVersion()).resolves.toBeNull();
     });
   });
 });

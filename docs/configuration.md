@@ -85,9 +85,39 @@ Timestamps in the fixture are relative tokens (`"@t:-5m"`, `"@d:-3"`) resolved
 against page-load time, so the demo never reads as months stale no matter when
 it is shown.
 
+## Version and updates
+
+The **gear** in the page header opens a panel whose first row is the version of
+Tickler this instance has registered, and whether npm has a newer one:
+
+```
+Tickler 0.7.1   0.8.0 is available          [ Update to 0.8.0 ]
+```
+
+**Update to 0.8.0** does it in place. There is no uninstall step and nothing to
+re-enter: Paperclip re-runs `npm install` for the version named on the button,
+re-reads the manifest and re-registers Tickler against its existing config row,
+then the page reloads onto the new build. The same button appears as a chip in
+the header when an update is waiting, so it is one click from the board.
+
+Four things worth knowing:
+
+- **Instance admins only.** Paperclip's upgrade route requires it; anyone else
+  gets told so rather than a silent failure.
+- **It is quiet when it cannot tell.** The check reads
+  `registry.npmjs.org/paperclip-plugin-tickler/latest` from the browser, and an
+  instance with no route out just says so in the panel — no chip, no button,
+  nothing that would 400 if you pressed it.
+- **A version that asks for a new capability is refused**, by Paperclip and not
+  by Tickler: capabilities are granted at install. The panel says to uninstall
+  and reinstall, and the release notes flag such a version.
+- **A local checkout updates differently.** Installed from a path rather than
+  npm, the panel says so and the affordance you want is the **Reload** chip —
+  see [install.md](install.md#upgrading-tickler).
+
 ## Token thresholds
 
-The **gear** in the page header opens the token panel.
+The **gear** in the page header opens the token panel, below the version row.
 
 ![Token thresholds, with every company plotted against the bands](screenshots/token-thresholds.png)
 
