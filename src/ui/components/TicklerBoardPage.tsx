@@ -28,16 +28,40 @@ import {
   type TicklerQueueGrouping,
   type TicklerQueueSort,
 } from "../lib/queue";
+import type { TicklerRailPaneSpec } from "../lib/rail-budget";
 import { TicklerCompanySlot } from "./TicklerCompanySlot";
 import { TicklerPortfolio } from "./TicklerPortfolio";
+import { railPaneBox, TicklerRailMore } from "./TicklerRailPane";
 import { TicklerQueue } from "./TicklerQueue";
 import { TicklerRecentTasks } from "./TicklerRecentTasks";
 import { TicklerRoutineExceptions } from "./TicklerRoutineExceptions";
 import { TicklerSegmented } from "./TicklerSegmented";
 import type { TicklerCompanyData } from "./useTicklerCompanyData";
 import { applyTriageOverrides, useQueueTriage } from "./useQueueTriage";
+import { useRailBudget } from "./useRailBudget";
 
 const MICRO = "text-[length:var(--tickler-fs-micro,11px)] leading-[1.45]";
+
+/**
+ * How the rail spends its height. Three numbers per pane and nothing else:
+ * the fewest rows worth drawing, the most rows worth keeping, and who gets
+ * served first when there is not enough for everyone. `distributeRailHeight`
+ * in `lib/rail-budget` is what is done with them.
+ *
+ * Orgs first and with no ideal, because it is navigation — every org you watch
+ * belongs on the page, and its rows are the cheapest in the rail. Portfolio
+ * next and capped at eleven, since comparing bars past that is not something
+ * anyone does at a glance. Recent is allowed more rows than Portfolio but
+ * served after it: it is the pane that refills itself, so the rows it loses
+ * come back. Routines last, and content with two — on a good day it has none,
+ * and the header alone is the answer.
+ */
+const RAIL_PANES: readonly TicklerRailPaneSpec[] = [
+  { key: "orgs", minRows: 3, idealRows: Infinity, priority: 1 },
+  { key: "portfolio", minRows: 3, idealRows: 11, priority: 2 },
+  { key: "recent", minRows: 3, idealRows: 12, priority: 3 },
+  { key: "routines", minRows: 2, idealRows: 4, priority: 4 },
+];
 
 /** Re-render on a slow clock so ages and countdowns don't freeze between polls. */
 function useNowMs(intervalMs = 30_000): number {
@@ -203,6 +227,12 @@ export function TicklerBoardPage({
     { needs: 0, runs: 0, tokens: 0 },
   );
 
+  // The rail's height, shared out. Orgs is read back here because its markup
+  // lives on this page rather than in a component of its own.
+  const { railRef, budget } = useRailBudget(RAIL_PANES);
+  const orgsBudget = budget.orgs;
+  const orgsBox = railPaneBox(orgsBudget);
+
   // Wide: one sticky column of context (Companies, Recent, Portfolio, Routines)
   // beside the queue, which owns the main column because it is where the work
   // is. The left column's wrapper is `display: contents` when narrow, so its
@@ -222,17 +252,27 @@ export function TicklerBoardPage({
   return (
     <div data-view="board" className="@container/board flex flex-col gap-4">
       <div className="grid gap-4 @[64rem]/board:grid-cols-[minmax(320px,400px)_minmax(0,1fr)] @[96rem]/board:grid-cols-[440px_minmax(0,1fr)] [.tickler-kiosk_&]:gap-6 [.tickler-kiosk_&]:@[110rem]/board:grid-cols-[540px_minmax(0,1fr)]">
-        {/* Capped at the viewport rather than pinned to it: the column is as
-            tall as its contents until that would overflow, and only then does
-            Portfolio scroll inside itself. Companies and Routines are
-            `shrink-0`, so neither can be squeezed out of view. */}
-        <div className="contents @[64rem]/board:sticky @[64rem]/board:top-4 @[64rem]/board:flex @[64rem]/board:max-h-[calc(100vh-2rem)] @[64rem]/board:min-w-0 @[64rem]/board:flex-col @[64rem]/board:gap-4 @[64rem]/board:self-start">
+        {/* Pinned to the viewport rather than capped at it, because a column
+            that knows its own height can spend it: `useRailBudget` measures
+            this box and hands every pane below a height of header plus a whole
+            number of rows (see `distributeRailHeight`). `overflow-y-auto` is
+            the floor under that, for a window too short to seat even the
+            demoted headers. */}
+        <div
+          ref={railRef}
+          className="contents @[64rem]/board:sticky @[64rem]/board:top-4 @[64rem]/board:flex @[64rem]/board:h-[calc(100vh-2rem)] @[64rem]/board:min-w-0 @[64rem]/board:flex-col @[64rem]/board:gap-4 @[64rem]/board:self-start @[64rem]/board:overflow-y-auto"
+        >
           <section
             data-tickler-companies
+            data-rail-pane="orgs"
             aria-label="Orgs"
-            className="order-1 flex min-w-0 shrink-0 flex-col rounded-lg border bg-card @[64rem]/board:order-none"
+            style={orgsBox.style}
+            className={cn(
+              "order-1 flex min-h-0 min-w-0 shrink-0 flex-col rounded-lg border bg-card @[64rem]/board:order-none",
+              orgsBox.className,
+            )}
           >
-            <div className="flex items-center gap-2 border-b px-3 py-2">
+            <div data-rail-head className="flex shrink-0 items-center gap-2 border-b px-3 py-2">
               <h2 className={cn(MICRO, "font-semibold uppercase tracking-(--tracking-label) text-muted-foreground")}>
                 Orgs
               </h2>
@@ -245,29 +285,47 @@ export function TicklerBoardPage({
                 value={sortMode}
                 onChange={onSortMode}
               />
-              <span className={cn(MICRO, "ml-auto text-muted-foreground")}>need you</span>
+              {/* Demoted, the header is the whole pane, so it carries the count
+                  the lines underneath would have carried. */}
+              <span className={cn(MICRO, "ml-auto text-muted-foreground")}>
+                {orgsBudget?.demoted ? (
+                  <>
+                    <span className="font-semibold text-foreground">{totals.needs}</span> need you · {companies.length}{" "}
+                    orgs
+                  </>
+                ) : (
+                  "need you"
+                )}
+              </span>
+              <TicklerRailMore budget={orgsBudget} />
             </div>
-            <ul className="flex flex-col">
-              {companies.map((company) => (
-                <TicklerCompanySlot
-                  key={company.id}
-                  company={company}
-                  onActionable={onActionable}
-                  onStats={onStats}
-                  onData={onData}
-                  tokenThresholds={thresholdsFor(tokenSettings, company.id)}
-                  alertsEnabled={alertsEnabled}
-                  pinned={pinnedIds.includes(company.id)}
-                  onTogglePin={() => onTogglePin(company.id)}
-                  onFocusNeeds={() => toggleFocus(company.id)}
-                  needsFocused={focusCompanyId === company.id}
-                />
-              ))}
-            </ul>
-            {companies.length > 1 && (
+            {!orgsBudget?.demoted && (
+              <ul className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+                {companies.map((company) => (
+                  <TicklerCompanySlot
+                    key={company.id}
+                    company={company}
+                    onActionable={onActionable}
+                    onStats={onStats}
+                    onData={onData}
+                    tokenThresholds={thresholdsFor(tokenSettings, company.id)}
+                    alertsEnabled={alertsEnabled}
+                    pinned={pinnedIds.includes(company.id)}
+                    onTogglePin={() => onTogglePin(company.id)}
+                    onFocusNeeds={() => toggleFocus(company.id)}
+                    needsFocused={focusCompanyId === company.id}
+                  />
+                ))}
+              </ul>
+            )}
+            {companies.length > 1 && !orgsBudget?.demoted && (
               <div
                 data-board-totals
-                className={cn(MICRO, "flex items-center gap-2.5 border-t px-3 py-1.5 tabular-nums text-muted-foreground")}
+                data-rail-foot
+                className={cn(
+                  MICRO,
+                  "flex shrink-0 items-center gap-2.5 border-t px-3 py-1.5 tabular-nums text-muted-foreground",
+                )}
               >
                 <span className="uppercase tracking-(--tracking-label)">All</span>
                 <span className="ml-auto">{formatTokensMillions(totals.tokens)}M tokens</span>
@@ -278,22 +336,29 @@ export function TicklerBoardPage({
           </section>
           {/* Directly under Orgs, above Portfolio: it is the only pane on the
               page that changes while you watch it, and it answers "what is the
-              fleet on" — the question the Orgs lines above it raise. Its own
-              height is capped, so a run starting cannot shove Portfolio. */}
-          <div className="order-3 min-w-0 shrink-0 @[64rem]/board:order-none">
-            <TicklerRecentTasks tasks={recent} nowMs={nowMs} />
-          </div>
+              fleet on" — the question the Orgs lines above it raise. The budget
+              fixes its height, so a run starting cannot shove Portfolio. */}
+          <TicklerRecentTasks
+            tasks={recent}
+            nowMs={nowMs}
+            budget={budget.recent}
+            className="order-3 min-w-0 @[64rem]/board:order-none"
+          />
           <TicklerPortfolio
             items={projectEntries}
             nowMs={nowMs}
             companies={companies}
             sort={portfolioSort}
             onSort={onPortfolioSort}
+            budget={budget.portfolio}
             className="order-4 min-h-0 min-w-0 flex-1 @[64rem]/board:order-none"
           />
-          <div className="order-5 min-w-0 shrink-0 @[64rem]/board:order-none">
-            <TicklerRoutineExceptions items={routines} nowMs={nowMs} />
-          </div>
+          <TicklerRoutineExceptions
+            items={routines}
+            nowMs={nowMs}
+            budget={budget.routines}
+            className="order-5 min-w-0 @[64rem]/board:order-none"
+          />
         </div>
 
         <div className="order-2 min-w-0 @[64rem]/board:order-none">

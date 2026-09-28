@@ -7,7 +7,7 @@ never a real company.
 | File | What it studies |
 | --- | --- |
 | [`board-v2.html`](board-v2.html) | The board ledger rebuild: one row per org, SCADA-muted palette, alarm colour reserved for alarms. Shipped. |
-| [`sidebar-v3.html`](sidebar-v3.html) | The left rail — how it spends height, and whether it should be configurable. PLI-246, open. |
+| [`sidebar-v3.html`](sidebar-v3.html) | The left rail — how it spends height, and whether it should be configurable. PLI-246: A shipped, C is PLI-247, D is PLI-248. |
 
 Pictures are captured with:
 
@@ -30,10 +30,16 @@ everything: screen size, and how many orgs you watch.
 
 ### What is actually wrong
 
-The rail is four cards in a sticky column capped at `100vh - 2rem`, and each card
-carries its own scroll cap:
+> **A shipped.** What follows describes the rail as it was when the study was
+> made. The caps are gone: the rail is pinned to `100vh - 2rem`, measures itself,
+> and hands each pane a height — see `src/ui/lib/rail-budget.ts` for the
+> distribution pass and `src/ui/components/useRailBudget.ts` for the measuring.
+> B was not taken. C and D are PLI-247 and PLI-248.
 
-| Pane | Cap today | Set where |
+The rail was four cards in a sticky column capped at `100vh - 2rem`, and each
+card carried its own scroll cap:
+
+| Pane | Cap before A | Set where |
 | --- | --- | --- |
 | Orgs | *none* | `TicklerBoardPage.tsx` |
 | Recent | `max-h-64` — 256px | `TicklerRecentTasks.tsx:198` |
@@ -54,7 +60,7 @@ Twelve orgs, 1512×790 — Portfolio has left the building:
 
 ![Today, twelve orgs](sidebar-v3/current-1512x790-12orgs.png)
 
-### A · Height budget — recommended
+### A · Height budget — shipped
 
 The rail is told how tall it is and spends it. Each pane declares
 `rows: [minimum, ideal]` and a priority; every pane gets its minimum, then the
@@ -72,7 +78,19 @@ On a 27&Prime; monitor the surplus goes into the panes rather than into a scroll
 ![Budget on a 27-inch screen](sidebar-v3/budget-2560x1400.png)
 
 The distribution pass is `applyBudget()` in the study — about 30 lines, and it
-is meant to be read as the reference for the real implementation.
+was the reference for the real one. What shipped differs in three places, all of
+them things the study could take for granted and the board cannot:
+
+- A pane with nothing in it — "all 7 routines healthy" — is not a demoted pane.
+  It keeps its own height and is never promoted or clipped.
+- A demoted pane has no rows left on the page to measure, so the last heights it
+  had are remembered; otherwise it could never be promoted back.
+- Row height is the tallest of a sample rather than the second row, because
+  Portfolio's sticky company headings are rows too and are shorter than a bar.
+
+A demoted pane is its header, which is where each pane's digest already lived —
+`3 need attention`, `8 working`, `35 open · 5 blocked` — rather than a separate
+digest line.
 
 ### B · One tall panel, tabbed — alternative
 
@@ -84,7 +102,7 @@ cost is a click, and a failed routine is only a number until you go back to it.
 
 ![Tabbed rail](sidebar-v3/tabs-1440x900-12orgs.png)
 
-### C · Customisable rail — recommended, after A
+### C · Customisable rail — next, PLI-247
 
 A gear on the rail: which panes appear, in what order, how dense, how wide,
 saved per person **and per screen size** — a laptop and a desk monitor keep
@@ -98,12 +116,12 @@ Needs somewhere to persist — plugin user settings, where the token thresholds
 already live. It ships *after* A: customisation on top of a rail that behaves is
 a preference; on top of one that does not, it is a workaround.
 
-### D · No rail — context strip + drawer
+### D · No rail — context strip + drawer — PLI-248, narrow screens only
 
 The rail becomes a row of dense cards above the queue; clicking one opens it in
 a drawer. The queue gets ~330px back. This is already what the board does below
-`64rem`, where the rail stacks on top — adopting it deliberately would make the
-narrow case a design rather than a fallback. Everything becomes a number, so it
-is the wrong default on a large screen.
+`64rem`, where the rail stacks on top — adopting it deliberately makes the narrow
+case a design rather than a fallback. Everything becomes a number, so it is the
+wrong default on a large screen: PLI-248 takes it below `64rem` only.
 
 ![Context strip](sidebar-v3/strip-1280x720.png)

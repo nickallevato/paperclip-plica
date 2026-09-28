@@ -79,6 +79,7 @@ export function TicklerCompanyLine({
     <li
       data-company-line={company.id}
       data-pulse={pulse}
+      data-rail-row
       aria-pressed={onFocusNeeds ? needsFocused : undefined}
       onClick={
         onFocusNeeds

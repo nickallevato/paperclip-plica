@@ -5,6 +5,18 @@ Short-form. The reader-facing write-up for each version is in
 
 ## Unreleased
 
+- **The left rail spends the height it has.** It used to be four cards each with
+  its own pixel scroll cap — 256px of Recent, 160px of Routines, and no cap at
+  all on Orgs, so every org you watched pushed the panes below it down until
+  Portfolio was off the bottom of the screen. The rail is now pinned to the
+  viewport, measures itself, and gives each pane a height of its header plus a
+  whole number of measured rows: everyone gets the fewest rows worth drawing,
+  then the surplus goes out one row at a time in priority order. No pane ends in
+  a row cut in half, a pane holding rows back says `+8 more`, one the rail cannot
+  seat falls back to its header instead of being clipped, and a taller monitor
+  goes into the panes rather than into a scrollbar. The layout studies behind it
+  are in [docs/mockups](docs/mockups/README.md).
+
 ## 0.7.0
 
 - **Plica is now Tickler.** A tickler file is the office folder of dated

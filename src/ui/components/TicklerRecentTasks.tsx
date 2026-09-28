@@ -9,9 +9,11 @@ import {
 import { cn } from "../host/util";
 import { formatAgeMinutes } from "../lib/tickler";
 import type { TicklerRecentTask, TicklerRecentTasks as TicklerRecentTasksModel } from "../lib/queue";
+import type { TicklerRailPaneBudget } from "../lib/rail-budget";
 import { elapsedLabel, humanStatus, isStartingUp, runNarration } from "../lib/runs";
 import { LiveDot, QueuedDot } from "./LiveDot";
 import { TicklerLink } from "./TicklerLink";
+import { railPaneBox, TicklerRailMore } from "./TicklerRailPane";
 
 const MICRO = "text-[length:var(--tickler-fs-micro,11px)] leading-[1.45]";
 const BODY = "text-[length:var(--tickler-fs-body,14px)] leading-[1.45]";
@@ -117,7 +119,7 @@ function TaskRow({ task, nowMs }: { task: TicklerRecentTask; nowMs: number }) {
     </span>
   );
   return (
-    <li data-recent-task={phase ?? "idle"} className={cn("flex items-center", BODY)}>
+    <li data-recent-task={phase ?? "idle"} data-rail-row className={cn("flex items-center", BODY)}>
       <HoverCard>
         {/* The trigger's child is a plain span, not the link: `asChild` clones
             its child with a ref and a data-slot, and TicklerLink accepts a fixed
@@ -162,15 +164,34 @@ function TaskRow({ task, nowMs }: { task: TicklerRecentTask; nowMs: number }) {
  *
  * The strip's one real virtue was a height that could not change — it was moved
  * out of the rail in the first place because a pane that grew with the fleet
- * shoved Portfolio and Routines down the page. That is kept here by a cap: the
- * list scrolls inside a fixed maximum instead of growing, so a run starting can
- * move rows within this pane and nothing outside it.
+ * shoved Portfolio and Routines down the page. That is kept here, but by the
+ * rail's height budget rather than by a 256px cap of its own: the list scrolls
+ * inside the height it was given, so a run starting can move rows within this
+ * pane and nothing outside it.
  */
-export function TicklerRecentTasks({ tasks, nowMs }: { tasks: TicklerRecentTasksModel; nowMs: number }) {
+export function TicklerRecentTasks({
+  tasks,
+  nowMs,
+  budget,
+  className,
+}: {
+  tasks: TicklerRecentTasksModel;
+  nowMs: number;
+  budget?: TicklerRailPaneBudget;
+  className?: string;
+}) {
   const { items, working, queued, hidden } = tasks;
+  const box = railPaneBox(budget);
   return (
-    <section data-tickler-recent aria-label="Recent tasks" className="flex shrink-0 flex-col rounded-lg border bg-card">
+    <section
+      data-tickler-recent
+      data-rail-pane="recent"
+      aria-label="Recent tasks"
+      style={box.style}
+      className={cn("flex min-h-0 shrink-0 flex-col rounded-lg border bg-card", className, box.className)}
+    >
       <h3
+        data-rail-head
         className={cn(
           "flex shrink-0 items-center gap-2 px-3 pb-2 pt-3 font-semibold uppercase tracking-(--tracking-label) text-muted-foreground",
           MICRO,
@@ -187,21 +208,29 @@ export function TicklerRecentTasks({ tasks, nowMs }: { tasks: TicklerRecentTasks
             </span>
           )}
         </span>
+        <TicklerRailMore budget={budget} />
       </h3>
 
       {items.length === 0 ? (
-        <p className={cn("px-3 pb-3 italic text-muted-foreground", MICRO)}>nothing has moved today</p>
+        <p data-rail-foot className={cn("px-3 pb-3 italic text-muted-foreground", MICRO)}>
+          nothing has moved today
+        </p>
+      ) : budget?.demoted ? (
+        // Too short a rail to draw even three rows. The header above already
+        // says how many are working and how many are queued, which is the whole
+        // of what three clipped rows would have told anyone.
+        null
       ) : (
         <>
-          {/* Capped and scrolled rather than grown: this pane's height must not
-              track the size of the fleet. */}
-          <ul className="max-h-64 min-h-0 overflow-y-auto px-3">
+          {/* Scrolled inside the height the rail budgeted, so this pane's height
+              does not track the size of the fleet. */}
+          <ul className="min-h-0 flex-1 overflow-y-auto px-3">
             {items.map((task) => (
               <TaskRow key={task.key} task={task} nowMs={nowMs} />
             ))}
           </ul>
           {hidden > 0 && (
-            <p className={cn("shrink-0 border-t px-3 py-1.5 text-muted-foreground", MICRO)}>
+            <p data-rail-foot className={cn("shrink-0 border-t px-3 py-1.5 text-muted-foreground", MICRO)}>
               {hidden} more touched today
             </p>
           )}

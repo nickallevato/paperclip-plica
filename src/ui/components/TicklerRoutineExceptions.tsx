@@ -3,7 +3,9 @@ import { cn } from "../host/util";
 import { CompanyPatternIcon } from "../host/ui-kit";
 import { formatAgeMinutes } from "../lib/tickler";
 import { routineExceptions, type TicklerRoutineExceptionKind, type TicklerUpcomingRoutine } from "../lib/queue";
+import type { TicklerRailPaneBudget } from "../lib/rail-budget";
 import { TicklerLink } from "./TicklerLink";
+import { railPaneBox, TicklerRailMore } from "./TicklerRailPane";
 
 const MICRO = "text-[length:var(--tickler-fs-micro,11px)] leading-[1.45]";
 const BODY = "text-[length:var(--tickler-fs-body,14px)] leading-[1.45]";
@@ -29,12 +31,29 @@ const KIND_TONE: Record<TicklerRoutineExceptionKind, string> = {
  * fine. Here a healthy routine is a number in the header and nothing else, so
  * the block is two lines tall on a good day and empty on a perfect one.
  */
-export function TicklerRoutineExceptions({ items, nowMs }: { items: TicklerUpcomingRoutine[]; nowMs: number }) {
+export function TicklerRoutineExceptions({
+  items,
+  nowMs,
+  budget,
+  className,
+}: {
+  items: TicklerUpcomingRoutine[];
+  nowMs: number;
+  budget?: TicklerRailPaneBudget;
+  className?: string;
+}) {
   const { items: exceptions, healthy } = routineExceptions(items, nowMs);
+  const box = railPaneBox(budget);
 
   return (
-    <section data-tickler-routines className="flex shrink-0 flex-col rounded-lg border bg-card">
+    <section
+      data-tickler-routines
+      data-rail-pane="routines"
+      style={box.style}
+      className={cn("flex min-h-0 shrink-0 flex-col rounded-lg border bg-card", className, box.className)}
+    >
       <h3
+        data-rail-head
         className={cn(
           "flex shrink-0 items-center gap-2 px-3 pb-2 pt-3 font-semibold uppercase tracking-(--tracking-label) text-muted-foreground",
           MICRO,
@@ -47,17 +66,22 @@ export function TicklerRoutineExceptions({ items, nowMs }: { items: TicklerUpcom
             {exceptions.length} need{exceptions.length === 1 ? "s" : ""} attention
           </span>
         )}
+        <TicklerRailMore budget={budget} />
       </h3>
 
       {exceptions.length === 0 ? (
-        <p className={cn("px-3 pb-3 italic text-muted-foreground", MICRO)}>
+        <p data-rail-foot className={cn("px-3 pb-3 italic text-muted-foreground", MICRO)}>
           {healthy === 0 ? "nothing scheduled" : `all ${healthy} routines healthy`}
         </p>
+      ) : budget?.demoted ? (
+        // The header's own "3 need attention" is the digest, and it is a link
+        // away from the routines themselves; two clipped rows would not be.
+        null
       ) : (
         <>
-          {/* Capped rather than scrolled: broken routines are rare, and a
-              scrollbar here would imply there is always more to find. */}
-          <ul className="max-h-40 overflow-y-auto px-3">
+          {/* The rail's budget decides how many of these fit, and it gives this
+              pane two rows before it gives Portfolio its fourth. */}
+          <ul className="min-h-0 flex-1 overflow-y-auto px-3">
             {exceptions.map(({ item, kind, label, lateMs, issue }) => {
               const { company, routine } = item;
               const Icon = KIND_ICON[kind];
@@ -65,6 +89,7 @@ export function TicklerRoutineExceptions({ items, nowMs }: { items: TicklerUpcom
                 <li
                   key={`${company.id}:${routine.id}`}
                   data-routine-exception={kind}
+                  data-rail-row
                   className={cn("flex items-center gap-2 py-1", BODY)}
                 >
                   <Icon className={cn("h-3.5 w-3.5 shrink-0", KIND_TONE[kind])} aria-hidden="true" />
@@ -95,7 +120,7 @@ export function TicklerRoutineExceptions({ items, nowMs }: { items: TicklerUpcom
             })}
           </ul>
           {healthy > 0 && (
-            <p className={cn("shrink-0 border-t px-3 py-1.5 text-muted-foreground", MICRO)}>
+            <p data-rail-foot className={cn("shrink-0 border-t px-3 py-1.5 text-muted-foreground", MICRO)}>
               {healthy} healthy routine{healthy === 1 ? "" : "s"} not shown
             </p>
           )}
