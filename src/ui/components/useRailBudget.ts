@@ -86,7 +86,11 @@ export function useRailBudget(specs: readonly TicklerRailPaneSpec[]): {
       const held = remembered.current[spec.key];
       remembered.current[spec.key] = {
         head: pane.querySelector<HTMLElement>("[data-rail-head]")?.offsetHeight ?? 0,
-        foot,
+        // A demoted pane draws neither rows nor footer. Measuring its footer as
+        // nothing would cost it that much less to promote than it really costs,
+        // and it would come back a footer too tall for the rail. An empty pane
+        // still draws its "all 7 healthy" note, so it measures itself.
+        foot: rows.length === 0 && foot === 0 ? (held?.foot ?? 0) : foot,
         // The tallest of the sample rather than the first: Portfolio's sticky
         // company headings are rows too and are shorter than a project's bar,
         // and a row height that under-measures puts the half-drawn row back.
