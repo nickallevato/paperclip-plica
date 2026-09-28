@@ -263,3 +263,13 @@ describe("the remedy it prints", () => {
     expect(guard(join(repo, worktreePathFor(BRANCH))).code).toBe(0);
   });
 });
+
+describe("the suite's git environment", () => {
+  it("does not carry a hook's repo-locating variables into child git calls", () => {
+    // A pre-commit hook exports these; left in place, the scratch repos above
+    // would be built inside the real one. vitest.setup.ts drops them.
+    for (const name of ["GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE"]) {
+      expect(process.env[name]).toBeUndefined();
+    }
+  });
+});
