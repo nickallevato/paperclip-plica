@@ -5,6 +5,16 @@ Short-form. The reader-facing write-up for each version is in
 
 ## Unreleased
 
+- **The board's left column no longer runs off the bottom of the page.** It is
+  pinned inside Paperclip's scrolling `<main>`, which is shorter than the window
+  by the height of the host's chrome, but it was capped at the window's height —
+  so its last panels were painted below the edge of the scroll area and nothing
+  could scroll to them, and the column appeared to move only while the queue on
+  the right scrolled. The cap is now measured from the box the column is
+  actually pinned in, the column scrolls itself when its panels still do not
+  fit, and Portfolio keeps a minimum height instead of being squeezed to a bare
+  heading.
+
 ## 0.7.0
 
 - **Plica is now Tickler.** A tickler file is the office folder of dated

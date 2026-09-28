@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import type { Company } from "@paperclipai/shared";
 import { cn } from "../host/util";
 import {
@@ -36,6 +36,7 @@ import { TicklerRoutineExceptions } from "./TicklerRoutineExceptions";
 import { TicklerSegmented } from "./TicklerSegmented";
 import type { TicklerCompanyData } from "./useTicklerCompanyData";
 import { applyTriageOverrides, useQueueTriage } from "./useQueueTriage";
+import { useRailMaxHeight } from "./useRailMaxHeight";
 
 const MICRO = "text-[length:var(--tickler-fs-micro,11px)] leading-[1.45]";
 
@@ -106,6 +107,7 @@ export function TicklerBoardPage({
   footer?: ReactNode;
 }) {
   const nowMs = useNowMs();
+  const [railRef, railMaxHeight] = useRailMaxHeight();
   // Clicking a row's Need-you count narrows the rail to that company; clicking
   // it again (or the rail's chip) widens it back. Not persisted — it is a
   // glance, not a setting.
@@ -222,11 +224,26 @@ export function TicklerBoardPage({
   return (
     <div data-view="board" className="@container/board flex flex-col gap-4">
       <div className="grid gap-4 @[64rem]/board:grid-cols-[minmax(320px,400px)_minmax(0,1fr)] @[96rem]/board:grid-cols-[440px_minmax(0,1fr)] [.tickler-kiosk_&]:gap-6 [.tickler-kiosk_&]:@[110rem]/board:grid-cols-[540px_minmax(0,1fr)]">
-        {/* Capped at the viewport rather than pinned to it: the column is as
+        {/* Capped at the scroller rather than pinned to it: the column is as
             tall as its contents until that would overflow, and only then does
             Portfolio scroll inside itself. Companies and Routines are
-            `shrink-0`, so neither can be squeezed out of view. */}
-        <div className="contents @[64rem]/board:sticky @[64rem]/board:top-4 @[64rem]/board:flex @[64rem]/board:max-h-[calc(100vh-2rem)] @[64rem]/board:min-w-0 @[64rem]/board:flex-col @[64rem]/board:gap-4 @[64rem]/board:self-start">
+            `shrink-0`, so neither can be squeezed out of view.
+            The cap is measured (`useRailMaxHeight`), because the box a sticky
+            element is pinned inside is the host's scroller, not the window —
+            `100vh` overshot it by the height of the host's chrome and hung the
+            rail's last panel below the edge where nothing could scroll to it
+            (PLI-243). `--tickler-rail-max-h` keeps a viewport-based fallback
+            for the first paint and for hosts without ResizeObserver.
+            `overflow-y-auto` is the backstop for the rest of that bug: when the
+            `shrink-0` panels alone are taller than the cap — many orgs, say —
+            Portfolio cannot absorb the excess, so the rail scrolls itself
+            instead of clipping. Scroll chaining is left on: at the end of the
+            rail the wheel should carry on down the page, not stop dead. */}
+        <div
+          ref={railRef}
+          style={railMaxHeight === null ? undefined : { "--tickler-rail-max-h": `${railMaxHeight}px` } as CSSProperties}
+          className="contents @[64rem]/board:sticky @[64rem]/board:top-4 @[64rem]/board:flex @[64rem]/board:max-h-[var(--tickler-rail-max-h)] @[64rem]/board:min-w-0 @[64rem]/board:flex-col @[64rem]/board:gap-4 @[64rem]/board:self-start @[64rem]/board:overflow-y-auto"
+        >
           <section
             data-tickler-companies
             aria-label="Orgs"
@@ -289,7 +306,10 @@ export function TicklerBoardPage({
             companies={companies}
             sort={portfolioSort}
             onSort={onPortfolioSort}
-            className="order-4 min-h-0 min-w-0 flex-1 @[64rem]/board:order-none"
+            // The floor matters once the rail scrolls: `flex-1 min-h-0` lets a
+            // tall stack of orgs squeeze Portfolio to nothing, so it keeps
+            // roughly four rows and the rail overflows instead.
+            className="order-4 min-h-0 min-w-0 flex-1 @[64rem]/board:order-none @[64rem]/board:min-h-56"
           />
           <div className="order-5 min-w-0 shrink-0 @[64rem]/board:order-none">
             <TicklerRoutineExceptions items={routines} nowMs={nowMs} />
