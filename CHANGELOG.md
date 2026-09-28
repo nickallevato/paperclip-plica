@@ -5,6 +5,8 @@ Short-form. The reader-facing write-up for each version is in
 
 ## Unreleased
 
+## 0.8.0
+
 - **The left rail spends the height it has.** It used to be four cards each with
   its own pixel scroll cap — 256px of Recent, 160px of Routines, and no cap at
   all on Orgs, so every org you watched pushed the panes below it down until
