@@ -3,6 +3,8 @@
 One page per version, written for someone deciding whether to upgrade: what
 changed, what it means for them, and anything they have to do by hand.
 
+- [0.8.1](0.8.1.md) — docs only: a new lead image on the README, so npm's package
+  page shows one screenful instead of the top of a tall one.
 - [0.8.0](0.8.0.md) — Tickler updates itself from a button, and the board's left
   rail spends the height it has.
 - [0.7.1](0.7.1.md) — the board's left column is no longer cut off at the bottom.
