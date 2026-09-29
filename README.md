@@ -43,7 +43,7 @@ you will deal with each thing — instead of visiting each org's dashboard in tu
 - 🎭 **Demo mode.** `?demo=1` swaps in invented orgs, so you can screenshot or demo safely.
 - 🧩 **Zero core changes.** UI-only, prebuilt, and fits whichever Paperclip build it lands on.
 
-![The Tickler page: Orgs, portfolio and routines at left; the Needs-you queue, grouped by when you'll decide, owning the main column](https://raw.githubusercontent.com/nickallevato/paperclip-tickler/main/docs/screenshots/tickler-page.png)
+![The Tickler page: Orgs, Recent, portfolio and routines at left; the Needs-you queue, sorted by severity into Now, Soon and Later, owning the main column](https://raw.githubusercontent.com/nickallevato/paperclip-tickler/main/docs/screenshots/hero.png)
 
 > The screenshots are Tickler's own [demo mode](https://github.com/nickallevato/paperclip-tickler/blob/main/docs/configuration.md#demo-mode) —
 > invented orgs, tickets and agents, not a real instance — apart from the two inline-answer shots,

@@ -5,6 +5,19 @@ Short-form. The reader-facing write-up for each version is in
 
 ## Unreleased
 
+## 0.8.1
+
+- **A new lead image on the README.** The old one was the full-height page shot
+  from `docs/screenshots/tickler-page.png`, which is taller than a reader's
+  screen and shows the queue in its decide-by grouping. The README now leads
+  with `docs/screenshots/hero.png`: one viewport, the host's own chrome around
+  it, and the queue sorted by severity into Now / Soon / Later. It is
+  hand-captured and listed as such, so `scripts/capture-screenshots.mjs` no
+  longer owns it; `tickler-page.png` is untouched and still what
+  [docs/install.md](docs/install.md) shows.
+
+No plugin change — the build published for 0.8.1 is 0.8.0's.
+
 ## 0.8.0
 
 - **The left rail spends the height it has.** It used to be four cards each with
