@@ -146,6 +146,7 @@ them by hand when the UI they show changes.
 
 | File | Source |
 | --- | --- |
+| `hero.png` | Demo mode — the README's lead image |
 | `queue-confirmation.png` | Tickler's own development org (live) |
 | `queue-question.png` | Tickler's own development org (live) |
 | `recent-hover.png` | Demo mode |
