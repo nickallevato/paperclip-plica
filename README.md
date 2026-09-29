@@ -34,8 +34,8 @@ you will deal with each thing — instead of visiting each org's dashboard in tu
 - 📱 **Works on a phone**, and 🧩 **changes nothing in core** — UI-only, prebuilt, and fits
   whichever Paperclip build it lands on.
 
-> ### 📦 Install from inside Paperclip — no terminal needed
->
+> [!TIP]
+> **📦 Install from inside Paperclip — no terminal needed.**
 > **Settings → Plugins → Install Plugin**, enter **`paperclip-plugin-tickler`** as the npm Package
 > Name, and click **Install**. That's it — Tickler's button appears in the bar at the top of the page.
 >
@@ -69,8 +69,14 @@ and the agent's own last sentence about it.
 
 <img src="https://raw.githubusercontent.com/nickallevato/paperclip-tickler/main/docs/screenshots/recent-hover.png" alt="A Recent row's hover card: the ticket, its status, and what the agent last said" width="408">
 
+**In the header** — the gear names the version you are on and offers the newer one in place
+when npm has it, and holds the [token thresholds](https://github.com/nickallevato/paperclip-tickler/blob/main/docs/configuration.md#token-thresholds) that colour the spend
+figures; the bell turns on browser [alerts](https://github.com/nickallevato/paperclip-tickler/blob/main/docs/configuration.md#alerts) for the edges worth knowing about (an org going
+red, a critical item arriving); the expand control is [kiosk mode](https://github.com/nickallevato/paperclip-tickler/blob/main/docs/configuration.md#kiosk-mode), for a wall display.
+
 Full tours, with the rest of the screenshots: [the board](https://github.com/nickallevato/paperclip-tickler/blob/main/docs/board.md) · [the queue](https://github.com/nickallevato/paperclip-tickler/blob/main/docs/queue.md).
 
+> [!NOTE]
 > The screenshots are Tickler's own [demo mode](https://github.com/nickallevato/paperclip-tickler/blob/main/docs/configuration.md#demo-mode) —
 > invented orgs, tickets and agents, not a real instance. Try it on your own install: add `?demo=1`
 > to the Tickler page's URL (e.g. `/ACME/tickler?demo=1`). Nothing you click there reaches the
@@ -78,14 +84,18 @@ Full tours, with the rest of the screenshots: [the board](https://github.com/nic
 
 ## Install
 
+You need an **instance admin** account on a **self-hosted** Paperclip whose server can reach the
+npm registry. Nothing is built on your side: the package ships prebuilt and carries nothing tied
+to a particular Paperclip build, so upgrading Paperclip later needs nothing from Tickler.
+
 **In Paperclip:** **Settings → Plugins → Install Plugin**, enter `paperclip-plugin-tickler` as the
 npm Package Name — just the name, no `@`, no version — and click **Install**.
 
 **From the command line:**
 
 ```bash
-npx paperclipai plugin install paperclip-plugin-tickler   # install
-npx paperclipai plugin upgrade nickallevato.plugin-tickler # upgrade (the Plugin Manager has no button)
+npx paperclipai plugin install paperclip-plugin-tickler    # install
+npx paperclipai plugin upgrade nickallevato.plugin-tickler # upgrade in place
 ```
 
 **From source**, for working on Tickler:
@@ -96,8 +106,14 @@ cd paperclip-tickler && pnpm install && pnpm build
 npx paperclipai plugin install /absolute/path/to/paperclip-tickler --local
 ```
 
+**Then find it.** Tickler adds a button carrying its mark to the breadcrumb bar above every page,
+and a page at `/<COMPANY-PREFIX>/tickler` — `/ACME/tickler`, say, using any company's issue
+prefix. The page shows every org whichever prefix you arrive through; the prefix is only there
+because Paperclip mounts plugin pages under a company route.
+
 [docs/install.md](https://github.com/nickallevato/paperclip-tickler/blob/main/docs/install.md) covers every route in detail: upgrading, the directory layout a clone
-needs for its `link:` dependencies, and how to check the plugin actually loaded.
+needs for its `link:` dependencies, and how to check the plugin actually loaded. If the page comes
+up blank, [troubleshooting](https://github.com/nickallevato/paperclip-tickler/blob/main/docs/troubleshooting.md) works through it in order.
 
 ## Documentation
 

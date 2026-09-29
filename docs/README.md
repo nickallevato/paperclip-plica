@@ -18,6 +18,13 @@ Start here if you have never installed it:
 Contributors want [CONTRIBUTING.md](../CONTRIBUTING.md) — in particular the rule
 that Tickler never modifies Paperclip core.
 
+## One word, two names
+
+Paperclip calls the things you switch between **companies**, and its API does
+too. Tickler's own header calls them **Orgs**, because the list is read at a
+glance and the shorter word fits the line. These pages use whichever word suits
+the sentence; they are the same thing throughout.
+
 ## A note on the screenshots
 
 Nearly every screenshot in these pages is Tickler's own **demo mode**: four

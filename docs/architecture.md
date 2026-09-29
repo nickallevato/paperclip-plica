@@ -83,6 +83,9 @@ pnpm test            # vitest — needs a prior `pnpm build` on a fresh clone
 pnpm typecheck       # tsc --noEmit
 pnpm build           # CSS then bundle
 pnpm check:surface   # the no-core-changes guardrail
+pnpm check:vendored  # the host copies in src/ui/host/ still match the checkout
+pnpm check:branch    # the branch name CI insists on
+pnpm demo:data       # regenerate the demo fixture
 pnpm hooks:install   # pre-commit: surface check, typecheck, test
 ```
 
