@@ -1,9 +1,31 @@
 name: release
 
-# Publishes `paperclip-plugin-tickler` to npm when a `v*` tag lands on the repo.
-# Tagging is the release: nothing here decides the version, it only refuses to
-# publish one that is declared inconsistently (scripts/check-release.mjs) and
-# then runs the same `scripts/publish-npm.mjs` a person would run by hand.
+# Publishes `paperclip-plugin-tickler` to npm — on a merge to `main` that is
+# worth a version, or when a `v*` tag lands on the repo.
+#
+# A merge is the release (PLI-251). The `plan` job reads the conventional-commit
+# subjects since the last tag; if any of them is a feat, fix, perf or revert,
+# `cut` writes the version into the tree, commits it to `main` and tags it, and
+# `publish` runs on that tag. A merge carrying only chores, docs, CI or a
+# refactor publishes nothing and spends no version number. The alternative was
+# a human deciding when a version is worth shipping, which is what let the
+# 0.8.0 self-update button sit finished on `main` with nothing to prompt the tag
+# (PLI-249).
+#
+# The cut happens in *this* workflow rather than in a job that pushes a tag for
+# `release.yml` to pick up, for two reasons that both have to hold: a push made
+# with `GITHUB_TOKEN` does not trigger another workflow, so the tag would land
+# and nothing would publish; and npm's trusted-publisher entry matches this
+# file's name, so the publish has to happen from `release.yml` or the registry
+# refuses it. Moving the publish step to another workflow means re-entering the
+# trusted publisher on npmjs.com.
+#
+# Nothing here decides the version out of nowhere and nothing here writes prose:
+# `scripts/plan-release.mjs` derives the number from the merge subjects,
+# `scripts/apply-release.mjs` performs the same edits "Cutting a release" used to
+# ask a person for, `scripts/check-release.mjs` refuses a version that is
+# declared inconsistently, and `scripts/publish-npm.mjs` is the same script a
+# person would run by hand.
 #
 # The workspace layout and the Paperclip core checkout are the same trick
 # `ci.yml` uses and are explained there — Tickler's `@paperclipai/*` dev
@@ -17,6 +39,7 @@ name: release
 
 on:
   push:
+    branches: [main]
     tags: ["v*"]
   workflow_dispatch:
     inputs:
@@ -29,7 +52,11 @@ on:
         default: true
 
 permissions:
-  contents: read
+  # `cut` pushes the release commit and its tag to `main`. CONTRIBUTING.md's
+  # "never push to `main` directly" is a rule for people; this is the one writer
+  # that is allowed to, it only ever writes a `chore(release):` commit, and that
+  # commit plans no release of its own so it cannot loop.
+  contents: write
   # npm trusted publishing authenticates with this, and it is also what makes
   # `--provenance` possible. Without it, publishing needs the NPM_TOKEN secret.
   id-token: write
@@ -37,16 +64,90 @@ permissions:
 concurrency:
   # One publish at a time, and never cancelled halfway: a tarball that reached
   # the registry cannot be taken back, so an interrupted job is the one thing
-  # worse than a slow one.
-  group: release-${{ github.ref }}
+  # worse than a slow one. Keyed on the workflow rather than the ref now that a
+  # branch push can also release — two merges landing together must queue, not
+  # race each other to the same version number.
+  group: release-${{ github.workflow }}
   cancel-in-progress: false
 
 env:
   COREPACK_ENABLE_DOWNLOAD_PROMPT: "0"
 
 jobs:
+  plan:
+    name: plan the release
+    runs-on: ubuntu-latest
+    # Only a merge to `main` needs planning. A tag push already names its
+    # version, and a dispatch is a rehearsal or a retry of one.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    outputs:
+      release: ${{ steps.plan.outputs.release }}
+      version: ${{ steps.plan.outputs.version }}
+      tag: ${{ steps.plan.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The plan is a range against the last `v*` tag, so the tags and the
+          # history behind them both have to be here.
+          fetch-depth: 0
+
+      # No setup-node, no install: the planner is dependency-free on purpose, so
+      # the decision to publish is made before anything can fail to install.
+      - name: Decide whether this merge is a release
+        id: plan
+        run: node scripts/plan-release.mjs --github-output
+
+  cut:
+    name: cut ${{ needs.plan.outputs.version }}
+    needs: plan
+    if: needs.plan.outputs.release == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Write the version into the tree
+        run: |
+          node scripts/apply-release.mjs --version "${{ needs.plan.outputs.version }}"
+          node scripts/check-release.mjs --tag "${{ needs.plan.outputs.tag }}"
+
+      # Attributed to the Actions bot rather than to whoever's merge triggered
+      # it: the commit is this workflow's, and signing it as a person would put
+      # their name on text they did not write.
+      - name: Commit and tag
+        env:
+          VERSION: ${{ needs.plan.outputs.version }}
+          TAG: ${{ needs.plan.outputs.tag }}
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "chore(release): $VERSION"
+          git tag -a "$TAG" -m "Tickler $VERSION"
+
+      # `--atomic` so the branch and the tag land together or not at all: a tag
+      # without its commit on `main` is a release nobody can check out, and a
+      # commit without its tag is a version that never publishes.
+      #
+      # Pushing the branch, not force-pushing it. If another merge landed while
+      # this ran the push is refused, this run fails having published nothing,
+      # and that merge's own run re-plans from the newer `main` — the version
+      # number is only spent when npm accepts a tarball, so nothing is lost.
+      - name: Push the release commit and tag
+        run: git push --atomic origin HEAD:main "${{ needs.plan.outputs.tag }}"
+
   publish:
     name: publish to npm
+    needs: [plan, cut]
+    # Runs for a tag push and a dispatch, where `plan` and `cut` are both
+    # skipped, and for a merge only once `cut` has landed the tag. `!failure()`
+    # and `!cancelled()` are what let a skipped dependency through without
+    # letting a broken one through.
+    if: >-
+      !failure() && !cancelled() &&
+      (github.ref_type == 'tag' || github.event_name == 'workflow_dispatch' ||
+       needs.plan.outputs.release == 'true')
     runs-on: ubuntu-latest
     steps:
       - name: Check out Tickler
@@ -56,7 +157,10 @@ jobs:
           # Tags are what the version check compares against, and a dispatch run
           # is handed a branch, so fetch them regardless of what triggered this.
           fetch-depth: 0
-          ref: ${{ inputs.tag || github.ref }}
+          # The tag `cut` just pushed, the one a dispatch names, or the tag that
+          # triggered this. Never `main` on a merge: the commit `cut` made is
+          # what gets published, not whatever `main` has moved on to.
+          ref: ${{ needs.plan.outputs.tag || inputs.tag || github.ref }}
 
       - name: Read the pinned Paperclip core commit
         id: core
@@ -108,7 +212,7 @@ jobs:
         working-directory: repo/tickler
         env:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-          RELEASE_TAG: ${{ github.ref_type == 'tag' && github.ref_name || inputs.tag }}
+          RELEASE_TAG: ${{ needs.plan.outputs.tag || (github.ref_type == 'tag' && github.ref_name) || inputs.tag }}
           DRY_RUN: ${{ inputs.dry-run }}
         run: |
           args=()

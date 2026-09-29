@@ -116,6 +116,7 @@ pnpm build           # CSS then bundle
 pnpm check:surface   # the guardrail above
 pnpm check:branch    # branch name against the convention below
 pnpm check:worktree  # not working in the checkout other agents share
+pnpm release:plan    # what merging this would publish, and as which version
 pnpm hooks:install   # pre-commit: worktree, surface check, typecheck, test
 ```
 
@@ -268,10 +269,22 @@ check:branch` and the `branch name` CI job check it; renaming is
 
 ## Pull requests
 
+- **The title is a conventional commit**, because the repository squash-merges
+  and a merge to `main` publishes to npm. `feat:` publishes a minor version,
+  `fix:`/`perf:`/`revert:` a patch, and `chore:`/`docs:`/`ci:`/`test:`/`build:`/
+  `style:`/`refactor:` nothing at all. The `release plan` CI job says which
+  version merging will publish. The table and the reasoning are in
+  [docs/releases/README.md](docs/releases/README.md), "Cutting a release".
+- **A releasing title needs its changelog entries in the same pull request**,
+  under **Unreleased**. They become the release page verbatim on merge, so a
+  missing entry is a published version with nothing to read rather than
+  something to tidy up before tagging. `release plan` fails the pull request for
+  it.
 - The description says **what** changed, **why**, and **how it was verified**.
   Paste the test or check output rather than asserting it passed. The template
   asks for exactly these three.
-- Green CI: `branch name`, `plugin surface`, and `build and test`.
+- Green CI: `branch name`, `release plan`, `plugin surface`, and `build and
+  test`.
 - If a change is worth documenting for users, say so in the description so it
   reaches the README and `CHANGELOG.md`.
 - Auto-merge is enabled on the repository. `gh pr merge --auto` queues a merge
@@ -291,6 +304,13 @@ every pull request; they just no longer block one.
 So rebase onto `main` before merging even though nothing makes you — the checks
 that passed should be the checks for the merge result — and never push to
 `main` directly.
+
+There is exactly one exception, and it is not a person: the `release` workflow's
+`cut` job pushes the `chore(release): <version>` commit and its tag to `main`
+after a merge that is worth publishing. That commit is written entirely by
+`scripts/apply-release.mjs`, it carries no change of its own, and its own
+subject releases nothing — so it cannot loop. It is the only writer to `main`
+that is not a merge.
 
 Do not take this paragraph's word for the current state; read it:
 

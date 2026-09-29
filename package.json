@@ -38,6 +38,8 @@
     "typecheck": "tsc --noEmit",
     "check:branch": "node ./scripts/check-branch-name.mjs",
     "check:release": "node ./scripts/check-release.mjs",
+    "release:plan": "node ./scripts/plan-release.mjs",
+    "release:apply": "node ./scripts/apply-release.mjs",
     "release:publish": "node ./scripts/publish-npm.mjs",
     "check:surface": "node ./scripts/check-plugin-surface.mjs --all",
     "check:vendored": "node ./scripts/check-vendored.mjs",
