@@ -11,6 +11,7 @@ Start here if you have never installed it:
 | **[Configuration](configuration.md)** | Demo mode, updating to the latest version, token thresholds, alerts, kiosk mode, and everything Tickler remembers per browser. |
 | **[The Board](board.md)** | One row per company: capacity, live runs, what is waiting on you, spend. |
 | **[The Queue](queue.md)** | Every item across every company that wants a human, and how to answer it without leaving the page. |
+| **[Architecture](architecture.md)** | How the plugin is put together: the source layout, why it subtracts the host's stylesheet, the vendored core components, and the dev commands. |
 | **[Troubleshooting](troubleshooting.md)** | The page is blank, the app looks broken, "polling degraded", and the rest. |
 | **[Release notes](releases/)** | What changed in each version. The [changelog](../CHANGELOG.md) is the long form. |
 

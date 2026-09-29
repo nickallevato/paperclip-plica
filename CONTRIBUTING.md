@@ -42,8 +42,8 @@ editing it to make Tickler compile, it stops telling us anything true.
 - `src/ui/host/` — read-only *copies* of core internals Paperclip does not
   export to plugins. Copying core source into Tickler is not modifying core. Keep
   the copies byte-identical to upstream apart from import paths, and keep them
-  under `src/ui/host/`; see the README's "Vendored host components" for the
-  three documented exceptions.
+  under `src/ui/host/`; see [docs/architecture.md](docs/architecture.md#vendored-host-components)
+  for the three documented exceptions.
 
 ### What this forbids
 
@@ -128,8 +128,9 @@ checkout: `pnpm build` does not read Paperclip's compiled UI, and a Paperclip
 upgrade does not require rebuilding Tickler.
 
 Before you touch `scripts/build-css.mjs`, `src/ui/styles.ts` or
-`src/ui/lib/host-subtract.ts`, read the README's "Why Tickler subtracts the
-host's selectors". The build emits Tailwind's whole sheet on purpose; the
+`src/ui/lib/host-subtract.ts`, read
+[docs/architecture.md](docs/architecture.md#why-tickler-subtracts-the-hosts-selectors).
+The build emits Tailwind's whole sheet on purpose; the
 subtraction that keeps it from stranding Paperclip in its mobile layout happens
 in the browser, and a change that skips it — or moves Tickler's `<style>` ahead of
 the host's — breaks the host app, not the Tickler page.

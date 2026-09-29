@@ -8,6 +8,8 @@ that need attention. On the right, owning the main column, the
 When there is not room for both columns, the page stacks: Orgs, then the
 queue, then Recent, Portfolio and Routines.
 
+<img src="screenshots/phone.png" alt="Tickler at phone width: the Orgs list above the queue" width="320">
+
 ![The Orgs list: one line per org, with the totals beneath](screenshots/board.png)
 
 ## Orgs
