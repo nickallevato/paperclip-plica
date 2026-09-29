@@ -21,6 +21,16 @@ Short-form. The reader-facing write-up for each version is in
   merging it will publish, and fails a releasing pull request that has no
   changelog entry for it — because that entry is now the release page rather
   than something to tidy up before tagging.
+- **The README is half the length.** It had grown to 283 lines and ten
+  screenshots, most of them duplicating a tour page. It now leads with the hero
+  and keeps only the three current shots — `hero.png`, `needs-you.png`,
+  `left-rail.png`, plus the Recent hover card — and points at
+  [docs/board.md](docs/board.md) and [docs/queue.md](docs/queue.md) for the
+  rest. The build-internals essays moved out verbatim to a new
+  [docs/architecture.md](docs/architecture.md): the source layout, the host
+  stylesheet subtraction, the vendored core components and the dev commands.
+  `phone.png` now illustrates the stacking paragraph in `docs/board.md`, where
+  that behaviour is described. Docs only; nothing in the plugin changed.
 
 ## 0.8.1
 
