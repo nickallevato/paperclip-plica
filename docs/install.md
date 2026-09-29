@@ -172,9 +172,9 @@ pnpm build
 `pnpm build` does two things: compiles Tickler's Tailwind stylesheet and bundles
 `dist/manifest.js`, `dist/worker.js` and `dist/ui/`. That `dist` folder is what
 Paperclip loads. It does not read anything of Paperclip's — the host's duplicate
-selectors are subtracted in the browser at runtime (README, "Why Tickler subtracts
-the host's selectors"), so there is no Paperclip UI build that has to exist
-first.
+selectors are subtracted in the browser at runtime
+([Architecture](architecture.md#why-tickler-subtracts-the-hosts-selectors)), so
+there is no Paperclip UI build that has to exist first.
 
 > **`pnpm test` needs a build first.** The test suite imports the generated
 > stylesheet, which `pnpm build` produces and git ignores. On a fresh clone,

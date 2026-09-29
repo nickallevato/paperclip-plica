@@ -31,6 +31,21 @@ Short-form. The reader-facing write-up for each version is in
   stylesheet subtraction, the vendored core components and the dev commands.
   `phone.png` now illustrates the stacking paragraph in `docs/board.md`, where
   that behaviour is described. Docs only; nothing in the plugin changed.
+- **The docs say what the header does, and every link resolves.** The README
+  covered the board and the queue but nothing in the page header, so the gear's
+  version-and-update row, the token thresholds, the alerts bell and kiosk mode
+  were documented only for someone who already knew to go looking; it now names
+  all four in a line and points at
+  [docs/configuration.md](docs/configuration.md). It also says where Tickler
+  turns up once installed — the breadcrumb button and the
+  `/<COMPANY-PREFIX>/tickler` page — which the install section had left to the
+  screenshot, and states the two prerequisites (instance admin, self-hosted with
+  npm reachable) before the first command rather than only inside the callout.
+  `docs/install.md` pointed at a README section that moved to
+  `docs/architecture.md` in the consolidation above, and `docs/releases/0.3.0.md`
+  still linked a `#…-rebuild-plica` anchor from before the rename; both now land.
+  `docs/README.md` says once that Paperclip's *companies* and Tickler's *Orgs*
+  are the same thing, since the pages use both words. Docs only.
 
 ## 0.8.1
 
