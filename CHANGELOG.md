@@ -5,6 +5,23 @@ Short-form. The reader-facing write-up for each version is in
 
 ## Unreleased
 
+- **A merge to `main` releases itself.** Pushing a `v*` tag has published
+  unattended since 0.6.0, but everything before the tag was done by hand — pick
+  the version, rename the changelog heading, write it into `package.json` and
+  `src/manifest.ts`, write the release page — and nothing said a tag was due. So
+  0.8.0's self-update button was finished and sitting on `main` with no release
+  to put it in. Now the merge is the release: the `release` workflow reads the
+  conventional-commit subjects since the last tag, and a `feat`, `fix`, `perf` or
+  `revert` among them means it picks the version, writes all four declarations,
+  generates the release page from the changelog entries, commits and tags on
+  `main`, and publishes — in one run, so the publish still comes from
+  `release.yml` where npm's trusted-publisher entry expects it. A merge carrying
+  only chores, docs, CI or a refactor publishes nothing and spends no version
+  number. A new `release plan` check on every pull request names the version
+  merging it will publish, and fails a releasing pull request that has no
+  changelog entry for it — because that entry is now the release page rather
+  than something to tidy up before tagging.
+
 ## 0.8.1
 
 - **A new lead image on the README.** The old one was the full-height page shot

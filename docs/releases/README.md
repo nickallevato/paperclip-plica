@@ -24,39 +24,128 @@ The [changelog](../../CHANGELOG.md) is the short form and covers every version.
 
 ## Cutting a release
 
-1. Land everything for the version, with its changelog entries under
-   **Unreleased**.
-2. Rename that heading to the version number and open a fresh Unreleased.
-3. Set the same version in `package.json` **and** `src/manifest.ts` — the host
-   reads the manifest, `pnpm install` reads the package, and a mismatch is
-   invisible until someone reports the wrong version in `plugin list`.
-4. Refresh the screenshots if the UI moved:
+**A merge to `main` is the release.** There is nothing to do after one, and
+nothing to remember before one. Write the change, title the pull request as a
+conventional commit, put its entries under **Unreleased** in the changelog, and
+merge; the version is picked, written, tagged and published from that merge.
+
+That is a deliberate answer to a specific failure. The self-update button
+([0.8.0](0.8.0.md)) was finished and on `main` for days before anyone released
+it, because landing a feature did not release it and nothing said a tag was due.
+Publishing was already unattended — every step *before* the tag was not.
+
+So, to release something:
+
+1. **Title the pull request as a conventional commit.** The repository
+   squash-merges, so the title becomes the one subject on `main`, and the type
+   picks the bump:
+
+   | title | what merging it publishes |
+   | --- | --- |
+   | `feat: …`, `feat(scope): …` | a minor version — `0.8.0` → `0.9.0` |
+   | `fix: …`, `perf: …`, `revert: …` | a patch version — `0.8.0` → `0.8.1` |
+   | `feat!: …`, or a `BREAKING CHANGE:` footer | a minor version, while Tickler is pre-1.0 |
+   | `chore: …`, `docs: …`, `ci: …`, `test: …`, `build: …`, `style: …`, `refactor: …` | nothing at all |
+
+   The last row is the point of the table: a tidy-up, a docs pass or a CI fix
+   merges without spending a version number. Only a change a reader would want
+   to hear about publishes one.
+
+2. **Write the changelog entries under Unreleased, in that same pull request.**
+   They are not decoration — the Unreleased body becomes
+   `docs/releases/<version>.md` verbatim when the merge publishes. This is the
+   last moment it is cheap to write, so the `release plan` CI job fails a
+   releasing pull request that has no entry, and says which version it was
+   about to publish with nothing to read.
+
+3. **Refresh the screenshots if the UI moved:**
    `node scripts/capture-screenshots.mjs` (see
    [screenshots/README.md](../screenshots/README.md)).
-5. Write the release page here.
-6. Check the version is declared consistently before tagging anything:
-   `pnpm check:release`. It compares `package.json`, `src/manifest.ts`, the
-   changelog heading and the release page, and says which one is behind.
-7. Tag `v<version>` on `main` and push the tag.
 
-Pushing the tag is the release. The
-[`release` workflow](../../.github/workflows/release.yml) picks it up, installs
-against the pinned Paperclip core the way CI does, and publishes. A published
-version can never be reused — a bad release is fixed by the next one, not by
-republishing — so the workflow refuses to publish a tag that disagrees with
-`package.json`, a tree that is not clean, or a version with no changelog entry
-or release page. `prepublishOnly` typechecks, builds and tests inside
-`npm publish` itself, so a red build cannot reach the registry either.
+4. **Merge.** The [`release` workflow](../../.github/workflows/release.yml) then,
+   in one run:
 
-To rehearse without releasing, run the workflow by hand from the Actions tab
-with **dry run** left on: it packs the tarball and runs every check, and
-publishes nothing.
+   - `scripts/plan-release.mjs` reads the conventional subjects since the last
+     `v*` tag and decides the bump. No releasing subject, no release, and the
+     run stops here having done nothing.
+   - `scripts/apply-release.mjs` writes the version into `package.json` and
+     `src/manifest.ts`, renames the changelog's `Unreleased` heading and opens a
+     fresh one, writes the release page from those entries, and links it in the
+     list above.
+   - `scripts/check-release.mjs` refuses the result if any of those four
+     disagree — the same check as before, now checking a machine's work.
+   - the workflow commits `chore(release): <version>` to `main`, tags
+     `v<version>`, and publishes that tag.
+
+Two things deserve knowing about that last step. The commit and the tag are
+pushed **atomically**: a tag without its commit on `main` is a release nobody
+can check out, and a commit without its tag never publishes. And the release
+commit is itself a `chore(release):` subject, which by the table above releases
+nothing — so the cut cannot trigger another cut.
+
+`prepublishOnly` typechecks, builds and tests inside `npm publish` itself, so a
+red build cannot reach the registry. A published version can never be reused —
+a bad release is fixed by the next one, not by republishing.
+
+### Seeing the plan before you merge
+
+```bash
+pnpm release:plan                                # what main would publish right now
+pnpm release:plan --subject "feat: a thing"      # what merging that title would publish
+pnpm release:apply --version 0.9.0 --dry-run     # which files a cut would write
+```
+
+`release:plan` is dependency-free and read-only, and the `release plan` CI job
+on every pull request is the same command with the pull request's title.
+
+### Rehearsing the publish
+
+Run the workflow by hand from the Actions tab with **dry run** left on: it packs
+the tarball and runs every check, and publishes nothing. A dispatch never plans
+or cuts — it only exercises the publish half.
+
+### When it is a person's job again
+
+The automatic cut deliberately refuses three situations rather than guessing:
+
+- **The tag already exists.** The version is spent; nothing can republish it.
+- **`package.json` is at a prerelease.** A `0.9.0-rc.1` is a hand-cut state, and
+  there is no one obvious number after it.
+- **A pull request title that is not a conventional commit.** It releases
+  nothing rather than release on a guess. Retitle and merge again, or cut by
+  hand.
+
+Cutting by hand is the same two scripts the workflow runs, so there is no second
+procedure to keep working:
+
+```bash
+pnpm release:apply --version <version>
+pnpm check:release
+git commit -am "chore(release): <version>"
+git tag -a v<version> -m "Tickler <version>"
+git push --atomic origin HEAD:main v<version>
+```
+
+A `v*` tag push still publishes on its own, which is also how a failed publish
+is retried — see the paragraph below.
+
+### When the publish fails and the cut already landed
 
 If the run fails before the registry accepted the tarball, the version is still
 free and the tag is still correct — there is nothing to re-tag. Fix the cause,
 then run the workflow by hand with the **tag** input set to `v<version>` and
 **dry run** unchecked. Deleting and re-pushing the tag would work too, but it
 rewrites a tag other checkouts may already have fetched.
+
+This is now the shape of every partial failure, because `cut` runs before
+`publish`: `main` and the tag are already on the new version and only the npm
+publish is missing. Do not merge a fix expecting it to re-release — the next
+merge plans from the new tag and would publish the version *after* this one,
+leaving this one permanently unpublished. Re-dispatch the tag instead.
+
+If `cut` is what failed — the push refused because another merge landed while it
+ran — nothing was released and nothing is half-done. That merge's own run plans
+again from the newer `main`.
 
 ## Publishing by hand
 

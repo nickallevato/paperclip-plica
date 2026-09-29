@@ -39,6 +39,29 @@ jobs:
       - name: Check the branch follows the naming convention
         run: node scripts/check-branch-name.mjs "${{ github.head_ref }}"
 
+  release-plan:
+    name: release plan
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The planner compares against the last `v*` tag.
+          fetch-depth: 0
+
+      # The repository squash-merges, so the one subject that will land on `main`
+      # is this pull request's title — and since a merge publishes (PLI-251),
+      # that title is what picks the version. This job says which version, so
+      # nobody learns it from the registry.
+      #
+      # The title goes through the environment, never into the script body. It is
+      # text an author chooses, and `${{ }}` interpolation into a `run:` block
+      # would let a title end the shell command and start another one.
+      - name: Say what merging this will publish
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: node scripts/plan-release.mjs --subject "$PR_TITLE" --require-notes
+
   build-and-test:
     name: build and test
     runs-on: ubuntu-latest
