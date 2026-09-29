@@ -65,6 +65,8 @@ approvals, questions and confirmations awaiting a response, blockers, failed run
 heartbeats and routine exceptions. Actions are inline — Approve, Reject, Reply, answer a
 question, choose on a confirmation — so you rarely need to leave the page, let alone open the org.
 
+![The Needs-you queue sorted by severity: a Now group of blockers and questions above a Soon group, each row carrying its own Approve, Reject, Reply or Open action](https://raw.githubusercontent.com/nickallevato/paperclip-tickler/main/docs/screenshots/needs-you.png)
+
 ![A confirmation answered from the queue row: Yes, run it now / No, wait for the morning tick](https://raw.githubusercontent.com/nickallevato/paperclip-tickler/main/docs/screenshots/queue-confirmation.png)
 
 <img src="https://raw.githubusercontent.com/nickallevato/paperclip-tickler/main/docs/screenshots/queue-question.png" alt="An agent's multiple-choice question answered in place, with an optional note" width="400">
@@ -83,7 +85,10 @@ project quietly generating half the noise.
 **Orgs** — the left column: one line per org with who is working, runs per day and how much is
 waiting on you. Hover a name for everything else (questions, blockers, review, open work, token
 burn, a sparkline of recent runs, the lead agent). Orgs can be watched, sorted by heat, and
-clicked to filter the queue.
+clicked to filter the queue. Beneath it the rail stacks Recent, Portfolio and Routines, so the
+whole left column is one scan: who's working, what just moved, what's stuck.
+
+<img src="https://raw.githubusercontent.com/nickallevato/paperclip-tickler/main/docs/screenshots/left-rail.png" alt="The left rail: the Orgs list, then Recent, then Portfolio and Routines" width="427">
 
 ![An org's detail card: every figure the line leaves out](https://raw.githubusercontent.com/nickallevato/paperclip-tickler/main/docs/screenshots/company-detail.png)
 
@@ -92,6 +97,11 @@ idle. Hovering one says who it is and what they are actually doing, which is the
 "3 running" count cannot tell you.
 
 ![A capacity square's hover card: the agent, their ticket, and what they are doing right now](https://raw.githubusercontent.com/nickallevato/paperclip-tickler/main/docs/screenshots/capacity-hover.png)
+
+**Recent** — what's been touched lately, live rows first. Hover a row for the same thing in
+full: the ticket, its status, and the agent's own last sentence about it.
+
+<img src="https://raw.githubusercontent.com/nickallevato/paperclip-tickler/main/docs/screenshots/recent-hover.png" alt="A Recent row's hover card: the ticket, its status, and what the agent last said" width="408">
 
 **Portfolio and Routines** — projects by how much is moving, waiting or blocked, and the
 routines that failed or stopped firing.
