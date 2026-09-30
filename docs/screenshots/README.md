@@ -17,6 +17,13 @@ node scripts/capture-screenshots.mjs --only board,queue-by-company
 Refresh them whenever a UI change makes one wrong. A stale screenshot is the
 documentation defect nobody files a bug for.
 
+`panes/` is the same kind of thing for the narrow stack's order (PLI-262): the
+Panes menu with its grips out, a drag in flight, the stack before and after a
+reload, and the wide board under a deliberately reversed stored order — the shot
+that shows `@[64rem]/board:order-none` doing its job, since the claim being
+evidenced is that nothing changed. Kept as that change's evidence, not
+refreshed with the rest.
+
 `rail/` is the exception, and comes from `scripts/capture-rail.mjs` instead.
 Those are whole screens rather than crops, because the question they answer —
 does the bottom of the rail fit above the fold — is a question about the fold,

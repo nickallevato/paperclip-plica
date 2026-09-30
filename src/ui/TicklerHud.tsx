@@ -7,6 +7,11 @@ import { useBreadcrumbs } from "./host/shims";
 import { useCompanyOrder } from "./host/useCompanyOrder";
 import { countCapacity, deriveCapacity } from "./lib/capacity";
 import { releaseStrandedPointerEvents } from "./lib/drafts";
+import {
+  normalizePaneOrder,
+  TICKLER_PANE_ORDER_STORAGE_KEY,
+  type TicklerPaneKey,
+} from "./lib/pane-order";
 import { TicklerBoardPage } from "./components/TicklerBoardPage";
 import { TicklerBriefing } from "./components/TicklerBriefing";
 import { TicklerMark } from "./components/TicklerMark";
@@ -172,6 +177,16 @@ export function TicklerHud({ demo = false }: TicklerHudProps = {}) {
   const selectPortfolioSort = (sort: TicklerPortfolioSort) => {
     setPortfolioSort(sort);
     writeStored(TICKLER_PORTFOLIO_SORT_STORAGE_KEY, sort);
+  };
+
+  // The narrow board's stack order. Per-browser and only that: a plugin has no
+  // key/value store on the host to put it in — see `lib/pane-order`.
+  const [paneOrder, setPaneOrder] = useState<TicklerPaneKey[]>(() =>
+    normalizePaneOrder(readStored(TICKLER_PANE_ORDER_STORAGE_KEY)),
+  );
+  const selectPaneOrder = (order: TicklerPaneKey[]) => {
+    setPaneOrder(order);
+    writeStored(TICKLER_PANE_ORDER_STORAGE_KEY, JSON.stringify(order));
   };
 
   const [tokenSettings, setTokenSettings] = useState(() => normalizeTokenSettings(readStored(TICKLER_TOKEN_THRESHOLDS_STORAGE_KEY)));
@@ -431,6 +446,8 @@ export function TicklerHud({ demo = false }: TicklerHudProps = {}) {
           onAgeFilter={selectAgeFilter}
           portfolioSort={portfolioSort}
           onPortfolioSort={selectPortfolioSort}
+          paneOrder={paneOrder}
+          onPaneOrder={selectPaneOrder}
           footer={
             showBriefing && lastVisit ? (
               <TicklerBriefing companies={companies} since={lastVisit} onDismiss={() => setBriefingDismissed(true)} />

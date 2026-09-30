@@ -10,6 +10,16 @@ queue, then Recent, Portfolio and Routines.
 
 <img src="screenshots/phone.png" alt="Tickler at phone width: the Orgs list above the queue" width="320">
 
+A **Panes** button appears above the stack, and only there — it reorders the
+stack, which the two-column layout does not have. Press **Edit**, drag the rows
+by their grips, press **Done**. It works the way the Orgs switcher in Paperclip's
+own sidebar does, and for the same reason: a list you mostly read should not
+reorder itself under a stray drag.
+
+The order is saved **in that browser only**. It does not follow you from your
+phone to your desktop, and that is a limit rather than a choice: a plugin has
+nowhere on the server to keep a preference of its own.
+
 ![The Orgs list: one line per org, with the totals beneath](screenshots/board.png)
 
 ## Orgs

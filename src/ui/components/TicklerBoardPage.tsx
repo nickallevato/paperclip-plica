@@ -28,8 +28,10 @@ import {
   type TicklerQueueGrouping,
   type TicklerQueueSort,
 } from "../lib/queue";
+import { paneOrderClass, type TicklerPaneKey } from "../lib/pane-order";
 import type { TicklerRailPaneSpec } from "../lib/rail-budget";
 import { TicklerCompanySlot } from "./TicklerCompanySlot";
+import { TicklerPaneOrder } from "./TicklerPaneOrder";
 import { TicklerPortfolio } from "./TicklerPortfolio";
 import { railPaneBox, TicklerRailMore } from "./TicklerRailPane";
 import { TicklerQueue } from "./TicklerQueue";
@@ -107,6 +109,8 @@ export function TicklerBoardPage({
   onAgeFilter,
   portfolioSort,
   onPortfolioSort,
+  paneOrder,
+  onPaneOrder,
   footer,
 }: {
   /** Already ordered: watched first, then hot-first or the sidebar order. */
@@ -131,6 +135,9 @@ export function TicklerBoardPage({
   onAgeFilter: (filter: TicklerQueueAgeFilter) => void;
   portfolioSort: TicklerPortfolioSort;
   onPortfolioSort: (sort: TicklerPortfolioSort) => void;
+  /** The narrow stack's order. Ignored wide, where `order` is overridden away. */
+  paneOrder: readonly TicklerPaneKey[];
+  onPaneOrder: (order: TicklerPaneKey[]) => void;
   footer?: ReactNode;
 }) {
   const nowMs = useNowMs();
@@ -241,7 +248,12 @@ export function TicklerBoardPage({
   // beside the queue, which owns the main column because it is where the work
   // is. The left column's wrapper is `display: contents` when narrow, so its
   // panels join the page grid and `order` can slot the queue in after
-  // Companies instead of after everything. Widths are measured on the board,
+  // Companies instead of after everything — and, since PLI-262, wherever else
+  // the reader has dragged it: the five `order-N` classes below come from
+  // `paneOrderClass` rather than being written in. The `@[64rem]/board:order-none`
+  // on each of them is what makes that narrow-only, so the wide column cannot
+  // be reordered even by a stored order that names the panes backwards.
+  // Widths are measured on the board,
   // not the window — the host sidebar decides how much of the window Tickler
   // gets. 64rem is a 400px column plus a queue wide enough for its inline
   // decide-by picks.
@@ -255,6 +267,15 @@ export function TicklerBoardPage({
   // that floor, the column is the viewport again, and the rows truncate.
   return (
     <div data-view="board" className="@container/board flex flex-col gap-4">
+      {/* The only control the wide board does not get. `narrow` is measured
+          rather than guessed — it is the rail reporting `display: contents` —
+          and it is false for the one pre-paint frame before the first
+          measurement, so the button is never briefly offered on a desktop. */}
+      {narrow && (
+        <div className="flex items-center justify-end">
+          <TicklerPaneOrder order={paneOrder} onOrder={onPaneOrder} />
+        </div>
+      )}
       <div className="grid gap-4 @[64rem]/board:grid-cols-[minmax(320px,400px)_minmax(0,1fr)] @[96rem]/board:grid-cols-[440px_minmax(0,1fr)] [.tickler-kiosk_&]:gap-6 [.tickler-kiosk_&]:@[110rem]/board:grid-cols-[540px_minmax(0,1fr)]">
         {/* A column that knows its own height can spend it: `useRailBudget`
             gives this box the height of the band it is pinned inside — the
@@ -279,7 +300,8 @@ export function TicklerBoardPage({
             aria-label="Orgs"
             style={orgsBox.style}
             className={cn(
-              "order-1 flex min-h-0 min-w-0 shrink-0 flex-col rounded-lg border bg-card @[64rem]/board:order-none",
+              paneOrderClass(paneOrder, "orgs"),
+              "flex min-h-0 min-w-0 shrink-0 flex-col rounded-lg border bg-card @[64rem]/board:order-none",
               orgsBox.className,
             )}
           >
@@ -356,7 +378,7 @@ export function TicklerBoardPage({
             nowMs={nowMs}
             budget={budget.recent}
             narrow={narrow}
-            className="order-3 min-w-0 @[64rem]/board:order-none"
+            className={cn(paneOrderClass(paneOrder, "recent"), "min-w-0 @[64rem]/board:order-none")}
           />
           <TicklerPortfolio
             items={projectEntries}
@@ -369,17 +391,17 @@ export function TicklerBoardPage({
             // given a height of its own, or demoted to its header, rather than
             // left to fight the panes above it for the leftovers.
             budget={budget.portfolio}
-            className="order-4 min-h-0 min-w-0 flex-1 @[64rem]/board:order-none"
+            className={cn(paneOrderClass(paneOrder, "portfolio"), "min-h-0 min-w-0 flex-1 @[64rem]/board:order-none")}
           />
           <TicklerRoutineExceptions
             items={routines}
             nowMs={nowMs}
             budget={budget.routines}
-            className="order-5 min-w-0 @[64rem]/board:order-none"
+            className={cn(paneOrderClass(paneOrder, "routines"), "min-w-0 @[64rem]/board:order-none")}
           />
         </div>
 
-        <div className="order-2 min-w-0 @[64rem]/board:order-none">
+        <div className={cn(paneOrderClass(paneOrder, "queue"), "min-w-0 @[64rem]/board:order-none")}>
           <TicklerQueue
             groups={groups}
             summary={summary}

@@ -46,4 +46,26 @@ describe.skipIf(!existsSync(BUNDLE))("built UI bundle", () => {
   it("does not ship react-router, which is a test-only dependency", () => {
     expect(source).not.toContain("react-router");
   });
+
+  /**
+   * The other silent-placeholder failure, and the reason
+   * `src/ui/react-dom-compat.ts` exists.
+   *
+   * The host's `react-dom` shim exports five names — `default`, `createRoot`,
+   * `hydrateRoot`, `createPortal`, `flushSync` — and `@dnd-kit/core` opens with
+   * `import { createPortal, unstable_batchedUpdates } from 'react-dom'`. A named
+   * import the module does not export is an ES module *link* error: the bundle
+   * never runs, the host renders "Tickler: Tickler" where the page should be, and
+   * the only trace is one console.error from slots.tsx. `esbuild.config.mjs`
+   * routes every `react-dom` import through the compat module, which re-derives
+   * the names from the default export, so the built bundle should ask the shim
+   * for nothing but that default.
+   */
+  it("imports react-dom only as a default, never by a name the host shim lacks", () => {
+    const imports = source.match(/import[^;]*from "react-dom"/g) ?? [];
+    expect(imports).toHaveLength(1);
+    // A default import — `import X from "react-dom"` — and so no braces.
+    expect(imports[0]).not.toContain("{");
+    expect(source).not.toMatch(/import\s*\{[^}]*\}\s*from "react-dom"/);
+  });
 });
