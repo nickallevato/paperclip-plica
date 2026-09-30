@@ -5,6 +5,8 @@ Short-form. The reader-facing write-up for each version is in
 
 ## Unreleased
 
+## 0.8.2
+
 - **A merge to `main` releases itself.** Pushing a `v*` tag has published
   unattended since 0.6.0, but everything before the tag was done by hand — pick
   the version, rename the changelog heading, write it into `package.json` and
