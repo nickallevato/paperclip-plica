@@ -5,6 +5,8 @@ Short-form. The reader-facing write-up for each version is in
 
 ## Unreleased
 
+## 0.9.0
+
 - **The narrow board's panes are yours to order.** On one column the page is a
   stack — Orgs, the queue, Recent, Portfolio, Routines — in an order nobody
   chose, and which one you want on top depends on what you opened the phone
