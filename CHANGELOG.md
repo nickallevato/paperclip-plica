@@ -5,6 +5,23 @@ Short-form. The reader-facing write-up for each version is in
 
 ## Unreleased
 
+- **The narrow board's panes are yours to order.** On one column the page is a
+  stack — Orgs, the queue, Recent, Portfolio, Routines — in an order nobody
+  chose, and which one you want on top depends on what you opened the phone
+  for. A **Panes** button above the stack now reorders it: press **Edit**, drag
+  the rows by their grips, press **Done**. It is the mechanic Paperclip's own
+  Orgs switcher uses, copied rather than invented, because the gesture is
+  already in your hands one click up the page — and because a drag handle that
+  only exists while you are editing is what keeps a list you mostly read from
+  reordering itself under a stray thumb. The wide board is untouched and cannot
+  be otherwise: at two columns the panes' order is overridden away, so the
+  button is not offered there at all.
+
+  The order is saved **in that browser only** — it will not follow you from your
+  phone to your desktop. That is a limit rather than a choice: a plugin has
+  nowhere on the server to keep a preference of its own, and inventing a
+  half-working sync would be worse than saying so.
+
 ## 0.8.2
 
 - **A merge to `main` releases itself.** Pushing a `v*` tag has published
