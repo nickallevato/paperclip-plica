@@ -28,6 +28,7 @@ import {
   type TicklerQueueGrouping,
   type TicklerQueueSort,
 } from "../lib/queue";
+import { paneOrderClass, type TicklerPaneKey } from "../lib/pane-order";
 import type { TicklerRailPaneSpec } from "../lib/rail-budget";
 import { TicklerCompanySlot } from "./TicklerCompanySlot";
 import { TicklerPortfolio } from "./TicklerPortfolio";
@@ -107,6 +108,8 @@ export function TicklerBoardPage({
   onAgeFilter,
   portfolioSort,
   onPortfolioSort,
+  paneOrder,
+  onNarrow,
   footer,
 }: {
   /** Already ordered: watched first, then hot-first or the sidebar order. */
@@ -131,6 +134,14 @@ export function TicklerBoardPage({
   onAgeFilter: (filter: TicklerQueueAgeFilter) => void;
   portfolioSort: TicklerPortfolioSort;
   onPortfolioSort: (sort: TicklerPortfolioSort) => void;
+  /** The narrow stack's order. Ignored wide, where `order` is overridden away. */
+  paneOrder: readonly TicklerPaneKey[];
+  /**
+   * Whether the board is down to one column, which only the rail can answer —
+   * it is the element that goes `display: contents`. Reported up because the
+   * control that acts on it lives in the HUD header, not on the board.
+   */
+  onNarrow: (narrow: boolean) => void;
   footer?: ReactNode;
 }) {
   const nowMs = useNowMs();
@@ -234,6 +245,13 @@ export function TicklerBoardPage({
   // The rail's height, shared out. Orgs is read back here because its markup
   // lives on this page rather than in a component of its own.
   const { railRef, budget, narrow } = useRailBudget(RAIL_PANES);
+  // `narrow` is measured rather than guessed, and is false for the one pre-paint
+  // frame before the first measurement, so the header's Pane order button is
+  // never briefly offered on a desktop.
+  useEffect(() => {
+    onNarrow(narrow);
+    return () => onNarrow(false);
+  }, [narrow, onNarrow]);
   const orgsBudget = budget.orgs;
   const orgsBox = railPaneBox(orgsBudget);
 
@@ -241,7 +259,12 @@ export function TicklerBoardPage({
   // beside the queue, which owns the main column because it is where the work
   // is. The left column's wrapper is `display: contents` when narrow, so its
   // panels join the page grid and `order` can slot the queue in after
-  // Companies instead of after everything. Widths are measured on the board,
+  // Companies instead of after everything — and, since PLI-262, wherever else
+  // the reader has dragged it: the five `order-N` classes below come from
+  // `paneOrderClass` rather than being written in. The `@[64rem]/board:order-none`
+  // on each of them is what makes that narrow-only, so the wide column cannot
+  // be reordered even by a stored order that names the panes backwards.
+  // Widths are measured on the board,
   // not the window — the host sidebar decides how much of the window Tickler
   // gets. 64rem is a 400px column plus a queue wide enough for its inline
   // decide-by picks.
@@ -279,7 +302,8 @@ export function TicklerBoardPage({
             aria-label="Orgs"
             style={orgsBox.style}
             className={cn(
-              "order-1 flex min-h-0 min-w-0 shrink-0 flex-col rounded-lg border bg-card @[64rem]/board:order-none",
+              paneOrderClass(paneOrder, "orgs"),
+              "flex min-h-0 min-w-0 shrink-0 flex-col rounded-lg border bg-card @[64rem]/board:order-none",
               orgsBox.className,
             )}
           >
@@ -356,7 +380,7 @@ export function TicklerBoardPage({
             nowMs={nowMs}
             budget={budget.recent}
             narrow={narrow}
-            className="order-3 min-w-0 @[64rem]/board:order-none"
+            className={cn(paneOrderClass(paneOrder, "recent"), "min-w-0 @[64rem]/board:order-none")}
           />
           <TicklerPortfolio
             items={projectEntries}
@@ -369,17 +393,17 @@ export function TicklerBoardPage({
             // given a height of its own, or demoted to its header, rather than
             // left to fight the panes above it for the leftovers.
             budget={budget.portfolio}
-            className="order-4 min-h-0 min-w-0 flex-1 @[64rem]/board:order-none"
+            className={cn(paneOrderClass(paneOrder, "portfolio"), "min-h-0 min-w-0 flex-1 @[64rem]/board:order-none")}
           />
           <TicklerRoutineExceptions
             items={routines}
             nowMs={nowMs}
             budget={budget.routines}
-            className="order-5 min-w-0 @[64rem]/board:order-none"
+            className={cn(paneOrderClass(paneOrder, "routines"), "min-w-0 @[64rem]/board:order-none")}
           />
         </div>
 
-        <div className="order-2 min-w-0 @[64rem]/board:order-none">
+        <div className={cn(paneOrderClass(paneOrder, "queue"), "min-w-0 @[64rem]/board:order-none")}>
           <TicklerQueue
             groups={groups}
             summary={summary}

@@ -5,6 +5,24 @@ Short-form. The reader-facing write-up for each version is in
 
 ## Unreleased
 
+- **The narrow board's panes are yours to order.** On one column the page is a
+  stack — Orgs, the queue, Recent, Portfolio, Routines — in an order nobody
+  chose, and which one you want on top depends on what you opened the phone
+  for. A **Pane order** button now reorders it — it joins the header's own row
+  of toggles, beside token thresholds, alerts and kiosk, which is the family it
+  belongs to. Open it and drag the rows by their grips; there is no mode to
+  enter first, because the five rows are not commands and reordering them is the
+  only errand the menu has. It borrows its grips from Paperclip's own Orgs
+  switcher, which does hide them behind an **Edit** toggle — that menu's usual
+  job is switching orgs, and this one has no usual job to protect. The wide
+  board is untouched and cannot be otherwise: at two columns the panes' order is
+  overridden away, so the button is not offered there at all.
+
+  The order is saved **in that browser only** — it will not follow you from your
+  phone to your desktop. That is a limit rather than a choice: a plugin has
+  nowhere on the server to keep a preference of its own, and inventing a
+  half-working sync would be worse than saying so.
+
 ## 0.8.2
 
 - **A merge to `main` releases itself.** Pushing a `v*` tag has published

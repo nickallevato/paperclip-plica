@@ -70,6 +70,30 @@ Work through, in order:
 4. **Anything in the browser console?** A failed chunk load usually means the
    installed path moved, or `dist` was deleted after install.
 
+## The page shows "Tickler: Tickler" where the board should be
+
+That string is the host's slot placeholder: the bundle was fetched and then
+failed to import, so there is no component to put in the slot. The browser
+console has one `slots.tsx` error and nothing else.
+
+Two causes, both in how the bundle asks for the host's React:
+
+- **A named import the host's shim does not export.** The host does not let a
+  plugin import React itself — it marks `react` and `react-dom` external and
+  rewrites those specifiers to small shim modules, and the `react-dom` one
+  exports five names: `default`, `createRoot`, `hydrateRoot`, `createPortal`,
+  `flushSync`. A dependency importing a sixth (`@dnd-kit/core` wants
+  `unstable_batchedUpdates`) is an ES module *link* error, which happens before
+  any code runs. `src/ui/react-dom-compat.ts` is the answer, and
+  `esbuild.config.mjs` routes every `react-dom` import through it; if a new
+  dependency needs a name from `react`, it needs the same treatment.
+  `src/bundle.test.ts` fails when the bundle asks `react-dom` for a name again.
+
+- **Whitespace minification.** The host's rewrite is a literal replace of
+  ` from "react"`, with the leading space. `minifyWhitespace` emits
+  `from"react"` and the rewrite misses it. It is off for this reason, and the
+  same test guards it.
+
 ## "Demo data" badge when you did not ask for it
 
 Two ways it turns on, and either is enough:
