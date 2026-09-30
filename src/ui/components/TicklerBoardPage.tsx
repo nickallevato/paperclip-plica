@@ -233,7 +233,7 @@ export function TicklerBoardPage({
 
   // The rail's height, shared out. Orgs is read back here because its markup
   // lives on this page rather than in a component of its own.
-  const { railRef, budget } = useRailBudget(RAIL_PANES);
+  const { railRef, budget, narrow } = useRailBudget(RAIL_PANES);
   const orgsBudget = budget.orgs;
   const orgsBox = railPaneBox(orgsBudget);
 
@@ -348,11 +348,14 @@ export function TicklerBoardPage({
           {/* Directly under Orgs, above Portfolio: it is the only pane on the
               page that changes while you watch it, and it answers "what is the
               fleet on" — the question the Orgs lines above it raise. The budget
-              fixes its height, so a run starting cannot shove Portfolio. */}
+              fixes its height, so a run starting cannot shove Portfolio.
+              Narrow there is no budget — see `narrow` on `useRailBudget` — and
+              this is the one pane long enough to matter, so it is told. */}
           <TicklerRecentTasks
             tasks={recent}
             nowMs={nowMs}
             budget={budget.recent}
+            narrow={narrow}
             className="order-3 min-w-0 @[64rem]/board:order-none"
           />
           <TicklerPortfolio

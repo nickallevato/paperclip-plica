@@ -52,19 +52,29 @@ describe("TicklerRecentTasks", () => {
     document.body.innerHTML = "";
   });
 
-  function render(model: TicklerRecentTasksModel, budget?: TicklerRailPaneBudget) {
+  function render(model: TicklerRecentTasksModel, budget?: TicklerRailPaneBudget, narrow?: boolean) {
     container = document.createElement("div");
     document.body.appendChild(container);
     const root = createRoot(container);
     act(() => {
       root.render(
         <MemoryRouter>
-          <TicklerRecentTasks tasks={model} nowMs={NOW} budget={budget} />
+          <TicklerRecentTasks tasks={model} nowMs={NOW} budget={budget} narrow={narrow} />
         </MemoryRouter>,
       );
     });
     return root;
   }
+
+  const many = (count: number) =>
+    Array.from({ length: count }, (_, index) => ({
+      key: `c1:i-${index}`,
+      company,
+      issue: issue({ id: `i-${index}`, identifier: `ACM-${index}` }),
+      run: run({ id: `r${index}`, issueId: `i-${index}` }),
+      phase: "working" as const,
+      atMs: NOW - index * 60_000,
+    }));
 
   it("puts the ticket, its title and the elapsed time on one row, with the narration behind a hover", () => {
     const root = render(
@@ -120,15 +130,7 @@ describe("TicklerRecentTasks", () => {
   });
 
   it("scrolls inside the height the rail gave it rather than growing with the fleet", () => {
-    const items = Array.from({ length: 12 }, (_, index) => ({
-      key: `c1:i-${index}`,
-      company,
-      issue: issue({ id: `i-${index}`, identifier: `ACM-${index}` }),
-      run: run({ id: `r${index}`, issueId: `i-${index}` }),
-      phase: "working" as const,
-      atMs: NOW - index * 60_000,
-    }));
-    const root = render(tasks(items, { hidden: 5 }), { rows: 4, height: 180, hidden: 8, demoted: false });
+    const root = render(tasks(many(12), { hidden: 5 }), { rows: 4, height: 180, hidden: 8, demoted: false });
     // Every row is on the page — the pane scrolls to them rather than the page
     // growing to fit them — and the header owns up to the ones under the fold.
     expect(container.querySelectorAll("li")).toHaveLength(12);
@@ -152,20 +154,35 @@ describe("TicklerRecentTasks", () => {
   });
 
   it("falls back to its header when the rail cannot seat even three rows", () => {
-    const items = Array.from({ length: 9 }, (_, index) => ({
-      key: `c1:i-${index}`,
-      company,
-      issue: issue({ id: `i-${index}`, identifier: `ACM-${index}` }),
-      run: run({ id: `r${index}`, issueId: `i-${index}` }),
-      phase: "working" as const,
-      atMs: NOW - index * 60_000,
-    }));
-    const root = render(tasks(items), { rows: 0, height: null, hidden: 9, demoted: true });
+    const root = render(tasks(many(9)), { rows: 0, height: null, hidden: 9, demoted: true });
     // Nine clipped rows would say less than the header does, and the pane it
     // would have pushed off the bottom of the rail says nothing at all.
     expect(container.querySelectorAll("li")).toHaveLength(0);
     expect(container.querySelector("h3")?.textContent).toContain("9 working");
     expect(container.querySelector("[data-rail-more]")?.textContent).toBe("+9 more");
+    act(() => root.unmount());
+  });
+
+  it("caps itself at four rows and a count when the board is one column", () => {
+    const root = render(tasks(many(12), { hidden: 5 }), undefined, true);
+    // Narrow there is no budget to scroll the pane inside, so the rows it is
+    // not going to show are not on the page at all — sixteen of them here is
+    // ~520px of a phone's first screen, ahead of the queue.
+    expect(container.querySelectorAll("li")).toHaveLength(4);
+    // One count, not two: the eight rows dropped here plus the five the model
+    // never handed over.
+    expect(container.textContent).toContain("13 more touched today");
+    expect(container.textContent).not.toContain("5 more touched today");
+    // The header still counts every live run, capped away or not — which is the
+    // same thing it does for a demoted pane.
+    expect(container.querySelector("h3")?.textContent).toContain("12 working");
+    act(() => root.unmount());
+  });
+
+  it("leaves the list alone when narrow and the whole of it fits", () => {
+    const root = render(tasks(many(3)), undefined, true);
+    expect(container.querySelectorAll("li")).toHaveLength(3);
+    expect(container.querySelector("[data-rail-foot]")).toBeNull();
     act(() => root.unmount());
   });
 

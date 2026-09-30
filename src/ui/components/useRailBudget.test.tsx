@@ -65,8 +65,8 @@ function stubGeometry(portHeight: number, railTop = 0): () => void {
   };
 }
 
-function Rail({ orgRows, projectRows }: { orgRows: number; projectRows: number }) {
-  const { railRef, budget } = useRailBudget(PANES);
+function Rail({ orgRows, projectRows, contents }: { orgRows: number; projectRows: number; contents?: boolean }) {
+  const { railRef, budget, narrow } = useRailBudget(PANES);
   const pane = (key: string, rows: number) => {
     const box = railPaneBox(budget[key]);
     return (
@@ -87,7 +87,15 @@ function Rail({ orgRows, projectRows }: { orgRows: number; projectRows: number }
     // The host's scrolling box, which is what the hook measures the rail
     // against — not the window.
     <div data-rail="port" style={{ overflowY: "auto" }}>
-      <div ref={railRef} data-rail="rail">
+      <div
+        ref={railRef}
+        data-rail="rail"
+        data-narrow={narrow}
+        // The narrow layout, where the panes are grid items of the page and the
+        // rail is not a box at all. In the app this comes from the container
+        // query on the class; here it is asked for outright.
+        style={contents ? { display: "contents" } : undefined}
+      >
         {pane("orgs", orgRows)}
         {pane("portfolio", projectRows)}
       </div>
@@ -98,7 +106,11 @@ function Rail({ orgRows, projectRows }: { orgRows: number; projectRows: number }
 let teardown: (() => void)[] = [];
 
 /** `portHeight` is the scrolling box; the rail gets 32px less than it. */
-function render(portHeight: number, rows = { orgRows: 12, projectRows: 11 }, railTop = 0): HTMLDivElement {
+function render(
+  portHeight: number,
+  rows: { orgRows: number; projectRows: number; contents?: boolean } = { orgRows: 12, projectRows: 11 },
+  railTop = 0,
+): HTMLDivElement {
   teardown.push(stubGeometry(portHeight, railTop));
   const container = document.createElement("div");
   document.body.appendChild(container);
@@ -167,6 +179,20 @@ describe("useRailBudget", () => {
     // is what keeps a re-measure from reading it as unmeasured and dropping the
     // whole budget — which would un-pin the pane above it too.
     expect(pane(container, "orgs").style.height).not.toBe("");
+  });
+
+  it("reports the narrow layout, and tells it apart from an unmeasured rail", () => {
+    const narrow = render(632, { orgRows: 12, projectRows: 11, contents: true });
+    const rail = narrow.querySelector<HTMLElement>("[data-rail='rail']")!;
+    // No height written and no pane pinned: `display: contents` means the panes
+    // are grid items of the page and anything written here is ignored.
+    expect(rail.dataset.narrow).toBe("true");
+    expect(rail.style.height).toBe("");
+    expect(pane(narrow, "orgs").style.height).toBe("");
+    // A rail with a box is not narrow even when there is nothing to measure —
+    // that one is over at the next frame, and a pane capping itself for it
+    // would cap itself on every host without a ResizeObserver.
+    expect(render(0).querySelector<HTMLElement>("[data-rail='rail']")!.dataset.narrow).toBe("false");
   });
 
   it("leaves the panes alone when nothing can be measured", () => {
