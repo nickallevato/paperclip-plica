@@ -18,6 +18,23 @@ import { railPaneBox, TicklerRailMore } from "./TicklerRailPane";
 const MICRO = "text-[length:var(--tickler-fs-micro,11px)] leading-[1.45]";
 const BODY = "text-[length:var(--tickler-fs-body,14px)] leading-[1.45]";
 
+/**
+ * Rows this pane draws when the board is one column.
+ *
+ * Everywhere else the rail's height budget is what bounds this pane, and narrow
+ * it cannot run at all: the rail is `display: contents`, so it has no box to
+ * share out and every pane sizes itself. Recent is the one pane that grows with
+ * the fleet, so left unbounded it drew all sixteen rows — ~520px measured on the
+ * demo fixture — and on a 390px screen the queue the board exists for sat under
+ * the fold behind it (PLI-260).
+ *
+ * Four rows and a count line is the same trade `distributeRailHeight` makes on a
+ * rail too short for everyone, and roughly its 180px. It is a number rather than
+ * a measurement because there is nothing to measure against here — no rail
+ * height to divide, and no answer from the one column but "all of it".
+ */
+const NARROW_ROWS = 4;
+
 /** Markdown emphasis/headings/code marks read as noise in a four-line excerpt. */
 function plainText(markdown: string): string {
   return markdown
@@ -168,20 +185,30 @@ function TaskRow({ task, nowMs }: { task: TicklerRecentTask; nowMs: number }) {
  * rail's height budget rather than by a 256px cap of its own: the list scrolls
  * inside the height it was given, so a run starting can move rows within this
  * pane and nothing outside it.
+ *
+ * Narrow there is no rail to do that, so the pane bounds itself — see
+ * {@link NARROW_ROWS}.
  */
 export function TicklerRecentTasks({
   tasks,
   nowMs,
   budget,
+  narrow,
   className,
 }: {
   tasks: TicklerRecentTasksModel;
   nowMs: number;
   budget?: TicklerRailPaneBudget;
+  /** One column: no rail height, so the pane caps its own rows. */
+  narrow?: boolean;
   className?: string;
 }) {
   const { items, working, queued, hidden } = tasks;
   const box = railPaneBox(budget);
+  // Wide, this is every row and the model's own count — the budget scrolls the
+  // pane rather than dropping rows, and that path is untouched.
+  const rows = narrow ? items.slice(0, NARROW_ROWS) : items;
+  const withheld = hidden + (items.length - rows.length);
   return (
     <section
       data-tickler-recent
@@ -225,13 +252,13 @@ export function TicklerRecentTasks({
           {/* Scrolled inside the height the rail budgeted, so this pane's height
               does not track the size of the fleet. */}
           <ul className="min-h-0 flex-1 overflow-y-auto px-3">
-            {items.map((task) => (
+            {rows.map((task) => (
               <TaskRow key={task.key} task={task} nowMs={nowMs} />
             ))}
           </ul>
-          {hidden > 0 && (
+          {withheld > 0 && (
             <p data-rail-foot className={cn("shrink-0 border-t px-3 py-1.5 text-muted-foreground", MICRO)}>
-              {hidden} more touched today
+              {withheld} more touched today
             </p>
           )}
         </>

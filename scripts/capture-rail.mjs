@@ -21,7 +21,9 @@
  *
  * Environment: the same knobs as `capture-screenshots.mjs` —
  *   TICKLER_SHOT_URL, TICKLER_SHOT_PREFIX, TICKLER_PLAYWRIGHT, TICKLER_CHROME,
- *   TICKLER_SHOT_OUT (default docs/screenshots/rail), TICKLER_SHOT_THEME.
+ *   TICKLER_SHOT_OUT (default docs/screenshots/rail), TICKLER_SHOT_THEME —
+ *   plus TICKLER_SHOT_SCREENS to shoot sizes other than the two defaults,
+ *   e.g. `390x844@3,820x1180@2`.
  */
 
 import { createRequire } from "node:module";
@@ -43,10 +45,29 @@ const label = process.argv[2] ?? "after";
  * text is legible where it is small; the monitor is already 2560 wide, and
  * doubling it makes a picture nobody can open.
  */
-const SCREENS = [
+const DEFAULT_SCREENS = [
   { name: "laptop-1512x790", width: 1512, height: 790, scale: 2 },
   { name: "desktop-2560x1400", width: 2560, height: 1400, scale: 1 },
 ];
+
+/**
+ * `WxH` or `WxH@scale`, comma-separated — the narrow layout's argument is about
+ * sizes neither default covers, and a phone wants a scale of its own.
+ */
+function parseScreens(spec) {
+  return spec
+    .split(",")
+    .map((entry) => entry.trim())
+    .filter(Boolean)
+    .map((entry) => {
+      const match = /^(\d+)x(\d+)(?:@(\d+(?:\.\d+)?))?$/.exec(entry);
+      if (!match) throw new Error(`capture-rail: TICKLER_SHOT_SCREENS entry "${entry}" is not WxH or WxH@scale`);
+      const [width, height] = [Number(match[1]), Number(match[2])];
+      return { name: `${width}x${height}`, width, height, scale: match[3] ? Number(match[3]) : 2 };
+    });
+}
+
+const SCREENS = process.env.TICKLER_SHOT_SCREENS ? parseScreens(process.env.TICKLER_SHOT_SCREENS) : DEFAULT_SCREENS;
 
 async function getJson(path) {
   const response = await fetch(`${baseUrl}${path}`);

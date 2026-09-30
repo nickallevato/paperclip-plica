@@ -67,16 +67,29 @@ function offsetWithin(node: HTMLElement, port: HTMLElement): number {
  * height — the narrow layout, where the rail is `display: contents` and has no
  * box at all; a test in jsdom, where everything measures zero — every pane is
  * unbudgeted and sizes itself exactly as it did before.
+ *
+ * Those two cases are not the same thing, though, and `narrow` tells them
+ * apart: unmeasured is a state that ends at the next frame, while `contents` is
+ * a layout the rail will stay in until the window changes. A pane that has to
+ * bound itself when nothing is bounding it — Recent, whose rows are the
+ * fleet's and grow with it — needs to know which one it is in.
  */
 export function useRailBudget(specs: readonly TicklerRailPaneSpec[]): {
   railRef: (node: HTMLDivElement | null) => void;
   budget: TicklerRailBudget;
+  /** The rail is `display: contents`: one column, and no height to share out. */
+  narrow: boolean;
 } {
   const railRef = useRef<HTMLDivElement | null>(null);
   // Kept across renders because a demoted pane has no rows on the page to
   // measure: without the last heights it had, it could never be promoted back.
   const remembered = useRef<Record<string, TicklerRailPaneMetrics>>({});
   const [budget, setBudget] = useState<TicklerRailBudget>(() => unbudgeted(specs));
+  // False until the rail has been looked at, which is the wide layout's answer
+  // and also the one frame before the first measurement. Wrong for that frame
+  // on a phone, but it is a pre-paint frame — `useLayoutEffect` runs before the
+  // browser draws — so the panes are never seen unbounded.
+  const [narrow, setNarrow] = useState(false);
 
   const measure = useCallback(() => {
     const rail = railRef.current;
@@ -88,12 +101,14 @@ export function useRailBudget(specs: readonly TicklerRailPaneSpec[]): {
     if (getComputedStyle(rail).display === "contents") {
       rail.style.height = "";
       rail.style.maxHeight = "";
+      setNarrow(true);
       setBudget((current) => {
         const next = unbudgeted(specs);
         return sameRailBudget(current, next) ? current : next;
       });
       return;
     }
+    setNarrow(false);
     // The rail is told its height here rather than in a class, because the band
     // it is pinned inside belongs to the host, not to the window.
     const port = scrollPort(rail);
@@ -168,5 +183,5 @@ export function useRailBudget(specs: readonly TicklerRailPaneSpec[]): {
     [measure],
   );
 
-  return { railRef: attach, budget };
+  return { railRef: attach, budget, narrow };
 }

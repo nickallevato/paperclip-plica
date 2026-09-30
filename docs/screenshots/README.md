@@ -121,6 +121,7 @@ will not resolve against a fresh database. The plugin itself installs fine;
 | `TICKLER_PLAYWRIGHT` | `~/paperclip` | Package root to resolve `playwright` from. |
 | `TICKLER_CHROME` | `/usr/bin/google-chrome` | Browser executable. |
 | `TICKLER_SHOT_OUT` | `docs/screenshots` | Where the PNGs go. |
+| `TICKLER_SHOT_SCREENS` | a 13" laptop and a 27" monitor | `capture-rail.mjs` only: `WxH` or `WxH@scale`, comma-separated, e.g. `390x844@3,820x1180@2`. |
 
 Playwright is deliberately **not** a dependency of this repo. Adding it plus a
 browser download would cost every contributor a couple of hundred megabytes for
