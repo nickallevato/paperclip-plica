@@ -31,7 +31,6 @@ import {
 import { paneOrderClass, type TicklerPaneKey } from "../lib/pane-order";
 import type { TicklerRailPaneSpec } from "../lib/rail-budget";
 import { TicklerCompanySlot } from "./TicklerCompanySlot";
-import { TicklerPaneOrder } from "./TicklerPaneOrder";
 import { TicklerPortfolio } from "./TicklerPortfolio";
 import { railPaneBox, TicklerRailMore } from "./TicklerRailPane";
 import { TicklerQueue } from "./TicklerQueue";
@@ -110,7 +109,7 @@ export function TicklerBoardPage({
   portfolioSort,
   onPortfolioSort,
   paneOrder,
-  onPaneOrder,
+  onNarrow,
   footer,
 }: {
   /** Already ordered: watched first, then hot-first or the sidebar order. */
@@ -137,7 +136,12 @@ export function TicklerBoardPage({
   onPortfolioSort: (sort: TicklerPortfolioSort) => void;
   /** The narrow stack's order. Ignored wide, where `order` is overridden away. */
   paneOrder: readonly TicklerPaneKey[];
-  onPaneOrder: (order: TicklerPaneKey[]) => void;
+  /**
+   * Whether the board is down to one column, which only the rail can answer —
+   * it is the element that goes `display: contents`. Reported up because the
+   * control that acts on it lives in the HUD header, not on the board.
+   */
+  onNarrow: (narrow: boolean) => void;
   footer?: ReactNode;
 }) {
   const nowMs = useNowMs();
@@ -241,6 +245,13 @@ export function TicklerBoardPage({
   // The rail's height, shared out. Orgs is read back here because its markup
   // lives on this page rather than in a component of its own.
   const { railRef, budget, narrow } = useRailBudget(RAIL_PANES);
+  // `narrow` is measured rather than guessed, and is false for the one pre-paint
+  // frame before the first measurement, so the header's Pane order button is
+  // never briefly offered on a desktop.
+  useEffect(() => {
+    onNarrow(narrow);
+    return () => onNarrow(false);
+  }, [narrow, onNarrow]);
   const orgsBudget = budget.orgs;
   const orgsBox = railPaneBox(orgsBudget);
 
@@ -267,15 +278,6 @@ export function TicklerBoardPage({
   // that floor, the column is the viewport again, and the rows truncate.
   return (
     <div data-view="board" className="@container/board flex flex-col gap-4">
-      {/* The only control the wide board does not get. `narrow` is measured
-          rather than guessed — it is the rail reporting `display: contents` —
-          and it is false for the one pre-paint frame before the first
-          measurement, so the button is never briefly offered on a desktop. */}
-      {narrow && (
-        <div className="flex items-center justify-end">
-          <TicklerPaneOrder order={paneOrder} onOrder={onPaneOrder} />
-        </div>
-      )}
       <div className="grid gap-4 @[64rem]/board:grid-cols-[minmax(320px,400px)_minmax(0,1fr)] @[96rem]/board:grid-cols-[440px_minmax(0,1fr)] [.tickler-kiosk_&]:gap-6 [.tickler-kiosk_&]:@[110rem]/board:grid-cols-[540px_minmax(0,1fr)]">
         {/* A column that knows its own height can spend it: `useRailBudget`
             gives this box the height of the band it is pinned inside — the

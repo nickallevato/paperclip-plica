@@ -14,8 +14,8 @@ import { TicklerPaneOrder } from "./TicklerPaneOrder";
  * zero, so nothing is ever over anything. What a finished drag does to the order
  * is `reorderPanes`, covered in `lib/pane-order.test.ts`; that the gesture
  * reaches it is covered by the 390px screenshots on the PR. What is left for
- * jsdom is the mechanic around it — that the grips appear only while editing,
- * and that a menu row never behaves like a menu item.
+ * jsdom is the mechanic around it — that opening the menu is itself the edit
+ * mode, and that a menu row never behaves like a menu item.
  */
 const roots: Array<{ root: ReturnType<typeof createRoot>; container: HTMLDivElement }> = [];
 
@@ -43,7 +43,6 @@ function press(element: HTMLElement) {
 const menu = () => document.body.querySelector<HTMLElement>("[data-slot='dropdown-menu-content']");
 const rows = () => Array.from(document.body.querySelectorAll<HTMLElement>("[data-pane-row]"));
 const grips = () => Array.from(document.body.querySelectorAll<HTMLElement>("[aria-label^='Reorder ']"));
-const editButton = () => document.body.querySelector<HTMLElement>("[data-pane-order-edit]");
 
 afterEach(() => {
   for (const { root, container } of roots.splice(0)) {
@@ -54,10 +53,14 @@ afterEach(() => {
 });
 
 describe("TicklerPaneOrder", () => {
-  it("is a button until it is pressed", () => {
+  it("is an icon button until it is pressed", () => {
+    // Labelled, not captioned: it sits in the header's toggle group beside
+    // thresholds, alerts and kiosk, and those are icons with an aria-label.
     const { container } = render();
     const trigger = container.querySelector<HTMLElement>("[data-pane-order]");
-    expect(trigger?.textContent).toBe("Panes");
+    expect(trigger?.getAttribute("aria-label")).toBe("Pane order");
+    expect(trigger?.textContent).toBe("");
+    expect(trigger?.querySelector("svg")).not.toBeNull();
     expect(menu()).toBeNull();
   });
 
@@ -80,20 +83,14 @@ describe("TicklerPaneOrder", () => {
     ]);
   });
 
-  it("shows a grip on every row only while editing, and takes them all back on Done", () => {
+  it("opens straight into the grips, with no Edit step in front of them", () => {
+    // The menu has no errand but reordering, so a mode toggle guarding it would
+    // only ever be pressed on the way through.
     const { container } = render();
     press(container.querySelector<HTMLElement>("[data-pane-order]")!);
-    expect(editButton()?.textContent).toBe("Edit");
-    expect(grips()).toHaveLength(0);
-
-    act(() => editButton()!.click());
-    expect(editButton()?.textContent).toBe("Done");
     expect(grips()).toHaveLength(5);
     expect(grips().map((grip) => grip.getAttribute("aria-label"))).toContain("Reorder Needs you");
-
-    act(() => editButton()!.click());
-    expect(editButton()?.textContent).toBe("Edit");
-    expect(grips()).toHaveLength(0);
+    expect(document.body.textContent).not.toContain("Edit");
   });
 
   it("does not close the menu when a row is chosen", () => {
@@ -101,33 +98,30 @@ describe("TicklerPaneOrder", () => {
     // select, which mid-reorder would drop the reader out of Edit as well.
     const { container } = render();
     press(container.querySelector<HTMLElement>("[data-pane-order]")!);
-    act(() => editButton()!.click());
     act(() => rows()[2]!.click());
     expect(menu()).not.toBeNull();
-    expect(editButton()?.textContent).toBe("Done");
+    expect(grips()).toHaveLength(5);
   });
 
-  it("reopens showing the list rather than the grips", () => {
+  it("reopens in the same state it closed in", () => {
     const { container } = render();
     const trigger = container.querySelector<HTMLElement>("[data-pane-order]")!;
     press(trigger);
-    act(() => editButton()!.click());
-    expect(grips()).toHaveLength(5);
+    expect(trigger.getAttribute("aria-pressed")).toBe("true");
 
     act(() => {
       document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
     });
     expect(menu()).toBeNull();
+    expect(trigger.getAttribute("aria-pressed")).toBe("false");
 
     press(trigger);
-    expect(editButton()?.textContent).toBe("Edit");
-    expect(grips()).toHaveLength(0);
+    expect(grips()).toHaveLength(5);
   });
 
   it("does not report an order until something is dragged", () => {
     const { container, onOrder } = render();
     press(container.querySelector<HTMLElement>("[data-pane-order]")!);
-    act(() => editButton()!.click());
     act(() => grips()[0]!.click());
     expect(onOrder).not.toHaveBeenCalled();
   });

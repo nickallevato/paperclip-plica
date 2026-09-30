@@ -15,6 +15,7 @@ import {
 import { TicklerBoardPage } from "./components/TicklerBoardPage";
 import { TicklerBriefing } from "./components/TicklerBriefing";
 import { TicklerMark } from "./components/TicklerMark";
+import { TicklerPaneOrder } from "./components/TicklerPaneOrder";
 import { TicklerReloadBadge } from "./components/TicklerReloadBadge";
 import { TicklerSelfUpdatePanel, TicklerUpdateChip } from "./components/TicklerSelfUpdate";
 import { TicklerTokenSettingsPanel } from "./components/TicklerTokenSettings";
@@ -188,6 +189,12 @@ export function TicklerHud({ demo = false }: TicklerHudProps = {}) {
     setPaneOrder(order);
     writeStored(TICKLER_PANE_ORDER_STORAGE_KEY, JSON.stringify(order));
   };
+  // Only the board can say whether it is one column — it is the rail going
+  // `display: contents` — but the button belongs up here with the other controls
+  // over how the page is laid out. Stable identity: the board reports through an
+  // effect, and a fresh callback each render would re-run it every render.
+  const [boardNarrow, setBoardNarrow] = useState(false);
+  const reportBoardNarrow = useCallback((narrow: boolean) => setBoardNarrow(narrow), []);
 
   const [tokenSettings, setTokenSettings] = useState(() => normalizeTokenSettings(readStored(TICKLER_TOKEN_THRESHOLDS_STORAGE_KEY)));
   const [tokenSettingsOpen, setTokenSettingsOpen] = useState(false);
@@ -371,6 +378,9 @@ export function TicklerHud({ demo = false }: TicklerHudProps = {}) {
               <TriangleAlert className="h-3.5 w-3.5" /> polling degraded
             </span>
           )}
+          {/* First in the group, and only when the board is a single column:
+              it is the control that acts on that layout. */}
+          {boardNarrow && <TicklerPaneOrder order={paneOrder} onOrder={selectPaneOrder} />}
           <button
             type="button"
             aria-pressed={tokenSettingsOpen}
@@ -447,7 +457,7 @@ export function TicklerHud({ demo = false }: TicklerHudProps = {}) {
           portfolioSort={portfolioSort}
           onPortfolioSort={selectPortfolioSort}
           paneOrder={paneOrder}
-          onPaneOrder={selectPaneOrder}
+          onNarrow={reportBoardNarrow}
           footer={
             showBriefing && lastVisit ? (
               <TicklerBriefing companies={companies} since={lastVisit} onDismiss={() => setBriefingDismissed(true)} />
