@@ -116,9 +116,20 @@ pnpm build           # CSS then bundle
 pnpm check:surface   # the guardrail above
 pnpm check:branch    # branch name against the convention below
 pnpm check:worktree  # not working in the checkout other agents share
+pnpm check:scroll    # no scrollbar the layout does not need (needs an instance)
 pnpm release:plan    # what merging this would publish, and as which version
 pnpm hooks:install   # pre-commit: worktree, surface check, typecheck, test
 ```
+
+`check:scroll` is the one that needs a browser and a running instance — stand
+one up the way [docs/screenshots/README.md](docs/screenshots/README.md)
+describes, which is the same throwaway instance the capture scripts drive. It
+sweeps the board at 32 screen sizes and fails on any box that scrolls while its
+pane says it is showing everything. That is not a thing a unit test can settle:
+the rail's budget is arithmetic over measured heights, and PLI-263 was a
+defect in the measuring rather than in the arithmetic. Run it after a change to
+the rail budget or to any pane's rows; it is not part of `pre-commit`, which
+stays offline.
 
 The `@paperclipai/*` dev dependencies are `link:` references to a Paperclip
 checkout, resolved at `../../paperclip` relative to this repository. If yours

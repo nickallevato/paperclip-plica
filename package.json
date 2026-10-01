@@ -44,6 +44,7 @@
     "check:surface": "node ./scripts/check-plugin-surface.mjs --all",
     "check:vendored": "node ./scripts/check-vendored.mjs",
     "check:worktree": "node ./scripts/check-worktree.mjs",
+    "check:scroll": "node ./scripts/check-scroll.mjs",
     "hooks:install": "git config core.hooksPath .githooks",
     "prepublishOnly": "pnpm typecheck && pnpm build && pnpm test"
   },

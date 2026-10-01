@@ -21,6 +21,11 @@
  * than assumed: a row's height depends on the theme's line height and on the
  * density setting, and a constant that drifts from it is precisely how the old
  * rail ended up drawing a row sliced through the middle.
+ *
+ * Those measurements are fractional, and the direction of the rounding is the
+ * whole of PLI-263: a pane pinned to the floor of what its rows need scrolls
+ * by the fraction, so its header says it is showing everything while a
+ * scrollbar says otherwise. Only `height` is rounded, and it is rounded up.
  */
 
 export interface TicklerRailPaneSpec {
@@ -48,6 +53,7 @@ export interface TicklerRailPaneMetrics {
   row: number;
   /** The pane's own border and padding, which its height has to carry too. */
   frame: number;
+  /* Each of the four above is fractional — see the note at the top. */
   /** Rows the pane has to show, whether or not they fit. */
   total: number;
 }
@@ -55,7 +61,7 @@ export interface TicklerRailPaneMetrics {
 export interface TicklerRailPaneBudget {
   /** Rows the pane may draw. Zero means demoted, or that it has none. */
   rows: number;
-  /** Pixels to pin the pane to, or null to let it size itself. */
+  /** Whole pixels to pin the pane to — rounded up — or null to let it size itself. */
   height: number | null;
   /** Rows it is holding back, for the header to own up to. */
   hidden: number;
@@ -108,10 +114,20 @@ export function distributeRailHeight(
   const floor = (spec: TicklerRailPaneSpec) => Math.min(spec.minRows, boxes[spec.key].total);
 
   const rows: Record<string, number> = Object.fromEntries(specs.map((spec) => [spec.key, 0]));
+  /**
+   * What the pane costs, rounded up to the whole pixel it will be pinned to.
+   *
+   * Up, and at the end rather than per part: every height here is fractional
+   * (a row is 28.375px long before it is anything else), and a pane pinned to
+   * the floor of its own contents scrolls by the fraction it was docked — a
+   * scrollbar for rows the pane is already showing, which is PLI-263. Rounding
+   * up spends at most one pixel per pane and leaves it to the row list, which
+   * is the flexible child.
+   */
   const paneHeight = (key: string) => {
     const box = boxes[key];
     const drawn = rows[key] > 0 || empty(key);
-    return box.frame + box.head + (drawn ? box.foot : 0) + rows[key] * box.row;
+    return Math.ceil(box.frame + box.head + (drawn ? box.foot : 0) + rows[key] * box.row);
   };
   const spent = () =>
     specs.reduce((total, spec) => total + paneHeight(spec.key), 0) + gap * Math.max(0, specs.length - 1);

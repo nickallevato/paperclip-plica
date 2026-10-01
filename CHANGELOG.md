@@ -5,6 +5,29 @@ Short-form. The reader-facing write-up for each version is in
 
 ## Unreleased
 
+- **A rail pane with nothing left to show no longer scrolls.** On any window
+  1080px tall or taller, Routines in the left rail had a working scrollbar and
+  one pixel to scroll — while its own header said it was showing every row there
+  was. The layout was not at fault; the measuring was. The rail sizes itself and
+  hands each pane a height of "header plus a whole number of rows", and it
+  measured with `offsetHeight`, which is a rounded integer, where a rail row is
+  not: a Routines row is 28.297px tall and reported 28, so three of them were
+  budgeted 84px to hold 85.125px of rows. The pane was pinned a pixel short of
+  its own contents and dutifully offered to scroll. Heights now come off
+  `getBoundingClientRect()`, the pane's frame is read from its computed border
+  and padding rather than the difference of two rounded integers, and the
+  rounding happens once, upwards, on the only number handed out.
+
+  One visible consequence, because the old arithmetic was flattering itself:
+  where a pane used to fit in a row by under-measuring it, it now admits it
+  cannot. At 1920×1080 Routines shows two rows and a `+1 more` where it showed
+  three before — the third of them a hair clipped behind the scrollbar this
+  fixes.
+
+  A new `pnpm check:scroll` sweeps the board at 32 window sizes in a real
+  browser and fails on any box that scrolls while its pane claims to be showing
+  everything. Nine of the 32 screens failed before this change; none do now.
+
 ## 0.9.0
 
 - **The narrow board's panes are yours to order.** On one column the page is a

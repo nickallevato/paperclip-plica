@@ -55,6 +55,40 @@ function offsetWithin(node: HTMLElement, port: HTMLElement): number {
 }
 
 /**
+ * A box's real height, fractions and all.
+ *
+ * `offsetHeight` — which this used to read — is an integer, and a rail row is
+ * almost never a whole number of pixels: the micro type scale is 11px at a line
+ * height of 1.45, so a row lands on something like 28.375px and reports 28.
+ * Three rows of it are then budgeted 84px against 85.125px of rows, and the
+ * pane scrolls by a pixel while its header says it is showing everything —
+ * which is the complaint in PLI-263, arrived at from the measuring end. Rects
+ * are fractional, so a row costs what it costs and {@link distributeRailHeight}
+ * rounds the one number it hands back up rather than every input down.
+ */
+function heightOf(node: HTMLElement | null): number {
+  return node ? node.getBoundingClientRect().height : 0;
+}
+
+/**
+ * The pane's own border and padding — the part of its height no row can use.
+ *
+ * Read from the computed style rather than as `offsetHeight - clientHeight`,
+ * because both of those are integers and their difference carries both
+ * roundings.
+ */
+function frameOf(node: HTMLElement): number {
+  const style = getComputedStyle(node);
+  const px = (value: string) => {
+    const parsed = Number.parseFloat(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+  };
+  return (
+    px(style.borderTopWidth) + px(style.borderBottomWidth) + px(style.paddingTop) + px(style.paddingBottom)
+  );
+}
+
+/**
  * Measure the rail and hand each pane its height.
  *
  * The panes mark themselves up for this: `data-rail-pane` on the pane,
@@ -134,10 +168,10 @@ export function useRailBudget(specs: readonly TicklerRailPaneSpec[]): {
       if (!pane) continue;
       const rows = Array.from(pane.querySelectorAll<HTMLElement>("[data-rail-row]"));
       let foot = 0;
-      for (const part of pane.querySelectorAll<HTMLElement>("[data-rail-foot]")) foot += part.offsetHeight;
+      for (const part of pane.querySelectorAll<HTMLElement>("[data-rail-foot]")) foot += heightOf(part);
       const held = remembered.current[spec.key];
       remembered.current[spec.key] = {
-        head: pane.querySelector<HTMLElement>("[data-rail-head]")?.offsetHeight ?? 0,
+        head: heightOf(pane.querySelector<HTMLElement>("[data-rail-head]")),
         // A demoted pane draws neither rows nor footer. Measuring its footer as
         // nothing would cost it that much less to promote than it really costs,
         // and it would come back a footer too tall for the rail. An empty pane
@@ -146,10 +180,8 @@ export function useRailBudget(specs: readonly TicklerRailPaneSpec[]): {
         // The tallest of the sample rather than the first: Portfolio's sticky
         // company headings are rows too and are shorter than a project's bar,
         // and a row height that under-measures puts the half-drawn row back.
-        row: rows.length
-          ? Math.max(...rows.slice(0, ROW_SAMPLE).map((row) => row.offsetHeight))
-          : (held?.row ?? 0),
-        frame: pane.offsetHeight - pane.clientHeight,
+        row: rows.length ? Math.max(...rows.slice(0, ROW_SAMPLE).map(heightOf)) : (held?.row ?? 0),
+        frame: frameOf(pane),
         total: rows.length || (held?.total ?? 0),
       };
     }
