@@ -17,29 +17,32 @@ const PANES: TicklerRailPaneSpec[] = [
 /**
  * A rail the hook can measure.
  *
- * jsdom lays nothing out, so every `offsetHeight` it reports is zero — which is
- * exactly the unmeasured case the hook already has to survive. To exercise the
- * measured case, geometry is stubbed onto the element prototypes by the
- * `data-*` markers the panes carry: 28px headers, 20px footers, 32px rows, and
- * a scrolling box of whatever height the test asks for. The rail gets that
- * height less a 16px gutter top and bottom, which is the hook's own arithmetic.
+ * jsdom lays nothing out, so every rect it reports is zero — which is exactly
+ * the unmeasured case the hook already has to survive. To exercise the measured
+ * case, geometry is stubbed onto the element prototypes by the `data-*` markers
+ * the panes carry: 28px headers, 20px footers, 32px rows, and a scrolling box
+ * of whatever height the test asks for. The rail gets that height less a 16px
+ * gutter top and bottom, which is the hook's own arithmetic.
+ *
+ * Rects rather than `offsetHeight`, because that is what the hook reads now:
+ * `offsetHeight` is an integer and a rail row rarely is, and a budget built
+ * from the floor of its own rows is a pane that scrolls by the fraction it was
+ * docked (PLI-263). `rowHeight` is therefore a parameter — a test can hand it
+ * 32.375 and ask what the pane was pinned to.
  */
-function stubGeometry(portHeight: number, railTop = 0): () => void {
+function stubGeometry(portHeight: number, railTop = 0, rowHeight = 32): () => void {
   const height = (node: HTMLElement): number => {
     if (node.dataset.railHead !== undefined) return 28;
     if (node.dataset.railFoot !== undefined) return 20;
-    if (node.dataset.railRow !== undefined) return 32;
-    // Only the panes read offsetHeight for themselves, and only to work out the
-    // border their own height has to carry.
-    if (node.dataset.railPane !== undefined) return node.clientHeight + 2;
+    if (node.dataset.railRow !== undefined) return rowHeight;
     return 0;
   };
-  const offset = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "offsetHeight");
+  const rect = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "getBoundingClientRect");
   const client = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "clientHeight");
-  Object.defineProperty(HTMLElement.prototype, "offsetHeight", {
+  Object.defineProperty(HTMLElement.prototype, "getBoundingClientRect", {
     configurable: true,
-    get(this: HTMLElement) {
-      return height(this);
+    value(this: HTMLElement) {
+      return { height: height(this), width: 0, top: 0, left: 0, right: 0, bottom: 0, x: 0, y: 0 } as DOMRect;
     },
   });
   Object.defineProperty(HTMLElement.prototype, "clientHeight", {
@@ -59,7 +62,7 @@ function stubGeometry(portHeight: number, railTop = 0): () => void {
     },
   });
   return () => {
-    if (offset) Object.defineProperty(HTMLElement.prototype, "offsetHeight", offset);
+    if (rect) Object.defineProperty(HTMLElement.prototype, "getBoundingClientRect", rect);
     if (client) Object.defineProperty(HTMLElement.prototype, "clientHeight", client);
     if (top) Object.defineProperty(HTMLElement.prototype, "offsetTop", top);
   };
@@ -70,7 +73,16 @@ function Rail({ orgRows, projectRows, contents }: { orgRows: number; projectRows
   const pane = (key: string, rows: number) => {
     const box = railPaneBox(budget[key]);
     return (
-      <section data-rail-pane={key} data-demoted={budget[key]?.demoted} style={box.style} className={box.className}>
+      <section
+        data-rail-pane={key}
+        data-demoted={budget[key]?.demoted}
+        data-rows={budget[key]?.rows}
+        // The 2px of frame the pane's height has to carry, written as the
+        // border it is in the app: the hook reads it off the computed style
+        // rather than as `offsetHeight - clientHeight`, which is two roundings.
+        style={{ borderTopWidth: "1px", borderBottomWidth: "1px", ...box.style }}
+        className={box.className}
+      >
         <div data-rail-head>{key}</div>
         {!budget[key]?.demoted && (
           <ul>
@@ -110,8 +122,9 @@ function render(
   portHeight: number,
   rows: { orgRows: number; projectRows: number; contents?: boolean } = { orgRows: 12, projectRows: 11 },
   railTop = 0,
+  rowHeight = 32,
 ): HTMLDivElement {
-  teardown.push(stubGeometry(portHeight, railTop));
+  teardown.push(stubGeometry(portHeight, railTop, rowHeight));
   const container = document.createElement("div");
   document.body.appendChild(container);
   const root = createRoot(container);
@@ -159,6 +172,20 @@ describe("useRailBudget", () => {
     for (const key of ["orgs", "portfolio"]) {
       const height = Number.parseInt(pane(container, key).style.height, 10);
       expect((height - 2 - 28 - 20) % 32, key).toBe(0);
+    }
+  });
+
+  // PLI-263: the rows were measured with `offsetHeight`, so a 28.375px row was
+  // budgeted 28 and a pane showing three of them was pinned a pixel short of
+  // its own contents — a scrollbar on a pane whose header says it is holding
+  // nothing back. Pinned to no less than the rows need, and to a whole pixel.
+  it("never pins a pane below the rows it is showing, however they measure", () => {
+    const container = render(632, { orgRows: 12, projectRows: 11 }, 0, 32.375);
+    for (const key of ["orgs", "portfolio"]) {
+      const height = Number.parseInt(pane(container, key).style.height, 10);
+      const rows = Number.parseInt(pane(container, key).dataset.rows!, 10);
+      expect(height, key).toBeGreaterThanOrEqual(2 + 28 + 20 + rows * 32.375);
+      expect(height, key).toBe(Math.ceil(height));
     }
   });
 

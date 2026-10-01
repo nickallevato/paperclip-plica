@@ -70,6 +70,32 @@ describe("distributeRailHeight", () => {
     }
   });
 
+  // PLI-263: every height here is fractional, because a row is. A pane pinned
+  // to the floor of its own contents scrolls by the fraction it was docked, and
+  // its header meanwhile says it is holding nothing back — a scrollbar for rows
+  // already on screen. Measured on the board: 28.297px rows budgeted 28.
+  it("never pins a pane below the rows it is showing", () => {
+    const boxes: Record<string, TicklerRailPaneMetrics> = {
+      orgs: box(4, { head: 32.297, foot: 25.5, row: 47.297, frame: 2 }),
+      recent: box(16, { head: 32.297, foot: 0, row: 28.297, frame: 2 }),
+      portfolio: box(9, { head: 36.297, foot: 21.5, row: 42.297, frame: 2 }),
+      routines: box(3, { head: 32.297, foot: 0, row: 28.297, frame: 2 }),
+    };
+    for (const available of [596, 886, 1206, 1308]) {
+      const budget = distributeRailHeight(PANES, boxes, { available, gap: GAP });
+      for (const { key } of PANES) {
+        const pane = budget[key]!;
+        if (pane.height === null) continue;
+        const needed = boxes[key].frame + boxes[key].head + boxes[key].foot + pane.rows * boxes[key].row;
+        expect(pane.height, `${key} at ${available}`).toBeGreaterThanOrEqual(needed);
+        expect(pane.height, `${key} at ${available}`).toBe(Math.ceil(pane.height));
+      }
+      // And the rounding is not paid for out of the rail: a pane rounded up
+      // past the band would move the scrollbar from the pane onto the rail.
+      expect(spent(budget, boxes), `rail at ${available}`).toBeLessThanOrEqual(available);
+    }
+  });
+
   it("spends a taller screen instead of holding a pixel cap", () => {
     const boxes = metrics({ orgs: 12, portfolio: 11, recent: 20, routines: 3 });
     const short = distributeRailHeight(PANES, boxes, { available: 790, gap: GAP });
