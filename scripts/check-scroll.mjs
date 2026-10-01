@@ -14,6 +14,12 @@
  * while its pane claims to be showing everything, or one that scrolls by less
  * than a row: nobody asked to scroll a fraction.
  *
+ * Each screen is checked twice: as demo mode ships it, and again with the queue
+ * bounded, where the rail is the tallest thing on the page and the page's own
+ * scrollbar has to justify itself too. The second pass is the one that catches a
+ * rail a few pixels too tall for its box — the first fix for PLI-263 left 8px of
+ * that behind, invisible until a live board had a short queue.
+ *
  * It drives the same instance the capture scripts do; stand one up the way
  * `docs/screenshots/README.md` describes. Environment: TICKLER_SHOT_URL,
  * TICKLER_SHOT_PREFIX, TICKLER_PLAYWRIGHT, TICKLER_CHROME, plus
@@ -75,11 +81,12 @@ async function resolvePrefix() {
  * differ by a pixel on a box whose fractional contents really do fit — a box
  * that will not take a scroll is not painting a scrollbar either.
  */
-function findPhantoms() {
+function findPhantoms({ page: checkPage } = { page: false }) {
   const board = document.querySelector("[data-view=board]");
   if (!board) return [{ where: "board", why: "the board never rendered" }];
+  const main = board.closest("main") ?? document.body;
   const out = [];
-  for (const el of (board.closest("main") ?? document.body).querySelectorAll("*")) {
+  for (const el of [main, ...main.querySelectorAll("*")]) {
     if (!["auto", "scroll", "overlay"].includes(getComputedStyle(el).overflowY)) continue;
     const held = el.scrollTop;
     el.scrollTop = 1e6;
@@ -87,7 +94,12 @@ function findPhantoms() {
     el.scrollTop = held;
     if (reach <= 0) continue;
     const pane = el.closest("[data-rail-pane]");
-    const where = pane?.getAttribute("data-rail-pane") ?? (el.closest("[data-tickler-queue]") ? "queue" : el.tagName.toLowerCase());
+    const where =
+      pane?.getAttribute("data-rail-pane") ??
+      (el === main ? "page" : el.closest("[data-tickler-queue]") ? "queue" : el.tagName.toLowerCase());
+    // The second pass is about the page; the panes were judged in the first,
+    // where their rows were the ones the board really has.
+    if (checkPage && where !== "page") continue;
     const more = pane?.querySelector("[data-rail-more]")?.textContent?.trim() ?? null;
     const rows = Array.from((pane ?? el).querySelectorAll("[data-rail-row]"));
     const row = rows.length ? Math.max(...rows.map((node) => node.getBoundingClientRect().height)) : null;
@@ -96,10 +108,44 @@ function findPhantoms() {
     if (more && row !== null && reach >= row - 1.5) continue;
     // The queue owns the main column and is as long as the work is; it is the
     // page's scroller by design, not a pane with a budget.
-    if (where === "queue" || where === "main") continue;
+    if (where === "queue") continue;
+    // The page scrolls for the queue. It is only answerable for itself in the
+    // second pass, where the queue has been bounded and anything left over
+    // belongs to the rail — see `boundQueue`.
+    if (where === "page") {
+      if (!checkPage) continue;
+      out.push({ where, why: `the page scrolls ${reach}px with nothing under the fold but the rail`, reach, more: null });
+      continue;
+    }
     out.push({ where, why: more ? `scrolls ${reach}px, less than one ${Math.round(row)}px row` : `scrolls ${reach}px while claiming to show every row`, reach, more });
   }
   return out;
+}
+
+/**
+ * A quiet board: the queue short enough that the rail is the tallest thing on
+ * the page.
+ *
+ * Demo mode ships a queue long enough to scroll the page on every screen, and a
+ * page that is already scrolling for the queue hides a rail that is a few pixels
+ * too tall for its box — which is how PLI-263 came back on a live instance with
+ * four items in the queue and was not reproducible here. Bounding the queue is
+ * that board's geometry: the rail's column is then the only thing that can put
+ * the page over, so whatever the page scrolls is the rail's to answer for.
+ *
+ * Answers whether the check applies: in the narrow layout the rail is
+ * `display: contents` and the panes are stacked down the page, where scrolling
+ * the page is the whole design.
+ */
+function boundQueue() {
+  const queue = document.querySelector("[data-tickler-queue]");
+  if (queue) {
+    queue.style.maxHeight = "120px";
+    queue.style.overflow = "hidden";
+  }
+  const pane = document.querySelector("[data-rail-pane]");
+  const rail = pane?.parentElement ?? null;
+  return Boolean(rail) && getComputedStyle(rail).display !== "contents";
 }
 
 const require = createRequire(join(process.env.TICKLER_PLAYWRIGHT ?? join(homedir(), "paperclip"), "package.json"));
@@ -130,7 +176,13 @@ try {
       await page.waitForSelector("[data-tickler-queue] [data-queue-item]", { timeout: 60_000 });
       // The budget settles on the layout effect after the first poll paints.
       await page.waitForTimeout(2500);
-      const phantoms = await page.evaluate(findPhantoms);
+      const phantoms = await page.evaluate(findPhantoms, { page: false });
+      // Then the same screen with a quiet queue, where the page itself has to
+      // answer for its scrollbar too.
+      if (await page.evaluate(boundQueue)) {
+        await page.waitForTimeout(300);
+        phantoms.push(...(await page.evaluate(findPhantoms, { page: true })));
+      }
       const name = `${screen.width}x${screen.height}`;
       if (phantoms.length === 0) {
         if (verbose) console.log(`✓ ${name}`);

@@ -5,6 +5,25 @@ Short-form. The reader-facing write-up for each version is in
 
 ## Unreleased
 
+- **The board page no longer scrolls 8px over nothing.** 0.9.1 took the
+  scrollbar off the rail's panes and left one on the page itself: on a quiet
+  board — a short queue, where the left rail is the tallest thing on the screen
+  — the page offered a scrollbar, scrolled exactly 8px, and showed nothing you
+  had not already seen. The rail is told how tall it may be, and it kept a fixed
+  16px under itself for the gap it pins at; what is actually under it is the
+  board's own 24px of padding. Eight pixels of content with nothing in them, on
+  every window wide enough to lay the rail out beside the queue. The rail now
+  measures what the layout puts below it — stretched past everything else on the
+  page for one layout pass, so its column decides `scrollHeight` and what is left
+  over is the answer — instead of assuming it matches the gap above.
+
+  It survived the first fix because demo mode's queue is long enough to scroll
+  the page on every screen, and a page already scrolling for the queue hides a
+  rail that is a few pixels too tall for its box. `pnpm check:scroll` now checks
+  each of its 32 screens twice, the second time with the queue bounded, where
+  the page has to answer for its own scrollbar: 24 of the 32 failed that pass
+  before this change, none do now.
+
 ## 0.9.1
 
 - **A rail pane with nothing left to show no longer scrolls.** On any window

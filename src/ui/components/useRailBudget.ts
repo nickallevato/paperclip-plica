@@ -15,8 +15,16 @@ const FALLBACK_GAP = 16;
 /** Enough rows to find the tallest one without walking a hundred of them. */
 const ROW_SAMPLE = 12;
 
-/** Above and below the rail when it is pinned — the `top-4` it sticks at, twice. */
+/** The least room to leave above the rail — the `top-4` it pins at. */
 const GUTTER = 16;
+
+/**
+ * Taller than any rail, and small enough to stay exact in a layout engine.
+ *
+ * Only ever written and read back inside one layout pass — see
+ * {@link insetBelow} — so it is never painted.
+ */
+const PROBE_HEIGHT = 100_000;
 
 /**
  * The box the rail is pinned inside, which is not the window.
@@ -52,6 +60,32 @@ function offsetWithin(node: HTMLElement, port: HTMLElement): number {
     return top;
   };
   return Math.max(0, laidOutTop(node) - laidOutTop(port));
+}
+
+/**
+ * What the layout puts below the rail, which the rail's height has to leave room for.
+ *
+ * The board's grid sits inside a `<main>` with `p-6`, so under the rail there is
+ * 24px of padding that belongs to nobody — and the rail's height used to be the
+ * band less `GUTTER` at each end, 16px. Eight pixels of content with nothing in
+ * them: as long as the queue was the taller column nobody could tell, because
+ * the page was already scrolling for the queue. On a quiet board, where the rail
+ * *is* the tallest thing on the page, the page grew a scrollbar that scrolled 8px
+ * and revealed nothing — PLI-263 again, one level out from the panes.
+ *
+ * Measured rather than read off the CSS, because the answer is not only padding:
+ * an ancestor's margin, a border, a grid row under the rail, a host that wraps
+ * the page in another box all land in the same number. Stretch the rail past
+ * anything else on the page and its column decides `scrollHeight`, so whatever
+ * is left over above the probe is exactly what sits below the rail. Written and
+ * undone inside a layout effect, before the browser paints.
+ */
+function insetBelow(rail: HTMLElement, port: HTMLElement): number {
+  const held = rail.style.height;
+  rail.style.height = `${PROBE_HEIGHT}px`;
+  const inset = port.scrollHeight - offsetWithin(rail, port) - PROBE_HEIGHT;
+  rail.style.height = held;
+  return Math.max(0, inset);
 }
 
 /**
@@ -154,15 +188,21 @@ export function useRailBudget(specs: readonly TicklerRailPaneSpec[]): {
     // the bottom of the screen. The offset is static, so the rail keeps one
     // height whatever the scroll position; once it pins at `top-4` the cost is
     // that much unused room under it, which is a gap rather than a clipped pane.
-    const head = port ? Math.max(GUTTER, offsetWithin(rail, port)) : 0;
-    const band = port ? Math.max(0, port.clientHeight - head - GUTTER) : 0;
-    rail.style.height = band > 0 ? `${band}px` : "";
     // The `--tickler-rail-max-h` cap is the first-paint value and nothing more:
     // it is `100dvh` less an allowance for the host's chrome, so on a host with
-    // less chrome than that allowance it is *shorter* than the band we just
-    // measured, and would clip the panes the budget had just been told fit. A
-    // measured rail answers to the measurement.
-    rail.style.maxHeight = band > 0 ? "none" : "";
+    // less chrome than that allowance it is *shorter* than the band we are about
+    // to measure, and would clip the panes the budget had just been told fit. A
+    // measured rail answers to the measurement. Lifted before the probe too, or
+    // it would cap the probe and `insetBelow` would read the cap back.
+    rail.style.maxHeight = port ? "none" : "";
+    const head = port ? Math.max(GUTTER, offsetWithin(rail, port)) : 0;
+    // What is under the rail is measured, not assumed to match `head`: the
+    // board's `p-6` leaves 24px down there and the rail used to keep 16, so the
+    // page scrolled 8px over nothing whenever the rail outgrew the queue.
+    const tail = port ? insetBelow(rail, port) : 0;
+    const band = port ? Math.max(0, port.clientHeight - head - tail) : 0;
+    rail.style.height = band > 0 ? `${band}px` : "";
+    if (band <= 0) rail.style.maxHeight = "";
     for (const spec of specs) {
       const pane = rail.querySelector<HTMLElement>(`[data-rail-pane="${spec.key}"]`);
       if (!pane) continue;

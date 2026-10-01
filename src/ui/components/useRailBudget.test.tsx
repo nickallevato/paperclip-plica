@@ -29,8 +29,14 @@ const PANES: TicklerRailPaneSpec[] = [
  * from the floor of its own rows is a pane that scrolls by the fraction it was
  * docked (PLI-263). `rowHeight` is therefore a parameter — a test can hand it
  * 32.375 and ask what the pane was pinned to.
+ *
+ * `tail` is what the layout puts *under* the rail — the board's padding, in the
+ * app. The hook finds it by stretching the rail until its column owns the
+ * scrolling box's `scrollHeight`, so the stub answers that the way a layout
+ * engine would: whatever the rail has been given, plus what it starts below,
+ * plus the tail.
  */
-function stubGeometry(portHeight: number, railTop = 0, rowHeight = 32): () => void {
+function stubGeometry(portHeight: number, railTop = 0, rowHeight = 32, tail = 16): () => void {
   const height = (node: HTMLElement): number => {
     if (node.dataset.railHead !== undefined) return 28;
     if (node.dataset.railFoot !== undefined) return 20;
@@ -51,6 +57,16 @@ function stubGeometry(portHeight: number, railTop = 0, rowHeight = 32): () => vo
       return this.dataset.rail === "port" ? portHeight : 0;
     },
   });
+  const scroll = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "scrollHeight");
+  Object.defineProperty(HTMLElement.prototype, "scrollHeight", {
+    configurable: true,
+    get(this: HTMLElement) {
+      if (this.dataset.rail !== "port") return 0;
+      const rail = this.querySelector<HTMLElement>("[data-rail='rail']");
+      const given = Number.parseFloat(rail?.style.height ?? "");
+      return railTop + (Number.isFinite(given) ? given : 0) + tail;
+    },
+  });
   // What the rail starts below inside the scrolling box — the board's own
   // header, in the app. jsdom reports every `offsetTop` as zero, which is the
   // pinned case; a test asks for the resting one by passing a height.
@@ -65,6 +81,7 @@ function stubGeometry(portHeight: number, railTop = 0, rowHeight = 32): () => vo
     if (rect) Object.defineProperty(HTMLElement.prototype, "getBoundingClientRect", rect);
     if (client) Object.defineProperty(HTMLElement.prototype, "clientHeight", client);
     if (top) Object.defineProperty(HTMLElement.prototype, "offsetTop", top);
+    if (scroll) Object.defineProperty(HTMLElement.prototype, "scrollHeight", scroll);
   };
 }
 
@@ -123,8 +140,9 @@ function render(
   rows: { orgRows: number; projectRows: number; contents?: boolean } = { orgRows: 12, projectRows: 11 },
   railTop = 0,
   rowHeight = 32,
+  tail = 16,
 ): HTMLDivElement {
-  teardown.push(stubGeometry(portHeight, railTop, rowHeight));
+  teardown.push(stubGeometry(portHeight, railTop, rowHeight, tail));
   const container = document.createElement("div");
   document.body.appendChild(container);
   const root = createRoot(container);
@@ -160,6 +178,20 @@ describe("useRailBudget", () => {
     // less two gutters.
     const container = render(632, { orgRows: 12, projectRows: 11 }, 118);
     expect(container.querySelector<HTMLElement>("[data-rail='rail']")!.style.height).toBe("498px");
+  });
+
+  // PLI-263, one level out from the panes: the rail kept a fixed 16px under
+  // itself while the board's padding is 24, so the rail's column was 8px taller
+  // than the box it scrolls inside and the *page* grew a scrollbar that
+  // scrolled 8px over nothing. Invisible while the queue was the taller column,
+  // which is why it survived the first fix; on a quiet board the rail is the
+  // tallest thing on the page.
+  it("leaves room for what the layout puts under the rail, not a fixed gutter", () => {
+    const container = render(632, { orgRows: 12, projectRows: 11 }, 118, 32, 24);
+    const rail = container.querySelector<HTMLElement>("[data-rail='rail']")!;
+    expect(rail.style.height).toBe("490px");
+    // The point of the number: the rail's column has to fit the band it is in.
+    expect(118 + Number.parseInt(rail.style.height, 10) + 24).toBeLessThanOrEqual(632);
   });
 
   it("pins each pane to a header plus whole rows", () => {
