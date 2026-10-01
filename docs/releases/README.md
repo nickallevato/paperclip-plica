@@ -3,6 +3,7 @@
 One page per version, written for someone deciding whether to upgrade: what
 changed, what it means for them, and anything they have to do by hand.
 
+- [0.9.2](0.9.2.md) — the board page no longer scrolls 8px over nothing.
 - [0.9.1](0.9.1.md) — a rail pane with nothing left to show no longer scrolls.
 - [0.9.0](0.9.0.md) — the narrow board's panes are yours to order.
 - [0.8.2](0.8.2.md) — a merge to `main` releases itself; the README is half the length; the docs say what the header does, and every link resolves.

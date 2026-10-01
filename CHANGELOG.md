@@ -5,6 +5,8 @@ Short-form. The reader-facing write-up for each version is in
 
 ## Unreleased
 
+## 0.9.2
+
 - **The board page no longer scrolls 8px over nothing.** 0.9.1 took the
   scrollbar off the rail's panes and left one on the page itself: on a quiet
   board — a short queue, where the left rail is the tallest thing on the screen
