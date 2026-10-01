@@ -5,6 +5,8 @@ Short-form. The reader-facing write-up for each version is in
 
 ## Unreleased
 
+## 0.9.1
+
 - **A rail pane with nothing left to show no longer scrolls.** On any window
   1080px tall or taller, Routines in the left rail had a working scrollbar and
   one pixel to scroll — while its own header said it was showing every row there
