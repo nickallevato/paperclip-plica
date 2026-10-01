@@ -34,7 +34,6 @@ you will deal with each thing — instead of visiting each org's dashboard in tu
 - 📱 **Works on a phone**, and 🧩 **changes nothing in core** — UI-only, prebuilt, and fits
   whichever Paperclip build it lands on.
 
-> [!TIP]
 > **📦 Install from inside Paperclip — no terminal needed.**
 > **Settings → Plugins → Install Plugin**, enter **`paperclip-plugin-tickler`** as the npm Package
 > Name, and click **Install**. That's it — Tickler's button appears in the bar at the top of the page.
@@ -76,8 +75,7 @@ red, a critical item arriving); the expand control is [kiosk mode](https://githu
 
 Full tours, with the rest of the screenshots: [the board](https://github.com/nickallevato/paperclip-tickler/blob/main/docs/board.md) · [the queue](https://github.com/nickallevato/paperclip-tickler/blob/main/docs/queue.md).
 
-> [!NOTE]
-> The screenshots are Tickler's own [demo mode](https://github.com/nickallevato/paperclip-tickler/blob/main/docs/configuration.md#demo-mode) —
+> **Note:** The screenshots are Tickler's own [demo mode](https://github.com/nickallevato/paperclip-tickler/blob/main/docs/configuration.md#demo-mode) —
 > invented orgs, tickets and agents, not a real instance. Try it on your own install: add `?demo=1`
 > to the Tickler page's URL (e.g. `/ACME/tickler?demo=1`). Nothing you click there reaches the
 > server, and the header carries a **DEMO DATA** badge the whole time it is on.
