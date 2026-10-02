@@ -5,6 +5,8 @@ Short-form. The reader-facing write-up for each version is in
 
 ## Unreleased
 
+## 0.10.0
+
 - **A `?` in the header, and one line at the top of the README: where to take a
   tweak or a change.** Both point at the **Tickler thread** on the Paperclip
   Discord, and both say the thing that was nowhere on the page before — Tickler
