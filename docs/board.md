@@ -17,6 +17,13 @@ There is no **Edit** step: the rows are the setting rather than five commands,
 so the menu opens ready to drag. The grips are the ones Paperclip's own Orgs
 switcher uses.
 
+Last in that row of toggles is a **?**. It opens one short panel: where to take
+a tweak, a change or a bug — the **Tickler thread** on the
+[Paperclip Discord](https://discord.com/channels/1478750559191302299/1532477301004959846) — and
+the thing worth knowing before you go anywhere else with it, which is that
+Tickler is a community plugin rather than an officially supported part of
+Paperclip.
+
 The order is saved **in that browser only**. It does not follow you from your
 phone to your desktop, and that is a limit rather than a choice: a plugin has
 nowhere on the server to keep a preference of its own.
