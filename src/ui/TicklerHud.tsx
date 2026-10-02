@@ -14,6 +14,7 @@ import {
 } from "./lib/pane-order";
 import { TicklerBoardPage } from "./components/TicklerBoardPage";
 import { TicklerBriefing } from "./components/TicklerBriefing";
+import { TicklerHelp } from "./components/TicklerHelp";
 import { TicklerMark } from "./components/TicklerMark";
 import { TicklerPaneOrder } from "./components/TicklerPaneOrder";
 import { TicklerReloadBadge } from "./components/TicklerReloadBadge";
@@ -408,6 +409,10 @@ export function TicklerHud({ demo = false }: TicklerHudProps = {}) {
           >
             {isKiosk ? <Minimize className="h-3.5 w-3.5" /> : <Maximize className="h-3.5 w-3.5" />}
           </button>
+          {/* Last, and deliberately: the three before it are things you came to
+              the header to do, and this is the one you only look for once
+              something else has gone wrong. */}
+          <TicklerHelp />
         </div>
       </div>
 

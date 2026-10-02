@@ -209,7 +209,13 @@ Run that first if you are not certain.
 
 ## Something else
 
-Open an issue at
+Ask in the **Tickler thread** on the
+[Paperclip Discord](https://discord.com/channels/1478750559191302299/1532477301004959846) — the
+same link sits behind the **?** in the Tickler page header. Tickler is a
+community plugin, not an officially supported part of Paperclip, so its rough
+edges belong there rather than in Paperclip's own issues.
+
+If it is reproducible, open an issue at
 <https://github.com/nickallevato/paperclip-tickler/issues>. Include the Paperclip
 version (`paperclipai plugin target` prints it), Tickler's version, and whether
 the Demo data badge was on.

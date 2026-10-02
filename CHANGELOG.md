@@ -5,6 +5,16 @@ Short-form. The reader-facing write-up for each version is in
 
 ## Unreleased
 
+- **A `?` in the header, and one line at the top of the README: where to take a
+  tweak or a change.** Both point at the **Tickler thread** on the Paperclip
+  Discord, and both say the thing that was nowhere on the page before — Tickler
+  is a community plugin, not an officially supported part of Paperclip. Somebody
+  who has just hit a rough edge had no way to tell which of the two projects to
+  be annoyed at, and the nearest obvious target was Paperclip's own issue
+  tracker, where nobody who can fix Tickler is reading. The panel renders inline
+  rather than portalled to the page, so it still appears in kiosk mode, where a
+  body-level popup would open invisibly behind the fullscreen view.
+
 ## 0.9.2
 
 - **The board page no longer scrolls 8px over nothing.** 0.9.1 took the

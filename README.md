@@ -41,6 +41,12 @@ you will deal with each thing — instead of visiting each org's dashboard in tu
 > You need to be an instance admin, on a self-hosted Paperclip whose server can reach npm.
 > Prefer the command line, or building from source? See [Install](#install).
 
+**Need a tweak or change?** Join the [Paperclip Discord](https://discord.com/channels/1478750559191302299/1532477301004959846)
+and hop into the **Tickler thread** — that is where feature requests, bug reports and "is this
+supposed to do that?" land. Tickler is a community plugin, not an officially supported part of
+Paperclip, so please bring Tickler's rough edges here rather than to Paperclip's own issues. The
+same link lives behind the **?** in the Tickler page header.
+
 ## What it shows
 
 **Queue** — the main column. Every item across every org that wants a human: approvals, questions
@@ -123,7 +129,9 @@ up blank, [troubleshooting](https://github.com/nickallevato/paperclip-tickler/bl
 Bugs and feature requests go through the three issue templates — feature request, bug report, or
 core limitation. [docs/intake.md](https://github.com/nickallevato/paperclip-tickler/blob/main/docs/intake.md) is the whole path from there to a merged change. You get an
 answer either way: a duplicate is closed pointing at the original, and something real but not now
-is *parked*, not closed, and reopens on a sentence.
+is *parked*, not closed, and reopens on a sentence. Not sure it is worth an issue yet? Say it in
+the [Tickler thread](https://discord.com/channels/1478750559191302299/1532477301004959846) on the
+Paperclip Discord first.
 
 To send a change, read [CONTRIBUTING.md](https://github.com/nickallevato/paperclip-tickler/blob/main/CONTRIBUTING.md) — and before anything else, the one rule:
 **Tickler never modifies Paperclip core.** Everything lands here, through a plugin extension
